@@ -7,6 +7,7 @@
 #include "core/Reflection.h"
 #include "core/SceneSerializer.h"
 #include "core/World.h"
+#include "systems/Animation.h"
 #include "systems/System.h"
 
 struct SDL_Window;   // declaraciones adelantadas: SDL solo aparece en el .cpp
@@ -52,6 +53,9 @@ public:
     ComponentRegistry& registry() { return components; }
     // Los prefabs (.prefab.json) que usa la escena; ver core/Prefabs.h.
     PrefabLibrary& prefabs() { return prefabLibrary; }
+    // Las condiciones con nombre de las reglas de animacion (ver systems/Animation.h).
+    // Trae las del motor; el juego suma las suyas.
+    AnimationConditions& animationConditions() { return animConditions; }
     void addSystem(std::unique_ptr<System> system);
 
     // Carga la escena. Si el archivo no existe, empieza una escena vacia que se
@@ -97,6 +101,7 @@ private:
     std::unique_ptr<AssetManager> assetManager;
     ComponentRegistry components;
     PrefabLibrary prefabLibrary{ components };
+    AnimationConditions animConditions;
     World sceneWorld;
     std::vector<std::unique_ptr<System>> systemList;
     std::unique_ptr<Editor> editor;

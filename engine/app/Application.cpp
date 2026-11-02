@@ -5,6 +5,7 @@
 
 #include "components/CoreComponents.h"
 #include "components/PhysicsComponents.h"
+#include "components/PresentationComponents.h"
 #include "components/RuleComponents.h"
 #include "editor/Editor.h"
 #include "platform/AssetManager.h"
@@ -69,6 +70,8 @@ bool Application::init(const AppConfig& config) {
     registerCoreComponents(components);
     registerPhysicsComponents(components);
     registerRuleComponents(components);
+    registerEngineAnimationConditions(animConditions);
+    registerPresentationComponents(components, animConditions);
 
     if (config.editor) {
         editor = std::make_unique<Editor>(*this);
@@ -198,6 +201,7 @@ void Application::renderGameDirect() {
     SDL_SetRenderDrawColor(sdlRenderer, bg.r, bg.g, bg.b, 255);
     SDL_RenderClear(sdlRenderer);
     renderWorld(sceneWorld, *assetManager, sdlRenderer, view);
+    renderScreenTexts(sceneWorld, *assetManager, sdlRenderer, screenView(appConfig.gameWidth, appConfig.gameHeight));
 }
 
 void Application::shutdown() {

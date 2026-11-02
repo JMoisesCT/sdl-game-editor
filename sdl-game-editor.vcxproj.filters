@@ -45,6 +45,9 @@
     <ClCompile Include="engine\components\PhysicsComponents.cpp">
       <Filter>engine\components</Filter>
     </ClCompile>
+    <ClCompile Include="engine\components\PresentationComponents.cpp">
+      <Filter>engine\components</Filter>
+    </ClCompile>
     <ClCompile Include="engine\components\RuleComponents.cpp">
       <Filter>engine\components</Filter>
     </ClCompile>
@@ -83,6 +86,12 @@
     </ClCompile>
     <ClCompile Include="engine\platform\Screenshot.cpp">
       <Filter>engine\platform</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\systems\Animation.cpp">
+      <Filter>engine\systems</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\systems\Presentation.cpp">
+      <Filter>engine\systems</Filter>
     </ClCompile>
     <ClCompile Include="engine\systems\Physics.cpp">
       <Filter>engine\systems</Filter>
@@ -133,6 +142,9 @@
     <ClInclude Include="engine\components\CoreComponents.h">
       <Filter>engine\components</Filter>
     </ClInclude>
+    <ClInclude Include="engine\components\PresentationComponents.h">
+      <Filter>engine\components</Filter>
+    </ClInclude>
     <ClInclude Include="engine\components\PhysicsComponents.h">
       <Filter>engine\components</Filter>
     </ClInclude>
@@ -168,6 +180,12 @@
     </ClInclude>
     <ClInclude Include="engine\platform\Screenshot.h">
       <Filter>engine\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\systems\Animation.h">
+      <Filter>engine\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\systems\Presentation.h">
+      <Filter>engine\systems</Filter>
     </ClInclude>
     <ClInclude Include="engine\systems\Physics.h">
       <Filter>engine\systems</Filter>

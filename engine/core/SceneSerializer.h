@@ -38,12 +38,18 @@ class PrefabLibrary;
 // que cada una sobrescribio. Si a la instancia se le quito un componente del prefab,
 // va en "removed": ["Hazard"].
 //
-// Cada componente va en una linea. Las grillas (las celdas de un Tilemap) son la
-// excepcion: se escriben una fila por linea, con los numeros alineados:
+// Cada componente va en una linea. Las excepciones: las grillas (las celdas de un
+// Tilemap) se escriben una fila por linea, con los numeros alineados, y las listas de
+// structs (los clips de un SpriteAnimator) un elemento por linea:
 //       "Tilemap": {"tileset":"...", ... ,"cells":[
 //           [ -1, -1, 94, 95],
 //           [ -1, -1, -1, -1]
 //         ]}
+//       "SpriteAnimator": {"startClip":"idle","speed":1.0,"clips":[
+//           {"name":"idle","texture":"...","fps":20.0, ...},
+//           {"name":"run","texture":"...","fps":20.0, ...}
+//         ]}
+// Por eso esos campos se registran al final del componente.
 //
 // Al cargar, un campo que falta conserva su valor por defecto (o el del prefab):
 // agregar un campo nuevo a un componente no rompe las escenas ya guardadas. Un

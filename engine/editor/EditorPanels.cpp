@@ -249,8 +249,10 @@ bool Editor::drawField(const FieldInfo& f, void* value) {
     case FieldType::String: {
         std::string& s = *static_cast<std::string*>(value);
         std::string v = s;
-        bool edited = f.hint == FieldHint::TexturePath ? drawTexturePicker(label, s, v)
-                                                       : ImGui::InputText(label, &v);
+        bool edited = false;
+        if (f.hint == FieldHint::TexturePath) edited = drawTexturePicker(label, s, v);
+        else if (f.hint == FieldHint::Choice && f.choices) edited = drawChoice(label, f.choices(app.world(), selected), s, v);
+        else edited = ImGui::InputText(label, &v);
         if (edited && v != s) { beginChange(); s = v; changed = true; }
         break;
     }
@@ -309,9 +311,110 @@ bool Editor::drawField(const FieldInfo& f, void* value) {
         }
         break;
     }
+    case FieldType::List:
+        // La ayuda va en la cabecera de la lista (dentro, cada campo tiene la suya).
+        return drawList(f, value);
     }
 
     if (!f.tooltip.empty()) ImGui::SetItemTooltip("%s", f.tooltip.c_str());
+    return changed;
+}
+
+// Lista de structs: una cabecera plegable por elemento, con sus campos dentro y los
+// botones para reordenar, duplicar y quitar. Las acciones se aplican despues de
+// recorrer la lista (cambiarla en medio moveria los elementos que se estan dibujando).
+bool Editor::drawList(const FieldInfo& f, void* value) {
+    const std::size_t count = f.listSize(value);
+    std::string header = f.name + " (" + std::to_string(count) + ")###" + f.name;
+    bool open = ImGui::TreeNodeEx(header.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth);
+    if (!f.tooltip.empty()) ImGui::SetItemTooltip("%s", f.tooltip.c_str());
+    if (!open) return false;
+
+    enum class Action { None, Up, Down, Duplicate, Remove, Add } action = Action::None;
+    std::size_t target = 0;
+    bool changed = false;
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float buttonW = ImGui::GetFrameHeight();
+
+    for (std::size_t i = 0; i < count; ++i) {
+        ImGui::PushID((int)i);
+        void* item = f.listElement(value, i);
+        // El titulo es el primer campo de texto del elemento (el nombre del clip).
+        std::string title = "#" + std::to_string(i);
+        for (const FieldInfo& ef : f.elementFields)
+            if (ef.type == FieldType::String) {
+                const std::string& s = *static_cast<const std::string*>(ef.in(static_cast<const void*>(item)));
+                if (!s.empty()) title += "  " + s;
+                break;
+            }
+        title += "###item";
+
+        // Los botones a la derecha de la cabecera: se dibujan despues, en la misma linea.
+        const float buttonsW = buttonW * 4.0f + style.ItemInnerSpacing.x * 3.0f;
+        bool itemOpen = ImGui::TreeNodeEx(title.c_str(), ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanAvailWidth);
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, ImGui::GetContentRegionAvail().x - buttonsW));
+        ImGui::BeginDisabled(i == 0);
+        if (ImGui::Button("^", ImVec2(buttonW, 0))) { action = Action::Up; target = i; }
+        ImGui::EndDisabled();
+        ImGui::SetItemTooltip("Subir");
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+        ImGui::BeginDisabled(i + 1 == count);
+        if (ImGui::Button("v", ImVec2(buttonW, 0))) { action = Action::Down; target = i; }
+        ImGui::EndDisabled();
+        ImGui::SetItemTooltip("Bajar");
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+        if (ImGui::Button("+", ImVec2(buttonW, 0))) { action = Action::Duplicate; target = i; }
+        ImGui::SetItemTooltip("Duplicar");
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+        if (ImGui::Button("x", ImVec2(buttonW, 0))) { action = Action::Remove; target = i; }
+        ImGui::SetItemTooltip("Quitar");
+
+        if (itemOpen) {
+            for (const FieldInfo& ef : f.elementFields)
+                if (drawField(ef, ef.in(item))) changed = true;
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    }
+    if (ImGui::Button("Agregar")) action = Action::Add;
+    ImGui::TreePop();
+
+    if (action != Action::None) {
+        beginChange();
+        switch (action) {
+        case Action::Up:        f.listSwap(value, target, target - 1); break;
+        case Action::Down:      f.listSwap(value, target, target + 1); break;
+        case Action::Duplicate: f.listDuplicate(value, target); break;
+        case Action::Remove:    f.listErase(value, target); break;
+        case Action::Add:       f.listResize(value, count + 1); break;
+        case Action::None:      break;
+        }
+        changed = true;
+    }
+    return changed;
+}
+
+// Lista desplegable con los valores sugeridos ("" se ve como "(ninguno)"). Un valor
+// que no esta en la lista (escrito a mano en el archivo) se sigue viendo, marcado.
+bool Editor::drawChoice(const char* label, const std::vector<std::string>& options,
+                        const std::string& current, std::string& out) {
+    out = current;
+    bool known = std::find(options.begin(), options.end(), current) != options.end();
+    std::string preview = current.empty() ? "(ninguno)" : current;
+    if (!known) preview += "  (?)";
+    bool changed = false;
+    if (ImGui::BeginCombo(label, preview.c_str())) {
+        for (const std::string& option : options) {
+            if (ImGui::Selectable(option.empty() ? "(ninguno)" : option.c_str(), option == current)) {
+                out = option;
+                changed = true;
+            }
+        }
+        if (options.empty()) ImGui::TextDisabled("(no hay opciones)");
+        ImGui::EndCombo();
+    }
+    if (!known) ImGui::SetItemTooltip("'%s' no esta en la lista", current.c_str());
     return changed;
 }
 

@@ -14,6 +14,7 @@
 #include "app/Application.h"
 #include "components/CoreComponents.h"
 #include "components/PhysicsComponents.h"
+#include "components/PresentationComponents.h"
 #include "platform/AssetManager.h"
 #include "systems/Physics.h"
 #include "systems/Tilemaps.h"
@@ -105,6 +106,8 @@ void Editor::drawSceneView(Vec2 pos, Vec2 size) {
     SDL_SetRenderDrawColor(r, 48, 48, 56, 255);
     SDL_RenderClear(r);
     renderWorld(app.world(), app.assets(), r, sceneView);
+    // El HUD, sobre el recuadro de la camara del juego: donde lo vera el jugador.
+    renderScreenTexts(app.world(), app.assets(), r, hudView());
     drawGizmos();
     SDL_SetRenderTarget(r, nullptr);
 
@@ -172,13 +175,17 @@ void Editor::handleSceneInput(Vec2 imagePos, bool hovered) {
     if (handleTilemapInput(hovered)) return;
 
     // Clic izquierdo: elegir la entidad de arriba bajo el raton (o ninguna).
+    // Un texto del HUD se arrastra en px de la pantalla del juego, no del mundo.
+    const View hud = hudView();
+    auto pointerFor = [&](Entity e) { return isHudEntity(e) ? hud.screenToWorld(local) : mouseWorld; };
     if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         selected = pickAt(mouseWorld);
         pressOnEntity = false;
         if (const Transform* t = world.get<Transform>(selected)) {
             pressOnEntity = true;
             pressMouse = { io.MousePos.x, io.MousePos.y };
-            dragOffset = { mouseWorld.x - t->position.x, mouseWorld.y - t->position.y };
+            Vec2 pointer = pointerFor(selected);
+            dragOffset = { pointer.x - t->position.x, pointer.y - t->position.y };
         }
     }
 
@@ -195,7 +202,8 @@ void Editor::handleSceneInput(Vec2 imagePos, bool hovered) {
                 }
             }
             if (dragging) {
-                Vec2 p{ mouseWorld.x - dragOffset.x, mouseWorld.y - dragOffset.y };
+                Vec2 pointer = pointerFor(selected);
+                Vec2 p{ pointer.x - dragOffset.x, pointer.y - dragOffset.y };
                 // Ajustar a la grilla salvo con Alt pulsado.
                 if (snapToGrid && !io.KeyAlt) {
                     p.x = std::round(p.x / gridSize) * gridSize;
@@ -217,6 +225,17 @@ bool Editor::entityBounds(Entity e, Vec2& center, Vec2& size) {
         tilemapBounds(*map, *t, min, max);
         center = { (min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f };
         size = { max.x - min.x, max.y - min.y };
+        return true;
+    }
+    if (!world.has<Sprite>(e) && textBounds(world, app.assets(), e, center, size)) {
+        if (!isHudEntity(e)) return true;
+        // Texto del HUD: su rectangulo en la pantalla del juego, llevado al mundo a
+        // traves de la vista Escena (asi coincide con donde se dibuja).
+        const View hud = hudView();
+        Vec2 a = sceneView.screenToWorld(hud.worldToScreen({ center.x - size.x * 0.5f, center.y - size.y * 0.5f }));
+        Vec2 b = sceneView.screenToWorld(hud.worldToScreen({ center.x + size.x * 0.5f, center.y + size.y * 0.5f }));
+        center = { (a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f };
+        size = { b.x - a.x, b.y - a.y };
         return true;
     }
     center = t->position;
@@ -251,6 +270,9 @@ Entity Editor::pickAt(Vec2 p) {
             order = map->order;
         } else if (const Sprite* sp = world.get<Sprite>(e)) {
             if (sp->visible && !sp->texture.empty()) order = sp->order;
+        } else if (const Text* tx = world.get<Text>(e)) {
+            // El HUD se dibuja encima del mundo: tambien gana al elegir.
+            if (tx->visible) order = tx->screenSpace ? INT_MAX - 1 : tx->order;
         }
         if (best == NullEntity || order > bestOrder || (order == bestOrder && e > best)) {
             best = e;
@@ -289,13 +311,22 @@ void Editor::drawGizmos() {
 
     // Camaras: el recuadro de lo que vera el jugador (resolucion del juego / zoom).
     const AppConfig& cfg = app.config();
-    world.each<Camera, Transform>([&](Entity, Camera& cam, Transform& t) {
+    // Elegida, una FollowCamera muestra tambien su zona muerta.
+    world.each<Camera, Transform>([&](Entity e, Camera& cam, Transform& t) {
         float z = cam.zoom > 0.0f ? cam.zoom : 1.0f;
         Vec2 a = v.worldToScreen({ t.position.x - cfg.gameWidth * 0.5f / z, t.position.y - cfg.gameHeight * 0.5f / z });
         Vec2 b = v.worldToScreen({ t.position.x + cfg.gameWidth * 0.5f / z, t.position.y + cfg.gameHeight * 0.5f / z });
         SDL_FRect rect{ a.x, a.y, b.x - a.x, b.y - a.y };
         SDL_SetRenderDrawColor(r, 255, 210, 80, 200);
         SDL_RenderRect(r, &rect);
+        const FollowCamera* follow = world.get<FollowCamera>(e);
+        if (follow && e == selected) {
+            Vec2 da = v.worldToScreen({ t.position.x - follow->deadZone.x * 0.5f, t.position.y - follow->deadZone.y * 0.5f });
+            Vec2 db = v.worldToScreen({ t.position.x + follow->deadZone.x * 0.5f, t.position.y + follow->deadZone.y * 0.5f });
+            SDL_FRect dz{ da.x, da.y, db.x - da.x, db.y - da.y };
+            SDL_SetRenderDrawColor(r, 255, 210, 80, 90);
+            SDL_RenderRect(r, &dz);
+        }
     });
 
     // Tilemaps: celdas solidas, grilla y vista previa del pincel.
@@ -318,8 +349,9 @@ void Editor::drawGizmos() {
     for (Entity e : world.entities()) {
         const Transform* t = world.get<Transform>(e);
         if (!t || world.has<Tilemap>(e)) continue;
-        Vec2 size;
+        Vec2 size, textCenter;
         if (spriteWorldSize(world, app.assets(), e, size)) continue;
+        if (textBounds(world, app.assets(), e, textCenter, size)) continue; // su rectangulo ya se ve
         Vec2 c = v.worldToScreen(t->position);
         float h = ICON_SIZE * uiScale * 0.5f;
         SDL_FPoint pts[5] = { { c.x, c.y - h }, { c.x + h, c.y }, { c.x, c.y + h }, { c.x - h, c.y }, { c.x, c.y - h } };
@@ -336,10 +368,32 @@ void Editor::drawGizmos() {
         SDL_FRect rect{ std::round(a.x) - 1, std::round(a.y) - 1, std::round(b.x - a.x) + 2, std::round(b.y - a.y) + 2 };
         SDL_SetRenderDrawColor(r, 80, 220, 255, 255);
         SDL_RenderRect(r, &rect);
-        Vec2 m = v.worldToScreen(world.get<Transform>(selected)->position);
+        const Vec2 anchor = world.get<Transform>(selected)->position;
+        Vec2 m = isHudEntity(selected) ? hudView().worldToScreen(anchor) : v.worldToScreen(anchor);
         SDL_RenderLine(r, m.x - 5, m.y, m.x + 5, m.y);
         SDL_RenderLine(r, m.x, m.y - 5, m.x, m.y + 5);
     }
+}
+
+bool Editor::isHudEntity(Entity e) {
+    const Text* tx = app.world().get<Text>(e);
+    return tx && tx->screenSpace && !app.world().has<Sprite>(e);
+}
+
+View Editor::hudView() {
+    // Pantalla del juego -> mundo (por la camara del juego) -> vista Escena, en una
+    // sola View: un punto s de la pantalla cae en el mundo en (s - mitad) / zc + cc, y
+    // de ahi en la vista Escena. Despejando, es una View de zoom zs / zc.
+    const AppConfig& cfg = app.config();
+    View cam;
+    findCameraView(app.world(), cfg.gameWidth, cfg.gameHeight, cam);
+    View hud;
+    hud.zoom = sceneView.zoom / cam.zoom;
+    hud.center = { cfg.gameWidth * 0.5f - (cam.center.x - sceneView.center.x) * cam.zoom,
+                   cfg.gameHeight * 0.5f - (cam.center.y - sceneView.center.y) * cam.zoom };
+    hud.width = sceneView.width;
+    hud.height = sceneView.height;
+    return hud;
 }
 
 void Editor::frameEntity(Entity e) {
@@ -368,6 +422,7 @@ void Editor::drawGameView(Vec2 pos, Vec2 size) {
     SDL_SetRenderDrawColor(r, bg.r, bg.g, bg.b, 255);
     SDL_RenderClear(r);
     renderWorld(app.world(), app.assets(), r, view);
+    renderScreenTexts(app.world(), app.assets(), r, screenView(cfg.gameWidth, cfg.gameHeight));
     SDL_SetRenderTarget(r, nullptr);
 
     // La resolucion del juego, escalada para que quepa entera (con bandas).

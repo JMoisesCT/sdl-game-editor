@@ -6,6 +6,14 @@
     "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[2.0,2.0]},
     "Sprite": {"texture":"assets/pixel_adventure/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png","source":[0,0,64,64],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0},
     "BoxCollider": {"size":[10.0,46.0],"offset":[-9.0,9.0],"isTrigger":true},
-    "Checkpoint": {"targetTag":"Player","offset":[-9.0,16.0],"activeTexture":"assets/pixel_adventure/Items/Checkpoints/Checkpoint/Checkpoint (Flag Idle)(64x64).png"}
+    "Checkpoint": {"targetTag":"Player","offset":[-9.0,16.0],"activeTexture":""},
+    "SpriteAnimator": {"startClip":"noFlag","speed":1.0,"clips":[
+      {"name":"noFlag","texture":"assets/pixel_adventure/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png","frameWidth":64,"frameHeight":64,"frames":[],"fps":0.0,"loop":true,"next":"","destroyOnEnd":false},
+      {"name":"flagOut","texture":"assets/pixel_adventure/Items/Checkpoints/Checkpoint/Checkpoint (Flag Out) (64x64).png","frameWidth":64,"frameHeight":64,"frames":[],"fps":20.0,"loop":false,"next":"flagIdle","destroyOnEnd":false},
+      {"name":"flagIdle","texture":"assets/pixel_adventure/Items/Checkpoints/Checkpoint/Checkpoint (Flag Idle)(64x64).png","frameWidth":64,"frameHeight":64,"frames":[],"fps":20.0,"loop":true,"next":"","destroyOnEnd":false}
+    ]},
+    "AnimatorStateMachine": {"defaultClip":"noFlag","rules":[
+      {"clip":"flagOut","condition":"activated"}
+    ]}
   }
 }

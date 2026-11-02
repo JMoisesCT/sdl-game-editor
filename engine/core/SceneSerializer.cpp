@@ -52,6 +52,18 @@ static Json writeField(const FieldInfo& f, const void* p) {
         }
         return rows;
     }
+    case FieldType::List: {
+        // Lista de objetos, cada uno con TODOS los campos del elemento.
+        Json items = Json::array();
+        const std::size_t n = f.listSize(p);
+        for (std::size_t i = 0; i < n; ++i) {
+            const void* item = f.listElement(const_cast<void*>(p), i);
+            Json fields = Json::object();
+            for (const FieldInfo& ef : f.elementFields) fields[ef.name] = writeField(ef, ef.in(item));
+            items.push_back(std::move(fields));
+        }
+        return items;
+    }
     }
     return nullptr;
 }
@@ -94,6 +106,28 @@ static void readField(const FieldInfo& f, void* p, const Json& j) {
         for (int y = 0; y < g.height; ++y)
             for (int x = 0; x < (int)rows[y].size(); ++x) g.set(x, y, rows[y][x]);
         *static_cast<IntGrid*>(p) = std::move(g);
+        break;
+    }
+    case FieldType::List: {
+        // La lista se arma de cero: cada elemento nace con sus valores por defecto y
+        // se le escribe lo que traiga el archivo (como a un componente).
+        const auto& items = j.get_ref<const Json::array_t&>(); // si no es lista, lanza
+        f.listResize(p, 0);
+        f.listResize(p, items.size());
+        for (std::size_t i = 0; i < items.size(); ++i) {
+            if (!items[i].is_object()) continue;
+            void* item = f.listElement(p, i);
+            for (const FieldInfo& ef : f.elementFields) {
+                auto v = items[i].find(ef.name);
+                if (v == items[i].end()) continue;
+                try {
+                    readField(ef, ef.in(item), *v);
+                } catch (const Json::exception&) {
+                    SDL_Log("Escena: %s[%u].%s tiene un valor invalido (se ignora)",
+                            f.name.c_str(), (unsigned)i, ef.name.c_str());
+                }
+            }
+        }
         break;
     }
     }
@@ -278,8 +312,27 @@ static void writeMatrix(std::ostream& out, const Json& m, int indent) {
     out << "\n" << std::string(indent, ' ') << "]";
 }
 
-// Un componente en su linea, igual que dump(): {"campo":valor,...}. La excepcion son
-// los campos matriz, que van una fila por linea (ver writeMatrix).
+// Una lista no vacia de objetos (los clips de un SpriteAnimator).
+static bool isObjectList(const Json& j) {
+    if (!j.is_array() || j.empty()) return false;
+    for (const Json& item : j)
+        if (!item.is_object()) return false;
+    return true;
+}
+
+// Un elemento por linea, como las filas de una matriz: agregar o cambiar un clip
+// cambia una sola linea del diff.
+static void writeObjectList(std::ostream& out, const Json& list, int indent) {
+    const std::string itemIndent(indent + 2, ' ');
+    out << "[";
+    for (std::size_t i = 0; i < list.size(); ++i)
+        out << (i == 0 ? "\n" : ",\n") << itemIndent << list[i].dump();
+    out << "\n" << std::string(indent, ' ') << "]";
+}
+
+// Un componente en su linea, igual que dump(): {"campo":valor,...}. Las excepciones
+// son los campos matriz, que van una fila por linea (ver writeMatrix), y las listas
+// de structs, un elemento por linea.
 static void writeComponent(std::ostream& out, const Json& c, int indent) {
     if (!c.is_object()) {
         out << c.dump();
@@ -292,6 +345,7 @@ static void writeComponent(std::ostream& out, const Json& c, int indent) {
         first = false;
         out << Json(it.key()).dump() << ":";
         if (isMatrix(it.value())) writeMatrix(out, it.value(), indent);
+        else if (isObjectList(it.value())) writeObjectList(out, it.value(), indent);
         else out << it.value().dump();
     }
     out << "}";

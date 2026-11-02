@@ -28,7 +28,22 @@ bool findCameraView(World& world, int width, int height, View& view, Color* back
 // false si no tiene Transform + Sprite o la textura no carga.
 bool spriteWorldSize(World& world, AssetManager& assets, Entity e, Vec2& size);
 
-// Dibuja todos los Sprite y Tilemap visibles, de menor a mayor order (a igualdad, por
-// id), en el destino de render ACTUAL del renderer. De cada Tilemap solo se dibujan
-// las celdas que caen dentro de la vista.
+// Rectangulo de un Text en SU espacio (el mundo, o la pantalla del juego si es
+// screenSpace): centro (corrido segun align) y tamano. false si no tiene Transform +
+// Text o no se puede dibujar (sin fuente o sin texto).
+bool textBounds(World& world, AssetManager& assets, Entity e, Vec2& center, Vec2& size);
+
+// Dibuja el MUNDO: los Sprite, Tilemap, ParallaxBackground y Text (los que no son
+// screenSpace) visibles, de menor a mayor order (a igualdad, por id), en el destino de
+// render ACTUAL del renderer. De cada Tilemap solo se dibujan las celdas que caen
+// dentro de la vista; un ParallaxBackground llena la vista entera.
 void renderWorld(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& view);
+
+// La vista que deja la pantalla del juego tal cual (px de la resolucion del juego):
+// la que se pasa a renderScreenTexts al dibujar el juego.
+View screenView(int width, int height);
+
+// Dibuja el HUD: los Text con screenSpace, por order, encima de lo que ya haya. 'hud'
+// pasa de px de la pantalla del juego al destino: en el juego es screenView(); el
+// editor la arma para mostrar el HUD sobre el recuadro de la camara en la vista Escena.
+void renderScreenTexts(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& hud);

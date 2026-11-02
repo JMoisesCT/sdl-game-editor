@@ -97,6 +97,10 @@ private:
     void drawHierarchy();
     void drawInspector();
     bool drawField(const FieldInfo& field, void* value); // true si cambio
+    bool drawList(const FieldInfo& field, void* value);  // un campo List (lista de structs)
+    // Lista desplegable con esas opciones. true si se eligio otra (queda en out).
+    bool drawChoice(const char* label, const std::vector<std::string>& options,
+                    const std::string& current, std::string& out);
     // Campo de ruta + boton que lista las imagenes de assets/. true si se eligio o
     // escribio otra ruta (queda en out; quien llama decide si la aplica).
     bool drawTexturePicker(const char* label, const std::string& current, std::string& out);
@@ -114,6 +118,11 @@ private:
     void handleSceneInput(Vec2 imagePos, bool hovered);
     void drawGizmos();
     bool entityBounds(Entity e, Vec2& center, Vec2& size); // en el mundo
+    // Texto del HUD (Text con screenSpace): su posicion son px de la pantalla del juego.
+    bool isHudEntity(Entity e);
+    // Pasa de px de la pantalla del juego a la vista Escena (a traves de la camara del
+    // juego): el HUD se ve sobre el recuadro de la camara.
+    View hudView();
     Entity pickAt(Vec2 world);
     void frameEntity(Entity e);
     void centerOnCamera();

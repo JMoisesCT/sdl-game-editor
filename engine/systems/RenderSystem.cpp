@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "components/CoreComponents.h"
+#include "components/PresentationComponents.h"
 #include "core/World.h"
 #include "platform/AssetManager.h"
 #include "systems/Tilemaps.h"
@@ -90,29 +91,118 @@ static void drawTilemap(const Tilemap& map, const Transform& t, AssetManager& as
     }
 }
 
+// Fondo en mosaico que llena la vista. El patron se ancla al mundo multiplicado por
+// el factor: con factor 1 cada copia queda fija en el mundo; con 0, fija en la vista.
+static void drawParallax(const ParallaxBackground& p, AssetManager& assets, SDL_Renderer* renderer,
+                         const View& view) {
+    SDL_Texture* tex = assets.loadTexture(p.texture);
+    if (!tex) return;
+    float tw = 0, th = 0;
+    SDL_GetTextureSize(tex, &tw, &th);
+    const float tileW = tw * p.scale * view.zoom;
+    const float tileH = th * p.scale * view.zoom;
+    if (tileW < 2.0f || tileH < 2.0f) return; // tan chico que serian miles de copias
+
+    // Donde cae una copia del patron en la vista, llevado a [-tile, 0): asi la primera
+    // empieza justo antes del borde y se repite sin huecos.
+    float offX = (-view.center.x * p.factor.x + p.offset.x) * view.zoom + view.width * 0.5f;
+    float offY = (-view.center.y * p.factor.y + p.offset.y) * view.zoom + view.height * 0.5f;
+    offX = std::fmod(offX, tileW);
+    if (offX > 0.0f) offX -= tileW;
+    offY = std::fmod(offY, tileH);
+    if (offY > 0.0f) offY -= tileH;
+
+    SDL_SetTextureColorMod(tex, p.tint.r, p.tint.g, p.tint.b);
+    SDL_SetTextureAlphaMod(tex, p.tint.a);
+    // Bordes enteros, como el tilemap: medio pixel entre dos copias se ve como costura.
+    for (float y = offY; y < view.height; y += tileH) {
+        for (float x = offX; x < view.width; x += tileW) {
+            float left = std::round(x), top = std::round(y);
+            SDL_FRect dst{ left, top, std::round(x + tileW) - left, std::round(y + tileH) - top };
+            SDL_RenderTexture(renderer, tex, nullptr, &dst);
+        }
+    }
+}
+
+// Corrimiento del centro del texto respecto a la posicion, segun align.
+static float alignShift(const Text& tx, float width) {
+    if (tx.align == "left") return width * 0.5f;
+    if (tx.align == "right") return -width * 0.5f;
+    return 0.0f; // center (y cualquier valor desconocido)
+}
+
+bool textBounds(World& world, AssetManager& assets, Entity e, Vec2& center, Vec2& size) {
+    const Transform* t = world.get<Transform>(e);
+    const Text* tx = world.get<Text>(e);
+    if (!t || !tx) return false;
+    SDL_Texture* tex = assets.textTexture(tx->font, tx->size, tx->text);
+    if (!tex) return false;
+    float tw = 0, th = 0;
+    SDL_GetTextureSize(tex, &tw, &th);
+    size = { tw * std::fabs(t->scale.x), th * std::fabs(t->scale.y) };
+    center = { t->position.x + alignShift(*tx, size.x), t->position.y };
+    return true;
+}
+
+// Un texto: su imagen (en blanco) tenida con el color, en la vista dada.
+static void drawText(const Text& tx, const Transform& t, AssetManager& assets, SDL_Renderer* renderer,
+                     const View& view) {
+    SDL_Texture* tex = assets.textTexture(tx.font, tx.size, tx.text);
+    if (!tex) return;
+    float tw = 0, th = 0;
+    SDL_GetTextureSize(tex, &tw, &th);
+    const float w = tw * std::fabs(t.scale.x) * view.zoom;
+    const float h = th * std::fabs(t.scale.y) * view.zoom;
+    Vec2 c = view.worldToScreen(t.position);
+    c.x += alignShift(tx, w);
+
+    float left = std::round(c.x - w * 0.5f), right = std::round(c.x + w * 0.5f);
+    float top = std::round(c.y - h * 0.5f), bottom = std::round(c.y + h * 0.5f);
+    if (right < 0 || bottom < 0 || left > view.width || top > view.height) return; // fuera
+    SDL_FRect dst{ left, top, right - left, bottom - top };
+    SDL_SetTextureColorMod(tex, tx.color.r, tx.color.g, tx.color.b);
+    SDL_SetTextureAlphaMod(tex, tx.color.a);
+    SDL_RenderTexture(renderer, tex, nullptr, &dst);
+}
+
 void renderWorld(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& view) {
     // Primero se juntan y ordenan: los pools guardan los componentes en cualquier
-    // orden. Sprites y capas de tiles comparten la misma escala de order.
-    struct Item { int order; Entity e; Sprite* sprite; Tilemap* tilemap; Transform* transform; };
+    // orden. Todo lo que se dibuja comparte la misma escala de order.
+    enum class Kind { Parallax, Tilemap, Sprite, Text }; // en una misma entidad, de abajo arriba
+    struct Item { int order; Entity e; Kind kind; const void* data; const Transform* transform; };
     std::vector<Item> items;
-    world.each<Sprite, Transform>([&](Entity e, Sprite& s, Transform& t) {
-        if (s.visible && !s.texture.empty()) items.push_back({ s.order, e, &s, nullptr, &t });
+    world.each<ParallaxBackground>([&](Entity e, ParallaxBackground& p) {
+        if (p.visible && !p.texture.empty()) items.push_back({ p.order, e, Kind::Parallax, &p, nullptr });
     });
     world.each<Tilemap, Transform>([&](Entity e, Tilemap& m, Transform& t) {
-        if (m.visible && !m.tileset.empty()) items.push_back({ m.order, e, nullptr, &m, &t });
+        if (m.visible && !m.tileset.empty()) items.push_back({ m.order, e, Kind::Tilemap, &m, &t });
+    });
+    world.each<Sprite, Transform>([&](Entity e, Sprite& s, Transform& t) {
+        if (s.visible && !s.texture.empty()) items.push_back({ s.order, e, Kind::Sprite, &s, &t });
+    });
+    world.each<Text, Transform>([&](Entity e, Text& tx, Transform& t) {
+        if (tx.visible && !tx.screenSpace && !tx.text.empty()) items.push_back({ tx.order, e, Kind::Text, &tx, &t });
     });
     std::sort(items.begin(), items.end(), [](const Item& a, const Item& b) {
         if (a.order != b.order) return a.order < b.order;
         if (a.e != b.e) return a.e < b.e;
-        return a.tilemap && !b.tilemap; // misma entidad: el tilemap debajo del sprite
+        return a.kind < b.kind;
     });
 
     for (const Item& it : items) {
-        if (it.tilemap) {
-            drawTilemap(*it.tilemap, *it.transform, assets, renderer, view);
+        if (it.kind == Kind::Parallax) {
+            drawParallax(*static_cast<const ParallaxBackground*>(it.data), assets, renderer, view);
             continue;
         }
-        const Sprite& s = *it.sprite;
+        if (it.kind == Kind::Tilemap) {
+            drawTilemap(*static_cast<const Tilemap*>(it.data), *it.transform, assets, renderer, view);
+            continue;
+        }
+        if (it.kind == Kind::Text) {
+            drawText(*static_cast<const Text*>(it.data), *it.transform, assets, renderer, view);
+            continue;
+        }
+        const Sprite& s = *static_cast<const Sprite*>(it.data);
         const Transform& t = *it.transform;
         SDL_Texture* tex = assets.loadTexture(s.texture);
         if (!tex) continue;
@@ -138,4 +228,25 @@ void renderWorld(World& world, AssetManager& assets, SDL_Renderer* renderer, con
         SDL_SetTextureAlphaMod(tex, s.tint.a);
         SDL_RenderTextureRotated(renderer, tex, &src, &dst, t.rotation, nullptr, flip);
     }
+}
+
+View screenView(int width, int height) {
+    View v;
+    v.center = { width * 0.5f, height * 0.5f };
+    v.zoom = 1.0f;
+    v.width = width;
+    v.height = height;
+    return v;
+}
+
+void renderScreenTexts(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& hud) {
+    struct Item { int order; Entity e; const Text* text; const Transform* transform; };
+    std::vector<Item> items;
+    world.each<Text, Transform>([&](Entity e, Text& tx, Transform& t) {
+        if (tx.visible && tx.screenSpace && !tx.text.empty()) items.push_back({ tx.order, e, &tx, &t });
+    });
+    std::sort(items.begin(), items.end(), [](const Item& a, const Item& b) {
+        return a.order != b.order ? a.order < b.order : a.e < b.e;
+    });
+    for (const Item& it : items) drawText(*it.text, *it.transform, assets, renderer, hud);
 }

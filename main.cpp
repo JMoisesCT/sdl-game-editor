@@ -4,8 +4,10 @@
 #include "app/Application.h"
 #include "game/PlatformerControl.h"
 #include "game/PlatformerRules.h"
+#include "systems/Animation.h"
 #include "systems/Physics.h"
 #include "systems/PlatformerMotorSystem.h"
+#include "systems/Presentation.h"
 #include "systems/Rules.h"
 
 // La aplicacion es duena del bucle: aqui solo se configura, se registran las piezas
@@ -24,12 +26,15 @@ int main(int argc, char* argv[]) {
     Application app;
     if (!app.init(config)) return 1;
 
-    // Componentes del juego: antes de abrir la escena, para que se carguen.
+    // Componentes del juego: antes de abrir la escena, para que se carguen. Y sus
+    // condiciones de animacion (las del motor ya estan).
     registerPlatformerComponents(app.registry());
+    registerPlatformerConditions(app.animationConditions());
 
     // Sistemas. Corren en el orden en que se agregan, y aqui el orden es la cadena de
     // cada frame:
-    //   teclas -> intencion -> velocidad -> posicion y choques -> reglas -> partida.
+    //   teclas -> intencion -> velocidad -> posicion y choques -> reglas -> partida
+    //   -> presentacion (animacion, camara, fondo).
     app.addSystem(std::make_unique<PlatformerControlSystem>()); // juego: teclas -> intencion
     app.addSystem(std::make_unique<PlatformerMotorSystem>());   // motor: intencion -> velocidad
     app.addSystem(std::make_unique<PhysicsSystem>());           // motor: movimiento y choques
@@ -41,7 +46,14 @@ int main(int argc, char* argv[]) {
     app.addSystem(std::make_unique<CollectibleSystem>());
     app.addSystem(std::make_unique<CheckpointSystem>());
     app.addSystem(std::make_unique<RespawnSystem>());
-    app.addSystem(std::make_unique<PlatformerRulesSystem>());   // juego: frutas y meta
+    app.addSystem(std::make_unique<PlatformerRulesSystem>());   // juego: frutas, meta y HUD
+    // Presentacion: con todo ya resuelto en este frame. La maquina de estados elige el
+    // clip y el animador lo avanza; la camara sigue la posicion final (tambien tras
+    // reaparecer).
+    app.addSystem(std::make_unique<AnimatorStateMachineSystem>(app.animationConditions()));
+    app.addSystem(std::make_unique<SpriteAnimatorSystem>(app.assets()));
+    app.addSystem(std::make_unique<FollowCameraSystem>(config.gameWidth, config.gameHeight));
+    app.addSystem(std::make_unique<ParallaxSystem>());
 
     app.openScene("assets/scenes/platformer.scene.json");
     return app.run();

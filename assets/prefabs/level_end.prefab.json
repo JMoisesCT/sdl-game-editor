@@ -6,6 +6,13 @@
     "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[2.0,2.0]},
     "Sprite": {"texture":"assets/pixel_adventure/Items/Checkpoints/End/End (Idle).png","source":[0,0,0,0],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0},
     "BoxCollider": {"size":[40.0,44.0],"offset":[0.0,10.0],"isTrigger":true},
+    "SpriteAnimator": {"startClip":"idle","speed":1.0,"clips":[
+      {"name":"idle","texture":"assets/pixel_adventure/Items/Checkpoints/End/End (Idle).png","frameWidth":64,"frameHeight":64,"frames":[],"fps":0.0,"loop":true,"next":"","destroyOnEnd":false},
+      {"name":"pressed","texture":"assets/pixel_adventure/Items/Checkpoints/End/End (Pressed) (64x64).png","frameWidth":64,"frameHeight":64,"frames":[],"fps":20.0,"loop":false,"next":"","destroyOnEnd":false}
+    ]},
+    "AnimatorStateMachine": {"defaultClip":"idle","rules":[
+      {"clip":"pressed","condition":"goalReached"}
+    ]},
     "LevelGoal": {"targetTag":"Player"}
   }
 }

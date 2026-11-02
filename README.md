@@ -5,10 +5,11 @@ propósito es **educativo**: que estudiantes que ya conocen SDL3 básico armen j
 editando escenas en un editor propio, sin pelear con la API cruda de SDL.
 
 > **Estado:** en desarrollo, por fases. Ya están el núcleo (ECS + reflexión + escenas en
-> JSON), el editor, los tilemaps (se pintan con paleta en el propio editor) y la física con
-> el motor de plataformas, los prefabs y las reglas de juego (vida, daño, frutas,
-> checkpoints): en la escena de ejemplo se juega un nivel completo. Falta la presentación
-> (animación, cámara que sigue, texto/HUD).
+> JSON), el editor, los tilemaps (se pintan con paleta en el propio editor), la física con
+> el motor de plataformas, los prefabs, las reglas de juego (vida, daño, frutas,
+> checkpoints) y la presentación (animación por reglas, cámara que sigue, fondo con
+> parallax, texto y HUD): en la escena de ejemplo se juega un nivel completo. Siguen los
+> ejemplos cenital y de naves.
 
 ## Cómo está pensado
 
@@ -29,7 +30,10 @@ editando escenas en un editor propio, sin pelear con la API cruda de SDL.
   ```
 
   Con esa lista el motor lo guarda y carga en JSON, y el Inspector del editor lo muestra y
-  edita. Un componente nuevo aparece en el editor **sin tocar el editor**.
+  edita. Un componente nuevo aparece en el editor **sin tocar el editor**. Un campo puede
+  ser también una **lista de structs** (los clips de una animación), declarada con
+  `.list(...)`, y un texto puede ofrecer **opciones** (`.choices(...)`) que el Inspector
+  muestra como lista desplegable.
 - **La aplicación es dueña del bucle.** El juego no escribe su `main` de SDL: registra sus
   componentes y sistemas, y abre una escena.
 
@@ -104,7 +108,8 @@ el mapa se lee en el archivo y un diff muestra solo las filas que cambiaron.
 Los sistemas corren en el orden en que `main.cpp` los agrega, y ese orden es la cadena de
 cada frame: control (teclas → intención) → `PlatformerMotorSystem` (intención → velocidad)
 → `PhysicsSystem` (velocidad → posición, choques y apoyo) → reglas (vida, daño, frutas,
-checkpoints, reaparición) → reglas del juego.
+checkpoints, reaparición) → reglas del juego y HUD → presentación (animación, cámara,
+fondo).
 
 ### Prefabs
 
@@ -144,23 +149,52 @@ Componentes de datos y sistemas del motor que funcionan por **contacto entre caj
 - **`Health`**: vida, invulnerabilidad tras un golpe (el sprite parpadea) y muerte.
 - **`Hazard`**: quita vida al que lo toca y lo empuja (pinchos, sierras).
 - **`KillZone`**: mata en el acto, aunque sea invulnerable (la franja bajo el nivel).
-- **`Collectible`**: se recoge al tocarlo y desaparece (frutas, monedas).
-- **`Checkpoint`**: fija el punto de reaparición de quien lo toca (y cambia su imagen).
+- **`Collectible`**: se recoge al tocarlo (frutas, monedas); desaparece en el acto o, como
+  las frutas del ejemplo, al terminar su animación de recogida.
+- **`Checkpoint`**: fija el punto de reaparición de quien lo toca (su bandera se anima con
+  una regla `activated`).
 - **`Respawn`**: en el jugador; al morir espera un momento y reaparece en el último
   checkpoint con la vida llena.
 
 No hay *callbacks*: lo que pasa en un frame queda como un aviso de un frame en el componente
 (`justDamaged`, `justDied`, `justCollected`...). Las reglas propias de **un** juego van en
-`game/`: en el ejemplo, `PlatformerRules` cuenta las frutas recogidas y registra el
-componente `LevelGoal` (la meta). Por ahora lo informa en el log; el HUD llega con la
-presentación.
+`game/`: en el ejemplo, `PlatformerRules` cuenta las frutas recogidas, registra el
+componente `LevelGoal` (la meta) y escribe el HUD.
+
+### Presentación
+
+- **`SpriteAnimator`**: una lista de **clips**, cada uno una secuencia de cuadros de una
+  imagen en grilla (una tira por archivo, una fila o columna de una hoja, o celdas sueltas).
+  Por clip: `fps`, `loop` y, si no repite, qué pasa al terminar: seguir con otro clip
+  (`next`) o destruir la entidad (`destroyOnEnd`, para efectos). No dibuja: escribe la
+  imagen y el recorte del `Sprite`. Un clip sin `texture` usa la imagen que tenía el
+  `Sprite`: así la fruta de cada instancia sigue siendo un *override* del `Sprite`.
+- **`AnimatorStateMachine`**: elige el clip con **reglas** "clip si condición", en orden; gana
+  la primera que se cumpla y, si ninguna, suena `defaultClip`. Las condiciones son funciones
+  de C++ con nombre: el motor trae `grounded`, `airborne`, `rising`, `falling`, `moving`,
+  `dead`, `hurt`, `collected` y `activated`, y el juego suma las suyas (el ejemplo agrega
+  `goalReached`):
+
+  ```cpp
+  app.animationConditions().add("attacking", [](World& w, Entity e) { /* ... */ });
+  ```
+- **`FollowCamera`** (en la entidad de la `Camera`): sigue a la entidad con `targetTag` con
+  zona muerta, suavizado, adelanto hacia donde corre (`lookAhead`) y sin salirse de los
+  tilemaps. Elegida, la vista Escena muestra su zona muerta.
+- **`ParallaxBackground`**: imagen en mosaico que llena la vista y acompaña a la cámara solo
+  en parte (`factor`), con desplazamiento propio opcional (`scroll`).
+- **`Text`**: una línea de texto con una fuente TTF, en el mundo o, con `screenSpace`, en la
+  pantalla del juego (el **HUD**). En la vista Escena el HUD se ve sobre el recuadro de la
+  cámara y se arrastra como cualquier entidad. El juego solo cambia el contenido; dónde va,
+  la fuente y el color se eligen en el editor.
 
 ### Escenas de ejemplo
 
 **Abrir...** (barra superior) lista las escenas de `assets/`:
 
 - `platformer.scene.json`: plataformas de Pixel Adventure, armado con prefabs: jugador,
-  frutas, checkpoint, sierra, pinchos, meta y una zona de muerte bajo el pozo.
+  frutas, checkpoint, sierra, pinchos, meta y una zona de muerte bajo el pozo; fondo con
+  parallax, cámara que sigue (con zoom 1,5) y HUD de vida y frutas.
 - `topdown.scene.json`: un piso de Ninja Adventure, para un juego cenital.
 - `shmup.scene.json`: un fondo largo de Pixel Shmup, que se recorre hacia arriba.
 
@@ -187,15 +221,17 @@ engine/
   core/        Entity, World (ECS), Reflection, SceneSerializer, Prefabs
   components/  componentes del motor (EntityInfo, Transform, Sprite, Tilemap, Camera,
                RigidBody2D, BoxCollider, PlatformerMotor, Health, Hazard, KillZone,
-               Collectible, Checkpoint, Respawn)
+               Collectible, Checkpoint, Respawn, SpriteAnimator, AnimatorStateMachine,
+               FollowCamera, ParallaxBackground, Text)
   systems/     interfaz System, RenderSystem, PhysicsSystem, PlatformerMotorSystem,
-               sistemas de reglas (Rules) y consultas de Tilemaps
+               sistemas de reglas (Rules), de animación (Animation), FollowCamera y
+               Parallax (Presentation) y consultas de Tilemaps
   platform/    Input, AssetManager, Screenshot
   app/         Application: ventana, bucle, modos Edit / Play / Pausa
   editor/      el editor (Dear ImGui)
   third_party/ nlohmann/json y Dear ImGui (vendorizadas)
 game/          código del juego de ejemplo (PlatformerControl: teclas -> intención;
-               PlatformerRules: frutas y meta)
+               PlatformerRules: frutas, meta, HUD y la condición goalReached)
 assets/        sprites, tilesets, prefabs (assets/prefabs/) y escenas (assets/scenes/)
 main.cpp       registra los sistemas en orden y abre la escena
 ```

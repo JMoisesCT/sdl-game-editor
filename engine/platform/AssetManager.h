@@ -28,13 +28,25 @@ public:
     // (ruta, tamanio): la cachea por esa pareja y la reusa. nullptr si falla.
     TTF_Font* loadFont(const std::string& path, int size);
 
+    // La imagen de un texto con esa fuente y tamanio, en BLANCO (el color se pone al
+    // dibujar, con SDL_SetTextureColorMod: asi un mismo texto en dos colores es una
+    // sola textura). Sin suavizado, para las fuentes pixel. La crea solo la primera
+    // vez; nullptr si la fuente no abre o el texto esta vacio. La cache se vacia
+    // entera al pasar de MAX_TEXT_TEXTURES (un contador que cambia crea una por valor).
+    SDL_Texture* textTexture(const std::string& fontPath, int size, const std::string& text);
+
     // Olvida las rutas que fallaron, para que se vuelvan a intentar (p. ej. tras
     // agregar la imagen que faltaba a assets/).
-    void forgetFailures() { failedTextures.clear(); }
+    void forgetFailures() { failedTextures.clear(); failedFonts.clear(); }
 
 private:
+    static const std::size_t MAX_TEXT_TEXTURES = 256;
+    void clearTextTextures();
+
     SDL_Renderer* renderer = nullptr;                       // no somos dueno
     std::unordered_map<std::string, SDL_Texture*> textures; // SI somos dueno
     std::unordered_set<std::string> failedTextures;         // rutas que no cargaron
     std::unordered_map<std::string, TTF_Font*> fonts;       // SI somos dueno (clave: ruta#tamanio)
+    std::unordered_set<std::string> failedFonts;            // ruta#tamanio que no abrieron
+    std::unordered_map<std::string, SDL_Texture*> textTextures; // SI somos dueno (clave: fuente#tamanio#texto)
 };

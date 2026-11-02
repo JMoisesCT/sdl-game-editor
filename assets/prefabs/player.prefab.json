@@ -9,6 +9,19 @@
     "BoxCollider": {"size":[18.0,26.0],"offset":[0.0,3.0],"isTrigger":false},
     "PlatformerMotor": {"maxSpeed":180.0,"accel":1600.0,"decel":2000.0,"airAccel":1000.0,"airDecel":500.0,"jumpHeight":110.0,"coyoteTime":0.1,"jumpBufferTime":0.12,"cutJumpMultiplier":0.45,"maxFallSpeed":600.0,"maxAirJumps":0},
     "Health": {"maxHP":3,"invulnerabilityTime":1.2,"blinkInterval":0.08,"destroyOnDeath":false},
-    "Respawn": {"delay":0.7}
+    "Respawn": {"delay":0.7},
+    "SpriteAnimator": {"startClip":"idle","speed":1.0,"clips":[
+      {"name":"idle","texture":"assets/pixel_adventure/Main Characters/Mask Dude/Idle (32x32).png","frameWidth":32,"frameHeight":32,"frames":[],"fps":20.0,"loop":true,"next":"","destroyOnEnd":false},
+      {"name":"run","texture":"assets/pixel_adventure/Main Characters/Mask Dude/Run (32x32).png","frameWidth":32,"frameHeight":32,"frames":[],"fps":20.0,"loop":true,"next":"","destroyOnEnd":false},
+      {"name":"jump","texture":"assets/pixel_adventure/Main Characters/Mask Dude/Jump (32x32).png","frameWidth":32,"frameHeight":32,"frames":[],"fps":20.0,"loop":true,"next":"","destroyOnEnd":false},
+      {"name":"fall","texture":"assets/pixel_adventure/Main Characters/Mask Dude/Fall (32x32).png","frameWidth":32,"frameHeight":32,"frames":[],"fps":20.0,"loop":true,"next":"","destroyOnEnd":false},
+      {"name":"hit","texture":"assets/pixel_adventure/Main Characters/Mask Dude/Hit (32x32).png","frameWidth":32,"frameHeight":32,"frames":[],"fps":20.0,"loop":false,"next":"","destroyOnEnd":false}
+    ]},
+    "AnimatorStateMachine": {"defaultClip":"idle","rules":[
+      {"clip":"hit","condition":"dead"},
+      {"clip":"jump","condition":"rising"},
+      {"clip":"fall","condition":"airborne"},
+      {"clip":"run","condition":"moving"}
+    ]}
   }
 }
