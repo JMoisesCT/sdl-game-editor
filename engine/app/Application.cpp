@@ -7,6 +7,7 @@
 
 #include "components/AudioComponents.h"
 #include "components/CoreComponents.h"
+#include "components/MotionComponents.h"
 #include "components/PhysicsComponents.h"
 #include "components/PresentationComponents.h"
 #include "components/RuleComponents.h"
@@ -77,6 +78,7 @@ bool Application::init(const AppConfig& config) {
     registerCoreComponents(components);
     registerPhysicsComponents(components);
     registerRuleComponents(components);
+    registerMotionComponents(components);
     registerEngineConditions(conditionRegistry);
     registerPresentationComponents(components, conditionRegistry);
     registerAudioComponents(components, conditionRegistry);

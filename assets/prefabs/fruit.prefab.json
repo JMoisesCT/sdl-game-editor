@@ -5,7 +5,7 @@
     "EntityInfo": {"name":"Fruta","tag":"Pickup"},
     "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[2.0,2.0]},
     "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Apple.png","source":[0,0,32,32],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0},
-    "BoxCollider": {"size":[14.0,14.0],"offset":[0.0,-2.0],"isTrigger":true},
+    "BoxCollider": {"size":[14.0,14.0],"offset":[0.0,-2.0],"isTrigger":true,"oneWay":false},
     "Collectible": {"collectorTag":"Player","destroyOnCollect":false},
     "SpriteAnimator": {"startClip":"idle","speed":1.0,"clips":[
       {"name":"idle","texture":"","frameWidth":32,"frameHeight":32,"frames":[],"fps":20.0,"loop":true,"next":"","destroyOnEnd":false},

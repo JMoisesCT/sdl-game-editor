@@ -10,9 +10,11 @@
 #include <algorithm>
 #include <climits>
 #include <cmath>
+#include <vector>
 
 #include "app/Application.h"
 #include "components/CoreComponents.h"
+#include "components/MotionComponents.h"
 #include "components/PhysicsComponents.h"
 #include "components/PresentationComponents.h"
 #include "platform/AssetManager.h"
@@ -344,6 +346,26 @@ void Editor::drawGizmos() {
         if (box.isTrigger) SDL_SetRenderDrawColor(r, 255, 220, 60, 220);
         else SDL_SetRenderDrawColor(r, 90, 255, 120, 220);
         SDL_RenderRect(r, &rect);
+    });
+
+    // Recorridos de PathMover: el de la seleccion siempre, los demas con "Colisiones".
+    // Jugando, los puntos se miden desde donde empezo (la entidad ya se movio).
+    world.each<PathMover, Transform>([&](Entity e, PathMover& m, Transform& t) {
+        if ((!showColliders && e != selected) || m.points.empty()) return;
+        const Vec2 origin = m.started ? m.origin : t.position;
+        std::vector<SDL_FPoint> line;
+        line.push_back({ std::round(v.worldToScreen(origin).x), std::round(v.worldToScreen(origin).y) });
+        for (const PathPoint& p : m.points) {
+            Vec2 s = v.worldToScreen({ origin.x + p.offset.x, origin.y + p.offset.y });
+            line.push_back({ std::round(s.x), std::round(s.y) });
+        }
+        if (m.loop) line.push_back(line.front());
+        SDL_SetRenderDrawColor(r, 120, 200, 255, e == selected ? 230 : 120);
+        SDL_RenderLines(r, line.data(), (int)line.size());
+        for (const SDL_FPoint& p : line) {
+            SDL_FRect dot{ p.x - 3, p.y - 3, 6, 6 };
+            SDL_RenderFillRect(r, &dot);
+        }
     });
 
     // Entidades sin sprite ni tilemap: un rombo, para poder verlas y elegirlas.

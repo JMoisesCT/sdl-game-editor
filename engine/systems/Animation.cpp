@@ -148,7 +148,13 @@ void AnimatorStateMachineSystem::update(World& world, float) {
         }
         // Solo al cambiar de regla: dentro de un mismo estado, el clip puede haber
         // encadenado con su 'next' y no hay que reiniciarlo.
-        if (chosen->empty() || *chosen == fsm.state) return;
+        // Sin regla ni defaultClip: el clip sigue como esta, y la proxima regla que
+        // gane (aunque sea la misma de antes) lo vuelve a arrancar.
+        if (chosen->empty()) {
+            fsm.state.clear();
+            return;
+        }
+        if (*chosen == fsm.state) return;
         fsm.state = *chosen;
         playAnimation(world, e, fsm.state, true);
     });

@@ -11,7 +11,9 @@ void registerPhysicsComponents(ComponentRegistry& registry) {
         .field("size", &BoxCollider::size).range(0.0f, 4096.0f).speed(0.5f)
             .tooltip("Ancho y alto en px de la imagen (se multiplican por la escala del Transform)")
         .field("offset", &BoxCollider::offset).speed(0.5f).tooltip("Corrimiento del centro de la caja (px de la imagen)")
-        .field("isTrigger", &BoxCollider::isTrigger).tooltip("Solo se superpone: no frena ni es frenado");
+        .field("isTrigger", &BoxCollider::isTrigger).tooltip("Solo se superpone: no frena ni es frenado")
+        .field("oneWay", &BoxCollider::oneWay)
+            .tooltip("Plataforma de un sentido: solo frena a lo que cae desde arriba (se atraviesa saltando)");
 
     registry.add<PlatformerMotor>("PlatformerMotor")
         .field("maxSpeed", &PlatformerMotor::maxSpeed).range(0.0f, 5000.0f).speed(1.0f).tooltip("px/seg al correr")

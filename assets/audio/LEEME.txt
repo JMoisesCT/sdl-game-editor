@@ -12,6 +12,8 @@ vienen de ningun pack de terceros y se pueden usar libremente.
   sfx/collect.wav     fruta recogida
   sfx/checkpoint.wav  bandera activada
   sfx/win.wav         meta
+  sfx/bounce.wav      trampolin
+  sfx/crumble.wav     plataforma que cae, al pisarla
   music/platformer_theme.wav   loop de 8 compases (12,8 s) que empalma sin corte
 
 WAV 16 bits mono a 44,1 kHz. Para cambiarlos por otros (por ejemplo el audio CC0

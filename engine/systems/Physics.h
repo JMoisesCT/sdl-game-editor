@@ -26,9 +26,15 @@ class World;
 //
 // Va DESPUES de los sistemas que deciden la velocidad (control del jugador, motor de
 // plataformas) y antes de los que reaccionan a la posicion final (camara, reglas).
+//
+// PLATAFORMAS DE UN SENTIDO (BoxCollider::oneWay): solo frenan a un cuerpo que cae y
+// que en el paso anterior tenia los pies por encima de la plataforma (con
+// ONE_WAY_TOLERANCE de margen, para las que suben y lo alcanzan). Nunca empujan de
+// costado ni hacia abajo.
 class PhysicsSystem : public System {
 public:
-    static constexpr float GROUND_PROBE = 2.0f; // px de mundo bajo los pies
+    static constexpr float GROUND_PROBE = 2.0f;      // px de mundo bajo los pies
+    static constexpr float ONE_WAY_TOLERANCE = 4.0f; // px que los pies pueden estar bajo el borde
 
     const char* name() const override { return "Physics"; }
     void onPlay(World& world) override;
@@ -47,3 +53,14 @@ bool collidersOverlap(World& world, Entity a, Entity b, float margin = 0.0f);
 
 // Si algun Tilemap tiene una celda solida dentro de ese rectangulo del mundo.
 bool isSolidArea(World& world, Vec2 min, Vec2 max);
+
+// Si 'body' (con RigidBody2D) esta parado sobre la caja solida de 'platform': apoyado
+// en el ultimo paso de fisica, sin subir, con los pies en el borde de arriba de la
+// plataforma y superpuesto en X.
+bool isStandingOn(World& world, Entity body, Entity platform);
+
+// Mueve una entidad CINEMATICA (sin RigidBody2D, la mueve un sistema: una plataforma
+// movil, una que cae) y con ella a los cuerpos parados encima. Sin esto la plataforma
+// se iria de debajo de los pies (de costado) o los empujaria a saltos (al subir). Se
+// llama ANTES de PhysicsSystem, que ya ve a los pasajeros en su nuevo lugar.
+void moveCarrying(World& world, Entity platform, Vec2 delta);

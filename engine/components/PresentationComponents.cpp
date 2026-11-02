@@ -39,8 +39,8 @@ void registerPresentationComponents(ComponentRegistry& registry, const Condition
     const ConditionRegistry* conds = &conditions; // vive en Application, como el registro
     registry.add<AnimatorStateMachine>("AnimatorStateMachine")
         .field("defaultClip", &AnimatorStateMachine::defaultClip)
-            .choices([](const World& w, Entity e) { return clipNames(w, e, false); })
-            .tooltip("Clip cuando no se cumple ninguna regla")
+            .choices([](const World& w, Entity e) { return clipNames(w, e, true); })
+            .tooltip("Clip cuando no se cumple ninguna regla (ninguno = deja terminar el clip de la ultima regla)")
         .list("rules", &AnimatorStateMachine::rules, [conds](FieldsBuilder<AnimationRule>& rule) {
             rule.field("clip", &AnimationRule::clip)
                     .choices([](const World& w, Entity e) { return clipNames(w, e, false); })

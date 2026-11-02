@@ -77,6 +77,11 @@ struct AnimationRule {
 //
 // Solo cambia de clip cuando cambia la regla ganadora: asi un clip puede encadenar con
 // su 'next' (bandera que sale -> bandera ondeando) sin que la maquina lo reinicie.
+//
+// Sin defaultClip ("ninguno"), cuando no gana ninguna regla el clip que este sonando
+// sigue hasta el final: es la forma de animar un SUCESO de un frame (el trampolin
+// que rebota: jump si bounced, y el clip vuelve solo a idle con su 'next'). La
+// proxima vez que gane la regla, su clip arranca de nuevo.
 struct AnimatorStateMachine {
     std::string defaultClip = "idle";
     std::vector<AnimationRule> rules;

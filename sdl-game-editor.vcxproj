@@ -22,6 +22,7 @@
     <ClCompile Include="engine\app\Application.cpp" />
     <ClCompile Include="engine\components\AudioComponents.cpp" />
     <ClCompile Include="engine\components\CoreComponents.cpp" />
+    <ClCompile Include="engine\components\MotionComponents.cpp" />
     <ClCompile Include="engine\components\PhysicsComponents.cpp" />
     <ClCompile Include="engine\components\PresentationComponents.cpp" />
     <ClCompile Include="engine\components\RuleComponents.cpp" />
@@ -42,6 +43,7 @@
     <ClCompile Include="engine\systems\Animation.cpp" />
     <ClCompile Include="engine\systems\AudioSystems.cpp" />
     <ClCompile Include="engine\systems\Conditions.cpp" />
+    <ClCompile Include="engine\systems\Motion.cpp" />
     <ClCompile Include="engine\systems\Physics.cpp" />
     <ClCompile Include="engine\systems\PlatformerMotorSystem.cpp" />
     <ClCompile Include="engine\systems\Presentation.cpp" />
@@ -63,6 +65,7 @@
     <ClInclude Include="engine\app\Application.h" />
     <ClInclude Include="engine\components\AudioComponents.h" />
     <ClInclude Include="engine\components\CoreComponents.h" />
+    <ClInclude Include="engine\components\MotionComponents.h" />
     <ClInclude Include="engine\components\PhysicsComponents.h" />
     <ClInclude Include="engine\components\PresentationComponents.h" />
     <ClInclude Include="engine\components\RuleComponents.h" />
@@ -81,6 +84,7 @@
     <ClInclude Include="engine\systems\Animation.h" />
     <ClInclude Include="engine\systems\AudioSystems.h" />
     <ClInclude Include="engine\systems\Conditions.h" />
+    <ClInclude Include="engine\systems\Motion.h" />
     <ClInclude Include="engine\systems\Physics.h" />
     <ClInclude Include="engine\systems\PlatformerMotorSystem.h" />
     <ClInclude Include="engine\systems\Presentation.h" />

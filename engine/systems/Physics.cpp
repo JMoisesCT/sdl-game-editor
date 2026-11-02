@@ -124,12 +124,34 @@ namespace {
         }
     }
 
+    // Plataforma de un sentido (su borde de arriba en pMin.y) contra el cuerpo 'body':
+    // solo lo sube encima si cae y en el paso anterior tenia los pies por encima del
+    // borde. La plataforma no se mueve nunca (aunque tenga RigidBody2D).
+    void resolveOneWay(World& world, Entity body, Vec2 pMin, Vec2 bMax) {
+        RigidBody2D* rb = world.get<RigidBody2D>(body);
+        if (!rb || rb->velocity.y < 0.0f) return; // subiendo: la atraviesa
+        Transform& t = *world.get<Transform>(body);
+        float previousBottom = bMax.y - (t.position.y - rb->previous.y);
+        if (previousBottom > pMin.y + PhysicsSystem::ONE_WAY_TOLERANCE) return; // venia de abajo o de costado
+        t.position.y -= bMax.y - pMin.y;
+        stopAgainst(rb->velocity.y, -1.0f);
+        rb->grounded = true;
+    }
+
     // Separa dos cajas solidas que se superponen, por el eje de MENOR penetracion. Si
     // las dos son dinamicas se reparten el empujon; un obstaculo fijo no se mueve.
     void resolvePair(World& world, Entity a, Entity b) {
         Vec2 aMin, aMax, bMin, bMax;
         if (!colliderBounds(world, a, aMin, aMax) || !colliderBounds(world, b, bMin, bMax)) return;
         if (!boxesOverlap(aMin, aMax, bMin, bMax)) return;
+
+        // Con una plataforma de un sentido no hay eje de menor penetracion: o se sube
+        // encima, o se la atraviesa. Dos de un sentido no se tocan.
+        bool aOneWay = world.get<BoxCollider>(a)->oneWay;
+        bool bOneWay = world.get<BoxCollider>(b)->oneWay;
+        if (aOneWay && bOneWay) return;
+        if (aOneWay) { resolveOneWay(world, b, aMin, bMax); return; }
+        if (bOneWay) { resolveOneWay(world, a, bMin, aMax); return; }
 
         RigidBody2D* arb = world.get<RigidBody2D>(a);
         RigidBody2D* brb = world.get<RigidBody2D>(b);
@@ -213,11 +235,45 @@ namespace {
         if (isSolidArea(world, probeMin, probeMax)) return true;
         for (Entity other : solids) {
             Vec2 oMin, oMax;
-            if (other != e && colliderBounds(world, other, oMin, oMax) &&
-                boxesOverlap({ probeMin.x + SKIN, probeMin.y }, { probeMax.x - SKIN, probeMax.y }, oMin, oMax))
-                return true;
+            if (other == e || !colliderBounds(world, other, oMin, oMax) ||
+                !boxesOverlap({ probeMin.x + SKIN, probeMin.y }, { probeMax.x - SKIN, probeMax.y }, oMin, oMax))
+                continue;
+            // Una de un sentido solo sostiene si los pies estan en su borde, no a
+            // mitad de atravesarla.
+            if (world.get<BoxCollider>(other)->oneWay && max.y > oMin.y + 0.5f) continue;
+            return true;
         }
         return false;
+    }
+}
+
+bool isStandingOn(World& world, Entity body, Entity platform) {
+    const RigidBody2D* rb = world.get<RigidBody2D>(body);
+    const BoxCollider* box = world.get<BoxCollider>(body);
+    const BoxCollider* pbox = world.get<BoxCollider>(platform);
+    if (body == platform || !rb || !rb->grounded || rb->velocity.y < 0.0f || !box || box->isTrigger ||
+        !pbox || pbox->isTrigger)
+        return false;
+    Vec2 bMin, bMax, pMin, pMax;
+    if (!colliderBounds(world, body, bMin, bMax) || !colliderBounds(world, platform, pMin, pMax)) return false;
+    return bMin.x + SKIN < pMax.x && pMin.x < bMax.x - SKIN &&
+           std::fabs(bMax.y - pMin.y) <= PhysicsSystem::GROUND_PROBE;
+}
+
+void moveCarrying(World& world, Entity platform, Vec2 delta) {
+    Transform* t = world.get<Transform>(platform);
+    if (!t || (delta.x == 0.0f && delta.y == 0.0f)) return;
+    // Los pasajeros se buscan ANTES de mover la plataforma (despues ya no la tocan).
+    std::vector<Entity> riders;
+    world.each<RigidBody2D, Transform>([&](Entity e, RigidBody2D&, Transform&) {
+        if (isStandingOn(world, e, platform)) riders.push_back(e);
+    });
+    t->position.x += delta.x;
+    t->position.y += delta.y;
+    for (Entity e : riders) {
+        Transform& rt = *world.get<Transform>(e);
+        rt.position.x += delta.x;
+        rt.position.y += delta.y;
     }
 }
 

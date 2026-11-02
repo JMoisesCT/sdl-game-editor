@@ -27,10 +27,14 @@ struct RigidBody2D {
 // Sin RigidBody2D la caja es un obstaculo fijo; con RigidBody2D, la fisica la separa
 // de los tilemaps solidos y de las otras cajas. Un trigger no frena ni es frenado:
 // solo se superpone (para recoger, danar, activar...).
+//
+// DE UN SENTIDO (oneWay): una plataforma fina que solo frena desde ARRIBA. Se la
+// atraviesa saltando desde abajo o de costado, y al caer sobre ella se queda parado.
 struct BoxCollider {
     Vec2 size{ 16.0f, 16.0f }; // ancho y alto (px de la imagen)
     Vec2 offset;               // corrimiento del centro de la caja respecto al Transform
     bool isTrigger = false;
+    bool oneWay = false;       // solo frena a lo que cae desde arriba
 };
 
 // Movimiento de personaje de PLATAFORMAS: aceleracion y frenado, salto con altura en

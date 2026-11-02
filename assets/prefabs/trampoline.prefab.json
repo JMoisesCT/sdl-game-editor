@@ -1,0 +1,21 @@
+{
+  "format": "sdl_engine_prefab",
+  "version": 1,
+  "components": {
+    "EntityInfo": {"name":"Trampolin","tag":""},
+    "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[2.0,2.0]},
+    "Sprite": {"texture":"assets/pixel_adventure/Traps/Trampoline/Idle.png","source":[0,0,28,28],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0},
+    "BoxCollider": {"size":[22.0,11.0],"offset":[-0.5,8.5],"isTrigger":true,"oneWay":false},
+    "Bouncer": {"bounceHeight":280.0,"targetTag":""},
+    "SpriteAnimator": {"startClip":"idle","speed":1.0,"clips":[
+      {"name":"idle","texture":"assets/pixel_adventure/Traps/Trampoline/Idle.png","frameWidth":28,"frameHeight":28,"frames":[],"fps":0.0,"loop":true,"next":"","destroyOnEnd":false},
+      {"name":"jump","texture":"assets/pixel_adventure/Traps/Trampoline/Jump (28x28).png","frameWidth":28,"frameHeight":28,"frames":[],"fps":20.0,"loop":false,"next":"idle","destroyOnEnd":false}
+    ]},
+    "AnimatorStateMachine": {"defaultClip":"","rules":[
+      {"clip":"jump","condition":"bounced"}
+    ]},
+    "SoundEffects": {"sounds":[
+      {"condition":"bounced","sound":"assets/audio/sfx/bounce.wav","volume":0.7}
+    ]}
+  }
+}

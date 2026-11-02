@@ -43,7 +43,9 @@ private:
 //     moving    se mueve (velocidad > 1 px/seg)
 //     dead      Health en 0                hurt      en la gracia tras un golpe (vivo)
 //     collected Collectible ya recogido    activated Checkpoint ya activado
+//     crumbling FallingPlatform pisada (por caer o cayendo)
 //   Sucesos (un solo frame, de los avisos justX):
 //     jumped    despego (PlatformerMotor)  landed    aterrizo (PlatformerMotor)
 //     damaged   recibio un golpe (Health)  respawned reaparecio (Respawn)
+//     bounced   el Bouncer lanzo a alguien
 void registerEngineConditions(ConditionRegistry& conditions);

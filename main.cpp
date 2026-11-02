@@ -6,6 +6,7 @@
 #include "game/PlatformerRules.h"
 #include "systems/Animation.h"
 #include "systems/AudioSystems.h"
+#include "systems/Motion.h"
 #include "systems/Physics.h"
 #include "systems/PlatformerMotorSystem.h"
 #include "systems/Presentation.h"
@@ -38,7 +39,12 @@ int main(int argc, char* argv[]) {
     //   -> presentacion (animacion, sonido, camara, fondo).
     app.addSystem(std::make_unique<PlatformerControlSystem>()); // juego: teclas -> intencion
     app.addSystem(std::make_unique<PlatformerMotorSystem>());   // motor: intencion -> velocidad
+    // Mecanismos (ver systems/Motion.h): las plataformas se mueven antes de la fisica,
+    // llevandose a los que estan encima; el trampolin mira las posiciones ya resueltas.
+    app.addSystem(std::make_unique<PathMoverSystem>());
+    app.addSystem(std::make_unique<FallingPlatformSystem>());
     app.addSystem(std::make_unique<PhysicsSystem>());           // motor: movimiento y choques
+    app.addSystem(std::make_unique<BouncerSystem>());
     // Reglas del motor (ver systems/Rules.h): HealthSystem primero, porque apaga los
     // avisos de un frame que los demas encienden.
     app.addSystem(std::make_unique<HealthSystem>());

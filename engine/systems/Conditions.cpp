@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "components/MotionComponents.h"
 #include "components/PhysicsComponents.h"
 #include "components/RuleComponents.h"
 #include "core/World.h"
@@ -59,6 +60,11 @@ void registerEngineConditions(ConditionRegistry& c) {
         const Checkpoint* cp = w.get<Checkpoint>(e);
         return cp && cp->activated;
     });
+    // Una FallingPlatform pisada: por caer o cayendo.
+    c.add("crumbling", [](World& w, Entity e) {
+        const FallingPlatform* f = w.get<FallingPlatform>(e);
+        return f && f->triggered;
+    });
 
     // --- Sucesos de un frame ---
     c.add("jumped", [](World& w, Entity e) {
@@ -76,5 +82,9 @@ void registerEngineConditions(ConditionRegistry& c) {
     c.add("respawned", [](World& w, Entity e) {
         const Respawn* r = w.get<Respawn>(e);
         return r && r->justRespawned;
+    });
+    c.add("bounced", [](World& w, Entity e) {
+        const Bouncer* b = w.get<Bouncer>(e);
+        return b && b->justBounced;
     });
 }

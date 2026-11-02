@@ -1,0 +1,21 @@
+{
+  "format": "sdl_engine_prefab",
+  "version": 1,
+  "components": {
+    "EntityInfo": {"name":"Plataforma que cae","tag":""},
+    "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[2.0,2.0]},
+    "Sprite": {"texture":"assets/pixel_adventure/Traps/Falling Platforms/On (32x10).png","source":[0,0,32,10],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0},
+    "BoxCollider": {"size":[32.0,5.0],"offset":[0.0,-2.5],"isTrigger":false,"oneWay":true},
+    "FallingPlatform": {"delay":0.5,"gravity":980.0,"maxFallSpeed":700.0,"respawnTime":3.0},
+    "SpriteAnimator": {"startClip":"on","speed":1.0,"clips":[
+      {"name":"on","texture":"assets/pixel_adventure/Traps/Falling Platforms/On (32x10).png","frameWidth":32,"frameHeight":10,"frames":[],"fps":20.0,"loop":true,"next":"","destroyOnEnd":false},
+      {"name":"off","texture":"assets/pixel_adventure/Traps/Falling Platforms/Off.png","frameWidth":32,"frameHeight":10,"frames":[],"fps":0.0,"loop":true,"next":"","destroyOnEnd":false}
+    ]},
+    "AnimatorStateMachine": {"defaultClip":"on","rules":[
+      {"clip":"off","condition":"crumbling"}
+    ]},
+    "SoundEffects": {"sounds":[
+      {"condition":"crumbling","sound":"assets/audio/sfx/crumble.wav","volume":0.6}
+    ]}
+  }
+}
