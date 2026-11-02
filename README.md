@@ -5,8 +5,9 @@ propósito es **educativo**: que estudiantes que ya conocen SDL3 básico armen j
 editando escenas en un editor propio, sin pelear con la API cruda de SDL.
 
 > **Estado:** en desarrollo, por fases. Ya están el núcleo (ECS + reflexión + escenas en
-> JSON) y el editor. Faltan el tilemap, la física y los sistemas de juego: hoy una escena se
-> puede editar, guardar y "jugar", pero todavía no hay nada que se mueva solo.
+> JSON), el editor y los tilemaps (pintar con paleta, importar de Tiled). Faltan la física y
+> los sistemas de juego: hoy una escena se puede editar, guardar y "jugar", pero todavía no
+> hay nada que se mueva solo.
 
 ## Cómo está pensado
 
@@ -53,6 +54,29 @@ editando escenas en un editor propio, sin pelear con la API cruda de SDL.
 - **Jugar / Pausa / Detener**: al detener, la escena vuelve exactamente a como estaba antes
   de jugar.
 
+### Tilemaps
+
+Un nivel de tiles se arma con entidades que tienen el componente **`Tilemap`**: cada una es
+una **capa** (fondo, suelo, decoración...). Como cada capa tiene su propio `order`, se
+intercala con los sprites: el jugador puede quedar delante del suelo y detrás de unas
+plantas. Su `Transform` marca la **esquina superior izquierda** del mapa (no el centro, como
+en los sprites).
+
+- Elige una capa: el Inspector muestra la **paleta** del tileset. Clic en un tile para
+  elegirlo, o arrastra para elegir un bloque de varios.
+- Herramientas: **Pincel** (`B`), **Goma** (`E`), **Relleno** (`G`) y **Mover** (`V`).
+  `Alt+clic` en la vista toma el tile de una celda. Cada trazo se deshace de una vez.
+- **Sólidos**: con "Marcar solidos", un clic en la paleta marca o desmarca un tile como
+  sólido. "Ver solidos" resalta en la vista las celdas que frenan. Una capa con `collision`
+  desmarcado es pura decoración.
+- El tamaño del mapa (`cells`) se cambia en el Inspector, al pulsar Enter.
+- **Importar Tiled...** (barra superior) convierte un mapa de [Tiled](https://www.mapeditor.org/)
+  (`.json`, capas en CSV y tileset incrustado) en capas `Tilemap`. Se importa **una vez**:
+  después el mapa se edita aquí y se guarda en la escena.
+
+En el `.scene.json` las celdas se guardan una fila por línea (`-1` = vacía), así que el
+mapa se lee en el archivo y un diff muestra solo las filas que cambiaron.
+
 | Acción | Control |
 |---|---|
 | Elegir / arrastrar una entidad | Clic izquierdo (con `Alt`, sin ajustar a la grilla) |
@@ -63,6 +87,8 @@ editando escenas en un editor propio, sin pelear con la API cruda de SDL.
 | Guardar | `Ctrl+S` |
 | Deshacer / rehacer | `Ctrl+Z` / `Ctrl+Y` o `Ctrl+Shift+Z` |
 | Duplicar / borrar | `Ctrl+D` / `Supr` |
+| Tilemap: mover / pincel / goma / relleno | `V` / `B` / `E` / `G` |
+| Tilemap: tomar el tile de una celda | `Alt+clic` |
 | Captura de pantalla (a `screenshots/`) | `F9` |
 
 Con el argumento `--play`, el ejecutable abre la escena y la juega directamente, sin editor.
@@ -72,9 +98,9 @@ Con el argumento `--play`, el ejecutable abre la escena y la juega directamente,
 ```
 engine/
   core/        Entity, World (ECS), Reflection, SceneSerializer
-  components/  componentes del motor (EntityInfo, Transform, Sprite, Camera)
-  systems/     interfaz System y RenderSystem
-  platform/    Input, AssetManager, Screenshot
+  components/  componentes del motor (EntityInfo, Transform, Sprite, Tilemap, Camera)
+  systems/     interfaz System, RenderSystem y consultas de Tilemaps
+  platform/    Input, AssetManager, Screenshot, TiledImport
   app/         Application: ventana, bucle, modos Edit / Play / Pausa
   editor/      el editor (Dear ImGui)
   third_party/ nlohmann/json y Dear ImGui (vendorizadas)

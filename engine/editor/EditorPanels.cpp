@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <filesystem>
 
 #include "app/Application.h"
@@ -154,6 +155,9 @@ void Editor::drawInspector() {
         toRemove->remove(world, selected);
     }
 
+    // Unica excepcion al Inspector generico: la paleta para pintar un Tilemap.
+    drawTilePalette();
+
     ImGui::Spacing();
     ImGui::Separator();
     if (ImGui::Button("Agregar componente", ImVec2(-FLT_MIN, 0))) ImGui::OpenPopup("##add");
@@ -170,6 +174,20 @@ void Editor::drawInspector() {
         if (!any) ImGui::TextDisabled("Ya tiene todos los componentes");
         ImGui::EndPopup();
     }
+}
+
+// "6, 7 ,8" -> {6, 7, 8}. Lo que no es un numero hace de separador.
+static std::vector<int> parseIntList(const std::string& text) {
+    std::vector<int> out;
+    const char* p = text.c_str();
+    while (*p) {
+        char* end = nullptr;
+        long n = std::strtol(p, &end, 10);
+        if (end == p) { ++p; continue; }
+        out.push_back((int)n);
+        p = end;
+    }
+    return out;
 }
 
 // Cada widget edita una COPIA del valor; solo si cambio se llama a beginChange (que
@@ -236,6 +254,32 @@ bool Editor::drawField(const FieldInfo& f, void* value) {
         int v[4] = { r.x, r.y, r.w, r.h };
         if (ImGui::DragInt4(label, v, f.speed)) {
             beginChange(); r = { v[0], v[1], v[2], v[3] }; changed = true;
+        }
+        break;
+    }
+    case FieldType::IntList: {
+        // Texto con los numeros separados por coma: "6, 7, 8".
+        std::vector<int>& list = *static_cast<std::vector<int>*>(value);
+        std::string text;
+        for (std::size_t i = 0; i < list.size(); ++i) text += (i ? ", " : "") + std::to_string(list[i]);
+        if (ImGui::InputText(label, &text)) {
+            std::vector<int> v = parseIntList(text);
+            if (v != list) { beginChange(); list = std::move(v); changed = true; }
+        }
+        break;
+    }
+    case FieldType::IntGrid: {
+        // Solo el tamano (las celdas se editan con la paleta). InputInt2 aplica al
+        // validar (Enter o salir del campo), no con cada tecla: escribir "30" pasaria
+        // por "3", y achicar borra lo que queda fuera.
+        IntGrid& g = *static_cast<IntGrid*>(value);
+        int v[2] = { g.width, g.height };
+        if (ImGui::InputInt2(label, v)) {
+            v[0] = std::clamp(v[0], 0, 4096);
+            v[1] = std::clamp(v[1], 0, 4096);
+            if (v[0] != g.width || v[1] != g.height) {
+                beginChange(); g.resize(v[0], v[1], -1); changed = true;
+            }
         }
         break;
     }

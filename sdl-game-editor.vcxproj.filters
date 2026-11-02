@@ -54,6 +54,9 @@
     <ClCompile Include="engine\editor\EditorPanels.cpp">
       <Filter>engine\editor</Filter>
     </ClCompile>
+    <ClCompile Include="engine\editor\EditorTilemap.cpp">
+      <Filter>engine\editor</Filter>
+    </ClCompile>
     <ClCompile Include="engine\editor\EditorViewport.cpp">
       <Filter>engine\editor</Filter>
     </ClCompile>
@@ -66,7 +69,13 @@
     <ClCompile Include="engine\platform\Screenshot.cpp">
       <Filter>engine\platform</Filter>
     </ClCompile>
+    <ClCompile Include="engine\platform\TiledImport.cpp">
+      <Filter>engine\platform</Filter>
+    </ClCompile>
     <ClCompile Include="engine\systems\RenderSystem.cpp">
+      <Filter>engine\systems</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\systems\Tilemaps.cpp">
       <Filter>engine\systems</Filter>
     </ClCompile>
     <ClCompile Include="engine\third_party\imgui\imgui.cpp">
@@ -124,7 +133,13 @@
     <ClInclude Include="engine\platform\Screenshot.h">
       <Filter>engine\platform</Filter>
     </ClInclude>
+    <ClInclude Include="engine\platform\TiledImport.h">
+      <Filter>engine\platform</Filter>
+    </ClInclude>
     <ClInclude Include="engine\systems\RenderSystem.h">
+      <Filter>engine\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\systems\Tilemaps.h">
       <Filter>engine\systems</Filter>
     </ClInclude>
     <ClInclude Include="engine\systems\System.h">

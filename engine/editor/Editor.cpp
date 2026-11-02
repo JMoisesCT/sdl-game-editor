@@ -74,7 +74,8 @@ void Editor::onSceneLoaded() {
     changePending = false;
     version = savedVersion = 0;
     nextVersion = 1;
-    dragging = pressOnEntity = panning = false;
+    dragging = pressOnEntity = panning = painting = false;
+    tileTool = TileTool::Move;
     sceneView.zoom = 1.0f;
     centerOnCamera();
 }
@@ -88,6 +89,13 @@ void Editor::frame(float dt) {
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
+
+    // Las herramientas de tiles pintan en la capa elegida: si se eligio otra cosa
+    // (o se borro), se vuelve a Mover.
+    if (tileTool != TileTool::Move && !selectedTilemap()) {
+        tileTool = TileTool::Move;
+        painting = false;
+    }
 
     handleShortcuts();
     layoutAndDraw();
@@ -181,7 +189,14 @@ void Editor::drawToolbar() {
     if (ImGui::Button("Rehacer")) redo();
     ImGui::SetItemTooltip("Ctrl+Y / Ctrl+Shift+Z");
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Importar Tiled...")) {
+        scanMapFiles();
+        ImGui::OpenPopup("##importTiled");
+    }
+    ImGui::SetItemTooltip("Convierte un mapa de Tiled (.json) en capas Tilemap de la escena");
     ImGui::EndDisabled();
+    drawImportPopup(); // fuera del bloque deshabilitado: si no, su lista saldria gris
 
     ImGui::SameLine();
     ImGui::TextDisabled("|");
@@ -236,6 +251,15 @@ void Editor::handleShortcuts() {
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_D, false)) duplicateSelected();
     if (ImGui::IsKeyPressed(ImGuiKey_Delete, false)) deleteSelected();
     if (!ctrl && ImGui::IsKeyPressed(ImGuiKey_F, false)) frameEntity(selected);
+
+    // Herramientas de tiles (pintar necesita una entidad con Tilemap elegida). Solo
+    // editando: jugando, esas letras son del juego.
+    if (app.isEditing() && !ctrl) {
+        if (ImGui::IsKeyPressed(ImGuiKey_V, false)) setTileTool(TileTool::Move);
+        if (ImGui::IsKeyPressed(ImGuiKey_B, false)) setTileTool(TileTool::Brush);
+        if (ImGui::IsKeyPressed(ImGuiKey_E, false)) setTileTool(TileTool::Erase);
+        if (ImGui::IsKeyPressed(ImGuiKey_G, false)) setTileTool(TileTool::Fill);
+    }
 }
 
 void Editor::updateWindowTitle() {
@@ -270,7 +294,7 @@ void Editor::save() {
 }
 
 void Editor::togglePlay() {
-    dragging = pressOnEntity = panning = false;
+    dragging = pressOnEntity = panning = painting = false;
     if (app.isEditing()) {
         commitChange(); // la copia de Play debe incluir lo ultimo editado
         app.play();
@@ -302,8 +326,9 @@ void Editor::commitChange() {
 
 void Editor::commitIfIdle() {
     // El gesto termina al soltar el raton o al salir del campo que se editaba: asi
-    // arrastrar un valor o escribir un nombre es UN paso, no uno por frame.
-    if (changePending && !dragging && !ImGui::IsAnyItemActive()) commitChange();
+    // arrastrar un valor, escribir un nombre o un trazo del pincel es UN paso, no uno
+    // por frame.
+    if (changePending && !dragging && !painting && !ImGui::IsAnyItemActive()) commitChange();
 }
 
 void Editor::undo() {
@@ -334,7 +359,7 @@ void Editor::restore(const Json& scene) {
     if (!deserializeWorld(app.world(), app.registry(), scene, error))
         SDL_Log("Editor: no se pudo restaurar la escena: %s", error.c_str());
     if (!app.world().isAlive(selected)) selected = NullEntity;
-    dragging = pressOnEntity = false;
+    dragging = pressOnEntity = painting = false;
 }
 
 // --- Cambios sin guardar ---------------------------------------------------------------

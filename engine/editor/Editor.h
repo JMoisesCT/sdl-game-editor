@@ -10,6 +10,7 @@
 class Application;
 struct ComponentInfo;
 struct FieldInfo;
+struct Tilemap;
 struct SDL_Texture;  // declaraciones adelantadas: SDL e ImGui solo en los .cpp
 union SDL_Event;
 
@@ -30,8 +31,14 @@ union SDL_Event;
 // beginChange no se puede deshacer y no marca la escena como modificada.
 // Jugando no se anota nada: al detener, la escena vuelve a como estaba.
 //
-// Se reparte en tres .cpp: Editor.cpp (marco, barra, deshacer, atajos),
-// EditorPanels.cpp (Jerarquia e Inspector) y EditorViewport.cpp (vistas).
+// Tilemaps: con una entidad con Tilemap elegida, el Inspector muestra la paleta del
+// tileset y las herramientas (Mover, Pincel, Goma, Relleno); con una de pintar, el
+// clic en la vista de escena pinta las celdas de ESA capa en vez de elegir entidades.
+// Cada trazo (pulsar, arrastrar, soltar) es un paso de deshacer.
+//
+// Se reparte en cuatro .cpp: Editor.cpp (marco, barra, deshacer, atajos),
+// EditorPanels.cpp (Jerarquia e Inspector), EditorViewport.cpp (vistas) y
+// EditorTilemap.cpp (paleta, pinceles e importar de Tiled).
 class Editor {
 public:
     explicit Editor(Application& app);
@@ -100,6 +107,22 @@ private:
     void centerOnCamera();
     SDL_Texture* ensureTarget(SDL_Texture*& tex, int& curW, int& curH, int w, int h);
 
+    // --- EditorTilemap.cpp ---
+    enum class TileTool { Move, Brush, Erase, Fill };
+    Tilemap* selectedTilemap();      // el Tilemap de la seleccion (si tambien tiene Transform)
+    void setTileTool(TileTool tool);
+    void drawTilePalette();          // en el Inspector, bajo los componentes
+    // Con una herramienta de tiles, maneja el clic izquierdo en la vista de escena.
+    // true = el raton ya se uso (no elegir ni arrastrar entidades).
+    bool handleTilemapInput(bool hovered);
+    void paintCell(Tilemap& map, int col, int row);        // aplica Pincel o Goma
+    void setCell(Tilemap& map, int col, int row, int tile); // beginChange si cambia
+    void fillFrom(Tilemap& map, int col, int row);
+    void drawTilemapGizmos();        // dentro del destino de la vista de escena
+    void drawImportPopup();
+    void scanMapFiles();
+    void importTiled(const std::string& path);
+
     Application& app;
     bool guiReady = false;
     float uiScale = 1.0f;
@@ -146,4 +169,19 @@ private:
     std::vector<std::string> textureFiles; // .png bajo assets/, para elegir texturas
     bool textureFilesScanned = false;
     std::string textureFilter;             // texto del filtro de esa lista
+
+    // Tilemaps (estado del editor: no se guarda en la escena).
+    TileTool tileTool = TileTool::Move;
+    IntRect brush{ 0, 0, 1, 1 };   // tiles elegidos en la paleta, en columnas/filas del tileset
+    bool paletteSelecting = false; // arrastrando en la paleta para elegir varios tiles
+    int paletteStartCol = 0, paletteStartRow = 0;
+    int paletteZoom = 2;
+    bool markSolids = false;       // clic en la paleta: marcar/desmarcar como solido
+    bool showSolids = false;       // vista de escena: resaltar las celdas que frenan
+    bool painting = false;         // trazo en curso
+    int lastCol = 0, lastRow = 0;  // ultima celda pintada del trazo
+    bool hoverCell = false;        // el raton esta sobre la vista con una herramienta de tiles
+    int hoverCol = 0, hoverRow = 0;
+    std::vector<std::string> mapFiles; // .json bajo assets/, para importar de Tiled
+    float importScale = 1.0f;
 };

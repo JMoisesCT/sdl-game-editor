@@ -26,7 +26,9 @@
 
 // Tipos de campo que el motor sabe guardar y editar. Para sumar uno: agregarlo aqui,
 // en fieldTypeOf, en el guardado (SceneSerializer.cpp) y en el Inspector.
-enum class FieldType { Bool, Int, Float, String, Vec2, Color, IntRect };
+//   IntList = std::vector<int> (p. ej. los tiles solidos de un Tilemap).
+//   IntGrid = grilla de enteros (las celdas de un Tilemap; ver Math.h).
+enum class FieldType { Bool, Int, Float, String, Vec2, Color, IntRect, IntList, IntGrid };
 
 // Pista para el editor: como mostrar el campo (el tipo sigue siendo el mismo).
 enum class FieldHint {
@@ -74,6 +76,8 @@ constexpr FieldType fieldTypeOf() {
     else if constexpr (std::is_same_v<M, Vec2>) return FieldType::Vec2;
     else if constexpr (std::is_same_v<M, Color>) return FieldType::Color;
     else if constexpr (std::is_same_v<M, IntRect>) return FieldType::IntRect;
+    else if constexpr (std::is_same_v<M, std::vector<int>>) return FieldType::IntList;
+    else if constexpr (std::is_same_v<M, IntGrid>) return FieldType::IntGrid;
     else static_assert(sizeof(M) == 0, "Tipo de campo no soportado por la reflexion");
 }
 

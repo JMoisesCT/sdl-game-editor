@@ -28,6 +28,7 @@ bool findCameraView(World& world, int width, int height, View& view, Color* back
 // false si no tiene Transform + Sprite o la textura no carga.
 bool spriteWorldSize(World& world, AssetManager& assets, Entity e, Vec2& size);
 
-// Dibuja todos los Sprite visibles, de menor a mayor order (a igualdad, por id),
-// en el destino de render ACTUAL del renderer.
-void renderSprites(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& view);
+// Dibuja todos los Sprite y Tilemap visibles, de menor a mayor order (a igualdad, por
+// id), en el destino de render ACTUAL del renderer. De cada Tilemap solo se dibujan
+// las celdas que caen dentro de la vista.
+void renderWorld(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& view);

@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 
 #include "core/Math.h"
 
@@ -36,6 +37,36 @@ struct Sprite {
     bool flipY = false;
     bool visible = true;
     int order = 0;          // capa de dibujo: menor = mas al fondo (a igualdad, el id)
+};
+
+// Una CAPA de tiles: una grilla de celdas, cada una con un tile recortado del tileset.
+// Un mapa con varias capas (fondo, suelo, decoracion...) son varias entidades con
+// Tilemap: asi cada capa tiene su propio order y se intercala con los sprites (el
+// jugador puede quedar delante del suelo y detras de unas plantas), y la Jerarquia
+// hace de lista de capas.
+//
+// ANCLAJE: a diferencia del Sprite, el Transform marca la esquina SUPERIOR IZQUIERDA
+// de la celda (0, 0), no el centro: asi agrandar el mapa no lo corre de sitio. Una
+// celda mide en el mundo tileWidth x tileHeight por la escala del Transform. La
+// rotacion y el signo de la escala no se aplican a un tilemap.
+//
+// CELDAS: -1 = vacia; n >= 0 = el tile n del tileset, contando por filas desde arriba
+// a la izquierda (con 22 columnas, el 22 es el primero de la segunda fila). El tileset
+// es una grilla de tiles sin margenes ni separacion; sus columnas salen del ancho de
+// la imagen.
+//
+// COLISION: una celda es solida si su tile esta en solidTiles y la capa tiene
+// collision. Una capa sin collision es decoracion: nunca frena.
+struct Tilemap {
+    std::string tileset;          // imagen con los tiles
+    int tileWidth = 16;           // tamano de un tile en la imagen (px)
+    int tileHeight = 16;
+    std::vector<int> solidTiles;  // tiles que frenan
+    bool collision = true;
+    bool visible = true;
+    Color tint;                   // blanco = sin tenir; el alfa es la opacidad de la capa
+    int order = -10;              // capa de dibujo, la misma escala que Sprite::order
+    IntGrid cells{ 32, 18, -1 };  // las celdas (ancho x alto); empieza vacio
 };
 
 // Lo que ve el jugador. La posicion la da el Transform de la misma entidad: ese punto

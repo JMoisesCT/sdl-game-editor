@@ -37,6 +37,17 @@ static Json writeField(const FieldInfo& f, const void* p) {
         const IntRect& r = *static_cast<const IntRect*>(p);
         return Json::array({ r.x, r.y, r.w, r.h });
     }
+    case FieldType::IntList: return *static_cast<const std::vector<int>*>(p);
+    case FieldType::IntGrid: {
+        // Lista de filas: [[fila 0], [fila 1], ...]. El ancho es el largo de una fila.
+        const IntGrid& g = *static_cast<const IntGrid*>(p);
+        Json rows = Json::array();
+        for (int y = 0; y < g.height; ++y) {
+            auto begin = g.cells.begin() + (std::ptrdiff_t)y * g.width;
+            rows.push_back(Json(std::vector<int>(begin, begin + g.width)));
+        }
+        return rows;
+    }
     }
     return nullptr;
 }
@@ -66,6 +77,19 @@ static void readField(const FieldInfo& f, void* p, const Json& j) {
     case FieldType::IntRect: {
         IntRect r{ j.at(0).get<int>(), j.at(1).get<int>(), j.at(2).get<int>(), j.at(3).get<int>() };
         *static_cast<IntRect*>(p) = r;
+        break;
+    }
+    case FieldType::IntList: *static_cast<std::vector<int>*>(p) = j.get<std::vector<int>>(); break;
+    case FieldType::IntGrid: {
+        // El ancho lo da la fila mas larga; si alguna fila quedo corta (editada a
+        // mano), lo que le falta queda en -1 (vacio).
+        auto rows = j.get<std::vector<std::vector<int>>>();
+        int w = 0;
+        for (const auto& row : rows) w = std::max(w, (int)row.size());
+        IntGrid g(w, (int)rows.size(), -1);
+        for (int y = 0; y < g.height; ++y)
+            for (int x = 0; x < (int)rows[y].size(); ++x) g.set(x, y, rows[y][x]);
+        *static_cast<IntGrid*>(p) = std::move(g);
         break;
     }
     }
@@ -160,9 +184,60 @@ bool deserializeWorld(World& world, const ComponentRegistry& registry, const Jso
 
 // --- Archivo -----------------------------------------------------------------------
 
+// Una matriz es una lista no vacia de listas de numeros (las celdas de un Tilemap).
+static bool isMatrix(const Json& j) {
+    if (!j.is_array() || j.empty()) return false;
+    for (const Json& row : j) {
+        if (!row.is_array()) return false;
+        for (const Json& v : row)
+            if (!v.is_number()) return false;
+    }
+    return true;
+}
+
+// Una fila por linea y los numeros alineados a la derecha: asi el mapa se "ve" en el
+// archivo y pintar una celda cambia una sola linea del diff.
+static void writeMatrix(std::ostream& out, const Json& m) {
+    std::size_t width = 1;
+    for (const Json& row : m)
+        for (const Json& v : row) width = std::max(width, v.dump().size());
+    out << "[";
+    for (std::size_t i = 0; i < m.size(); ++i) {
+        out << (i == 0 ? "\n" : ",\n") << "          [";
+        const Json& row = m[i];
+        for (std::size_t k = 0; k < row.size(); ++k) {
+            std::string s = row[k].dump();
+            if (k > 0) out << ",";
+            out << std::string(width - s.size(), ' ') << s;
+        }
+        out << "]";
+    }
+    out << "\n        ]";
+}
+
+// Un componente en su linea, igual que dump(): {"campo":valor,...}. La excepcion son
+// los campos matriz, que van una fila por linea (ver writeMatrix).
+static void writeComponent(std::ostream& out, const Json& c) {
+    if (!c.is_object()) {
+        out << c.dump();
+        return;
+    }
+    out << "{";
+    bool first = true;
+    for (auto it = c.begin(); it != c.end(); ++it) {
+        if (!first) out << ",";
+        first = false;
+        out << Json(it.key()).dump() << ":";
+        if (isMatrix(it.value())) writeMatrix(out, it.value());
+        else out << it.value().dump();
+    }
+    out << "}";
+}
+
 bool saveSceneFile(const std::string& path, const Json& scene) {
     // A mano y no con dump(2): dump(2) pone cada numero de un [x, y] en su propia
-    // linea. Asi queda una entidad por bloque y un componente por linea.
+    // linea. Asi queda una entidad por bloque y un componente por linea (salvo las
+    // matrices, una fila por linea).
     std::ostringstream out;
     out << "{\n";
     out << "  \"format\": " << Json(scene.value("format", SCENE_FORMAT)).dump() << ",\n";
@@ -177,7 +252,8 @@ bool saveSceneFile(const std::string& path, const Json& scene) {
         bool first = true;
         for (auto it = comps.begin(); it != comps.end(); ++it) {
             out << (first ? "\n" : ",\n");
-            out << "        " << Json(it.key()).dump() << ": " << it.value().dump();
+            out << "        " << Json(it.key()).dump() << ": ";
+            writeComponent(out, it.value());
             first = false;
         }
         out << (first ? "}}" : "\n    }}");

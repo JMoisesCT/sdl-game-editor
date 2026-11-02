@@ -185,7 +185,7 @@ void Application::renderGameDirect() {
     findCameraView(sceneWorld, appConfig.gameWidth, appConfig.gameHeight, view, &bg);
     SDL_SetRenderDrawColor(sdlRenderer, bg.r, bg.g, bg.b, 255);
     SDL_RenderClear(sdlRenderer);
-    renderSprites(sceneWorld, *assetManager, sdlRenderer, view);
+    renderWorld(sceneWorld, *assetManager, sdlRenderer, view);
 }
 
 void Application::shutdown() {

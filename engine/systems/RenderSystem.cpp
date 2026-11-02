@@ -9,6 +9,7 @@
 #include "components/CoreComponents.h"
 #include "core/World.h"
 #include "platform/AssetManager.h"
+#include "systems/Tilemaps.h"
 
 Vec2 View::worldToScreen(Vec2 w) const {
     return { (w.x - center.x) * zoom + width * 0.5f, (w.y - center.y) * zoom + height * 0.5f };
@@ -53,18 +54,64 @@ bool spriteWorldSize(World& world, AssetManager& assets, Entity e, Vec2& size) {
     return true;
 }
 
-void renderSprites(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& view) {
-    // Primero se juntan y ordenan: el pool guarda los sprites en cualquier orden.
-    struct Item { int order; Entity e; Sprite* sprite; Transform* transform; };
+// Una capa de tiles: solo las celdas que se ven. Cada celda se pasa a pantalla por sus
+// DOS esquinas y se redondea cada borde: el borde derecho de una celda cae en el mismo
+// entero que el izquierdo de la vecina, asi no quedan costuras ni solapes con zoom.
+static void drawTilemap(const Tilemap& map, const Transform& t, AssetManager& assets,
+                        SDL_Renderer* renderer, const View& view) {
+    int columns, rows;
+    if (!tilesetGrid(assets, map, columns, rows)) return;
+    SDL_Texture* tex = assets.loadTexture(map.tileset);
+
+    // Celdas visibles: las esquinas de la vista pasadas a celdas, recortadas al mapa.
+    int c0, r0, c1, r1;
+    tilemapWorldToCell(map, t, view.screenToWorld({ 0, 0 }), c0, r0);
+    tilemapWorldToCell(map, t, view.screenToWorld({ (float)view.width, (float)view.height }), c1, r1);
+    c0 = std::max(c0, 0);
+    r0 = std::max(r0, 0);
+    c1 = std::min(c1, map.cells.width - 1);
+    r1 = std::min(r1, map.cells.height - 1);
+
+    SDL_SetTextureColorMod(tex, map.tint.r, map.tint.g, map.tint.b);
+    SDL_SetTextureAlphaMod(tex, map.tint.a);
+    const int tileCount = columns * rows;
+    for (int row = r0; row <= r1; ++row) {
+        for (int col = c0; col <= c1; ++col) {
+            int tile = map.cells.get(col, row);
+            if (tile < 0 || tile >= tileCount) continue; // vacia (o fuera del tileset)
+            SDL_FRect src{ (float)(tile % columns * map.tileWidth), (float)(tile / columns * map.tileHeight),
+                           (float)map.tileWidth, (float)map.tileHeight };
+            Vec2 a = view.worldToScreen(tilemapCellOrigin(map, t, col, row));
+            Vec2 b = view.worldToScreen(tilemapCellOrigin(map, t, col + 1, row + 1));
+            float left = std::round(a.x), top = std::round(a.y);
+            SDL_FRect dst{ left, top, std::round(b.x) - left, std::round(b.y) - top };
+            SDL_RenderTexture(renderer, tex, &src, &dst);
+        }
+    }
+}
+
+void renderWorld(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& view) {
+    // Primero se juntan y ordenan: los pools guardan los componentes en cualquier
+    // orden. Sprites y capas de tiles comparten la misma escala de order.
+    struct Item { int order; Entity e; Sprite* sprite; Tilemap* tilemap; Transform* transform; };
     std::vector<Item> items;
     world.each<Sprite, Transform>([&](Entity e, Sprite& s, Transform& t) {
-        if (s.visible && !s.texture.empty()) items.push_back({ s.order, e, &s, &t });
+        if (s.visible && !s.texture.empty()) items.push_back({ s.order, e, &s, nullptr, &t });
+    });
+    world.each<Tilemap, Transform>([&](Entity e, Tilemap& m, Transform& t) {
+        if (m.visible && !m.tileset.empty()) items.push_back({ m.order, e, nullptr, &m, &t });
     });
     std::sort(items.begin(), items.end(), [](const Item& a, const Item& b) {
-        return a.order != b.order ? a.order < b.order : a.e < b.e;
+        if (a.order != b.order) return a.order < b.order;
+        if (a.e != b.e) return a.e < b.e;
+        return a.tilemap && !b.tilemap; // misma entidad: el tilemap debajo del sprite
     });
 
     for (const Item& it : items) {
+        if (it.tilemap) {
+            drawTilemap(*it.tilemap, *it.transform, assets, renderer, view);
+            continue;
+        }
         const Sprite& s = *it.sprite;
         const Transform& t = *it.transform;
         SDL_Texture* tex = assets.loadTexture(s.texture);

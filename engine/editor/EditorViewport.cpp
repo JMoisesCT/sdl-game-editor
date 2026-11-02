@@ -14,6 +14,7 @@
 #include "app/Application.h"
 #include "components/CoreComponents.h"
 #include "platform/AssetManager.h"
+#include "systems/Tilemaps.h"
 
 static const float MIN_ZOOM = 0.1f;
 static const float MAX_ZOOM = 16.0f;
@@ -87,7 +88,7 @@ void Editor::drawSceneView(Vec2 pos, Vec2 size) {
     SDL_SetRenderTarget(r, target);
     SDL_SetRenderDrawColor(r, 48, 48, 56, 255);
     SDL_RenderClear(r);
-    renderSprites(app.world(), app.assets(), r, sceneView);
+    renderWorld(app.world(), app.assets(), r, sceneView);
     drawGizmos();
     SDL_SetRenderTarget(r, nullptr);
 
@@ -96,18 +97,25 @@ void Editor::drawSceneView(Vec2 pos, Vec2 size) {
     ImVec2 p1(pos.x + size.x, pos.y + size.y);
     dl->AddImage((ImTextureID)(intptr_t)target, p0, p1);
 
-    // Datos de la vista en la esquina: zoom y punto del mundo bajo el raton.
-    char info[128];
+    // Datos de la vista en la esquina: zoom, punto del mundo bajo el raton y, pintando,
+    // la celda del tilemap.
+    char info[160];
+    int len = SDL_snprintf(info, sizeof(info), "zoom %d%%", (int)std::lround(sceneView.zoom * 100.0f));
     if (mouseInScene)
-        SDL_snprintf(info, sizeof(info), "zoom %d%%   x %.0f  y %.0f", (int)std::lround(sceneView.zoom * 100.0f),
-                     mouseWorld.x, mouseWorld.y);
-    else
-        SDL_snprintf(info, sizeof(info), "zoom %d%%", (int)std::lround(sceneView.zoom * 100.0f));
+        len += SDL_snprintf(info + len, sizeof(info) - len, "   x %.0f  y %.0f", mouseWorld.x, mouseWorld.y);
+    if (mouseInScene && hoverCell)
+        SDL_snprintf(info + len, sizeof(info) - len, "   celda %d, %d", hoverCol, hoverRow);
     ImVec2 tp(p0.x + 8.0f * uiScale, p0.y + 6.0f * uiScale);
     dl->AddText(ImVec2(tp.x + 1, tp.y + 1), IM_COL32(0, 0, 0, 200), info);
     dl->AddText(tp, IM_COL32(230, 230, 230, 255), info);
 
     const char* help = "Clic: elegir / arrastrar   Clic derecho o medio: mover vista   Rueda: zoom   F: centrar";
+    if (tileTool == TileTool::Brush)
+        help = "Clic: pintar   Alt+clic: tomar el tile   Clic derecho o medio: mover vista   V: volver a mover";
+    else if (tileTool == TileTool::Erase)
+        help = "Clic: vaciar celdas   Alt+clic: tomar el tile   Clic derecho o medio: mover vista   V: volver a mover";
+    else if (tileTool == TileTool::Fill)
+        help = "Clic: rellenar la zona   Alt+clic: tomar el tile   Clic derecho o medio: mover vista   V: volver a mover";
     ImVec2 hs = ImGui::CalcTextSize(help);
     ImVec2 hp(p0.x + 8.0f * uiScale, p1.y - hs.y - 6.0f * uiScale);
     dl->AddText(ImVec2(hp.x + 1, hp.y + 1), IM_COL32(0, 0, 0, 200), help);
@@ -143,6 +151,9 @@ void Editor::handleSceneInput(Vec2 imagePos, bool hovered) {
             panning = false;
         }
     }
+
+    // Con una herramienta de tiles, el clic izquierdo pinta en vez de elegir.
+    if (handleTilemapInput(hovered)) return;
 
     // Clic izquierdo: elegir la entidad de arriba bajo el raton (o ninguna).
     if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
@@ -184,6 +195,14 @@ bool Editor::entityBounds(Entity e, Vec2& center, Vec2& size) {
     World& world = app.world();
     const Transform* t = world.get<Transform>(e);
     if (!t) return false;
+    if (const Tilemap* map = world.get<Tilemap>(e)) {
+        // El mapa entero (su Transform es la esquina, no el centro).
+        Vec2 min, max;
+        tilemapBounds(*map, *t, min, max);
+        center = { (min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f };
+        size = { max.x - min.x, max.y - min.y };
+        return true;
+    }
     center = t->position;
     if (!spriteWorldSize(world, app.assets(), e, size)) {
         // Sin sprite: un marcador de tamano fijo en pantalla.
@@ -205,8 +224,18 @@ Entity Editor::pickAt(Vec2 p) {
             continue;
         // Gana la que se dibuja encima: mayor order y, a igualdad, la mas nueva. Las
         // que no tienen sprite (camaras, puntos) van por encima de todo, como sus marcas.
-        const Sprite* sp = world.get<Sprite>(e);
-        int order = (sp && sp->visible && !sp->texture.empty()) ? sp->order : INT_MAX;
+        // Un tilemap solo se elige por sus celdas pintadas: el aire entre las
+        // plataformas no tapa lo que hay detras.
+        int order = INT_MAX;
+        if (const Tilemap* map = world.get<Tilemap>(e)) {
+            int col, row;
+            if (!map->visible || !tilemapWorldToCell(*map, *world.get<Transform>(e), p, col, row) ||
+                map->cells.get(col, row) < 0)
+                continue;
+            order = map->order;
+        } else if (const Sprite* sp = world.get<Sprite>(e)) {
+            if (sp->visible && !sp->texture.empty()) order = sp->order;
+        }
         if (best == NullEntity || order > bestOrder || (order == bestOrder && e > best)) {
             best = e;
             bestOrder = order;
@@ -221,8 +250,9 @@ void Editor::drawGizmos() {
     const View& v = sceneView;
     SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 
-    // Grilla (solo si las lineas no quedan pegadas) y ejes del origen.
-    if (showGrid && gridSize * v.zoom >= 6.0f) {
+    // Grilla (solo si las lineas no quedan pegadas) y ejes del origen. Pintando tiles
+    // se ve la grilla del tilemap en su lugar (drawTilemapGizmos).
+    if (showGrid && tileTool == TileTool::Move && gridSize * v.zoom >= 6.0f) {
         Vec2 tl = v.screenToWorld({ 0, 0 });
         Vec2 br = v.screenToWorld({ (float)v.width, (float)v.height });
         SDL_SetRenderDrawColor(r, 255, 255, 255, 18);
@@ -252,10 +282,13 @@ void Editor::drawGizmos() {
         SDL_RenderRect(r, &rect);
     });
 
-    // Entidades sin sprite: un rombo, para poder verlas y elegirlas.
+    // Tilemaps: celdas solidas, grilla y vista previa del pincel.
+    drawTilemapGizmos();
+
+    // Entidades sin sprite ni tilemap: un rombo, para poder verlas y elegirlas.
     for (Entity e : world.entities()) {
         const Transform* t = world.get<Transform>(e);
-        if (!t) continue;
+        if (!t || world.has<Tilemap>(e)) continue;
         Vec2 size;
         if (spriteWorldSize(world, app.assets(), e, size)) continue;
         Vec2 c = v.worldToScreen(t->position);
@@ -265,7 +298,8 @@ void Editor::drawGizmos() {
         SDL_RenderLines(r, pts, 5);
     }
 
-    // Seleccion: recuadro y cruz en el centro (el centro ES la posicion).
+    // Seleccion: recuadro y cruz en la posicion del Transform (el centro de un sprite,
+    // la esquina de un tilemap).
     Vec2 c, s;
     if (entityBounds(selected, c, s)) {
         Vec2 a = v.worldToScreen({ c.x - s.x * 0.5f, c.y - s.y * 0.5f });
@@ -273,14 +307,15 @@ void Editor::drawGizmos() {
         SDL_FRect rect{ std::round(a.x) - 1, std::round(a.y) - 1, std::round(b.x - a.x) + 2, std::round(b.y - a.y) + 2 };
         SDL_SetRenderDrawColor(r, 80, 220, 255, 255);
         SDL_RenderRect(r, &rect);
-        Vec2 m = v.worldToScreen(c);
+        Vec2 m = v.worldToScreen(world.get<Transform>(selected)->position);
         SDL_RenderLine(r, m.x - 5, m.y, m.x + 5, m.y);
         SDL_RenderLine(r, m.x, m.y - 5, m.x, m.y + 5);
     }
 }
 
 void Editor::frameEntity(Entity e) {
-    if (const Transform* t = app.world().get<Transform>(e)) sceneView.center = t->position;
+    Vec2 c, s;
+    if (entityBounds(e, c, s)) sceneView.center = c;
 }
 
 void Editor::centerOnCamera() {
@@ -303,7 +338,7 @@ void Editor::drawGameView(Vec2 pos, Vec2 size) {
     SDL_SetRenderTarget(r, target);
     SDL_SetRenderDrawColor(r, bg.r, bg.g, bg.b, 255);
     SDL_RenderClear(r);
-    renderSprites(app.world(), app.assets(), r, view);
+    renderWorld(app.world(), app.assets(), r, view);
     SDL_SetRenderTarget(r, nullptr);
 
     // La resolucion del juego, escalada para que quepa entera (con bandas).

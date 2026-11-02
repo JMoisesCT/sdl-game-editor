@@ -26,6 +26,13 @@
 //     ]
 //   }
 //
+// Cada componente va en una linea. Las grillas (las celdas de un Tilemap) son la
+// excepcion: se escriben una fila por linea, con los numeros alineados:
+//       "Tilemap": {"tileset":"...", ... ,"cells":[
+//           [ -1, -1, 94, 95],
+//           [ -1, -1, -1, -1]
+//         ]}
+//
 // Al cargar, un campo que falta conserva su valor por defecto: agregar un campo nuevo
 // a un componente no rompe las escenas ya guardadas. Un componente que el registro no
 // conoce se avisa en el log y se ignora.
@@ -45,7 +52,8 @@ Json serializeWorld(const World& world, const ComponentRegistry& registry);
 bool deserializeWorld(World& world, const ComponentRegistry& registry, const Json& scene,
                       std::string& error);
 
-// Archivo <-> JSON. saveSceneFile escribe un componente por linea (diffs legibles en
-// git) y usa temporal + renombrar: un corte a mitad no deja la escena rota.
+// Archivo <-> JSON. saveSceneFile escribe un componente por linea y las grillas una
+// fila por linea (diffs legibles en git), y usa temporal + renombrar: un corte a
+// mitad no deja la escena rota.
 bool saveSceneFile(const std::string& path, const Json& scene);
 bool loadSceneFile(const std::string& path, Json& scene, std::string& error);
