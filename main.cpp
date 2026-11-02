@@ -2,6 +2,9 @@
 #include <SDL3/SDL_main.h>
 
 #include "app/Application.h"
+#include "game/PlatformerControl.h"
+#include "systems/Physics.h"
+#include "systems/PlatformerMotorSystem.h"
 
 // La aplicacion es duena del bucle: aqui solo se configura, se registran las piezas
 // del juego (componentes y sistemas) y se abre la escena.
@@ -19,8 +22,13 @@ int main(int argc, char* argv[]) {
     Application app;
     if (!app.init(config)) return 1;
 
-    // Aqui ira el registro del juego: app.registry().add<MiComponente>(...) y
-    // app.addSystem(...). Todavia no hay sistemas de juego (fase 1: nucleo + editor).
+    // Registro del juego: sus componentes (app.registry().add<MiComponente>(...)) y sus
+    // sistemas. Los sistemas corren en el orden en que se agregan, y aqui el orden es
+    // la cadena de cada frame:
+    //   teclas -> intencion -> velocidad -> posicion y choques.
+    app.addSystem(std::make_unique<PlatformerControlSystem>()); // juego: teclas -> intencion
+    app.addSystem(std::make_unique<PlatformerMotorSystem>());   // motor: intencion -> velocidad
+    app.addSystem(std::make_unique<PhysicsSystem>());           // motor: movimiento y choques
 
     app.openScene("assets/scenes/platformer.scene.json");
     return app.run();

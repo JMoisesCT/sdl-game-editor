@@ -133,6 +133,7 @@ private:
     bool showGrid = true;
     bool snapToGrid = true;
     int gridSize = 16;
+    bool showColliders = true;     // dibujar las cajas de BoxCollider
     bool wantGameTab = false;      // seleccionar la pestana "Juego" (al pulsar Jugar)
     bool wantSceneTab = false;     // ...o "Escena" (al detener)
 

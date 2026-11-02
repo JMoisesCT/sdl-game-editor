@@ -13,7 +13,9 @@
 
 #include "app/Application.h"
 #include "components/CoreComponents.h"
+#include "components/PhysicsComponents.h"
 #include "platform/AssetManager.h"
+#include "systems/Physics.h"
 #include "systems/Tilemaps.h"
 
 static const float MIN_ZOOM = 0.1f;
@@ -284,6 +286,19 @@ void Editor::drawGizmos() {
 
     // Tilemaps: celdas solidas, grilla y vista previa del pincel.
     drawTilemapGizmos();
+
+    // Cajas de colision: verde las solidas, amarillo los triggers. La de la seleccion
+    // se ve siempre.
+    world.each<BoxCollider, Transform>([&](Entity e, BoxCollider& box, Transform&) {
+        if (!showColliders && e != selected) return;
+        Vec2 min, max;
+        if (!colliderBounds(world, e, min, max)) return;
+        Vec2 a = v.worldToScreen(min), b = v.worldToScreen(max);
+        SDL_FRect rect{ std::round(a.x), std::round(a.y), std::round(b.x - a.x), std::round(b.y - a.y) };
+        if (box.isTrigger) SDL_SetRenderDrawColor(r, 255, 220, 60, 220);
+        else SDL_SetRenderDrawColor(r, 90, 255, 120, 220);
+        SDL_RenderRect(r, &rect);
+    });
 
     // Entidades sin sprite ni tilemap: un rombo, para poder verlas y elegirlas.
     for (Entity e : world.entities()) {

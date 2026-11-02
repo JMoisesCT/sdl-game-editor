@@ -4,6 +4,7 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "components/CoreComponents.h"
+#include "components/PhysicsComponents.h"
 #include "editor/Editor.h"
 #include "platform/AssetManager.h"
 #include "platform/Input.h"
@@ -65,6 +66,7 @@ bool Application::init(const AppConfig& config) {
 
     assetManager = std::make_unique<AssetManager>(sdlRenderer);
     registerCoreComponents(components);
+    registerPhysicsComponents(components);
 
     if (config.editor) {
         editor = std::make_unique<Editor>(*this);

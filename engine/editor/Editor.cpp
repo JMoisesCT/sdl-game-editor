@@ -214,6 +214,9 @@ void Editor::drawToolbar() {
         if (gridSize < 1) gridSize = 1;
         if (gridSize > 512) gridSize = 512;
     }
+    ImGui::SameLine();
+    ImGui::Checkbox("Colisiones", &showColliders);
+    ImGui::SetItemTooltip("Dibuja las cajas de BoxCollider en la vista de escena (verde: solida, amarilla: trigger)");
 
     ImGui::SameLine();
     ImGui::TextDisabled("|");

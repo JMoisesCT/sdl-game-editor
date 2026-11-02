@@ -5,9 +5,9 @@ propósito es **educativo**: que estudiantes que ya conocen SDL3 básico armen j
 editando escenas en un editor propio, sin pelear con la API cruda de SDL.
 
 > **Estado:** en desarrollo, por fases. Ya están el núcleo (ECS + reflexión + escenas en
-> JSON), el editor y los tilemaps (se pintan con paleta en el propio editor). Faltan la física y
-> los sistemas de juego: hoy una escena se puede editar, guardar y "jugar", pero todavía no
-> hay nada que se mueva solo.
+> JSON), el editor, los tilemaps (se pintan con paleta en el propio editor) y la física con
+> el motor de plataformas: en la escena de ejemplo el jugador corre y salta sobre el mapa.
+> Faltan los prefabs, las reglas de juego (vida, daño, recolectables) y la animación.
 
 ## Cómo está pensado
 
@@ -77,6 +77,30 @@ Los mapas se arman **solo en este editor**: no hay archivo de mapa aparte ni edi
 Las celdas se guardan dentro del `.scene.json`, una fila por línea (`-1` = vacía), así que
 el mapa se lee en el archivo y un diff muestra solo las filas que cambiaron.
 
+### Física y motor de plataformas
+
+- **`RigidBody2D`**: la entidad se mueve sola con su `velocity` y su `gravity` (px/s²; 0 para
+  juegos cenitales o de naves). Sin él, una entidad es estática.
+- **`BoxCollider`**: caja de colisión centrada en el `Transform`. `size` y `offset` van en
+  píxeles de la **imagen**, y se multiplican por la escala del `Transform` (como el sprite).
+  Sin `RigidBody2D` es un obstáculo fijo; con `isTrigger` no frena ni es frenado.
+- Los cuerpos chocan con las celdas sólidas de los tilemaps y entre sí. Contra los tiles se
+  resuelve **eje por eje** (así no se engancha en las costuras del suelo) y una sonda de
+  2 px bajo los pies decide si está apoyado.
+- **`PlatformerMotor`**: correr y saltar con buena sensación: aceleración y frenado, altura
+  del salto **en píxeles**, salto corto al soltar el botón, *coyote time*, *jump buffer* y
+  saltos en el aire (`maxAirJumps = 1` = doble salto). Todas sus perillas están en el
+  Inspector: tocarlas mientras se juega es el mejor ejercicio para entender el *game feel*.
+- El motor no lee el teclado: lo hace un sistema del juego (`game/PlatformerControl`) para
+  las entidades con tag `Player`. Flechas o `A`/`D` para moverse; `Espacio`, `W` o flecha
+  arriba para saltar.
+- La casilla **Colisiones** de la barra dibuja las cajas en la vista de escena (verde:
+  sólida; amarillo: trigger).
+
+Los sistemas corren en el orden en que `main.cpp` los agrega, y ese orden es la cadena de
+cada frame: control (teclas → intención) → `PlatformerMotorSystem` (intención → velocidad)
+→ `PhysicsSystem` (velocidad → posición, choques y apoyo).
+
 ### Escenas de ejemplo
 
 **Abrir...** (barra superior) lista las escenas de `assets/`:
@@ -106,14 +130,17 @@ Con el argumento `--play`, el ejecutable abre la escena y la juega directamente,
 ```
 engine/
   core/        Entity, World (ECS), Reflection, SceneSerializer
-  components/  componentes del motor (EntityInfo, Transform, Sprite, Tilemap, Camera)
-  systems/     interfaz System, RenderSystem y consultas de Tilemaps
+  components/  componentes del motor (EntityInfo, Transform, Sprite, Tilemap, Camera,
+               RigidBody2D, BoxCollider, PlatformerMotor)
+  systems/     interfaz System, RenderSystem, PhysicsSystem, PlatformerMotorSystem y
+               consultas de Tilemaps
   platform/    Input, AssetManager, Screenshot
   app/         Application: ventana, bucle, modos Edit / Play / Pausa
   editor/      el editor (Dear ImGui)
   third_party/ nlohmann/json y Dear ImGui (vendorizadas)
+game/          código del juego de ejemplo (PlatformerControl: teclas -> intención)
 assets/        sprites, tilesets y escenas (assets/scenes/*.scene.json)
-main.cpp
+main.cpp       registra los sistemas en orden y abre la escena
 ```
 
 ## Cómo compilar y ejecutar

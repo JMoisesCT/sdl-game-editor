@@ -31,12 +31,18 @@
     <Filter Include="engine\third_party\nlohmann">
       <UniqueIdentifier>{06108d78-4ecd-4f71-8ee2-8bfbb3a5b30b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="game">
+      <UniqueIdentifier>{3b7e2c1a-5d4f-4e8b-9a61-7c2d8e0f4b19}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="engine\app\Application.cpp">
       <Filter>engine\app</Filter>
     </ClCompile>
     <ClCompile Include="engine\components\CoreComponents.cpp">
+      <Filter>engine\components</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\components\PhysicsComponents.cpp">
       <Filter>engine\components</Filter>
     </ClCompile>
     <ClCompile Include="engine\core\Reflection.cpp">
@@ -69,6 +75,12 @@
     <ClCompile Include="engine\platform\Screenshot.cpp">
       <Filter>engine\platform</Filter>
     </ClCompile>
+    <ClCompile Include="engine\systems\Physics.cpp">
+      <Filter>engine\systems</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\systems\PlatformerMotorSystem.cpp">
+      <Filter>engine\systems</Filter>
+    </ClCompile>
     <ClCompile Include="engine\systems\RenderSystem.cpp">
       <Filter>engine\systems</Filter>
     </ClCompile>
@@ -96,11 +108,17 @@
     <ClCompile Include="engine\third_party\imgui\imgui_stdlib.cpp">
       <Filter>engine\third_party\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="game\PlatformerControl.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClInclude Include="engine\app\Application.h">
       <Filter>engine\app</Filter>
     </ClInclude>
     <ClInclude Include="engine\components\CoreComponents.h">
+      <Filter>engine\components</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\components\PhysicsComponents.h">
       <Filter>engine\components</Filter>
     </ClInclude>
     <ClInclude Include="engine\core\Entity.h">
@@ -130,6 +148,12 @@
     <ClInclude Include="engine\platform\Screenshot.h">
       <Filter>engine\platform</Filter>
     </ClInclude>
+    <ClInclude Include="engine\systems\Physics.h">
+      <Filter>engine\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\systems\PlatformerMotorSystem.h">
+      <Filter>engine\systems</Filter>
+    </ClInclude>
     <ClInclude Include="engine\systems\RenderSystem.h">
       <Filter>engine\systems</Filter>
     </ClInclude>
@@ -138,6 +162,9 @@
     </ClInclude>
     <ClInclude Include="engine\systems\System.h">
       <Filter>engine\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="game\PlatformerControl.h">
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="engine\third_party\imgui\imconfig.h">
       <Filter>engine\third_party\imgui</Filter>
