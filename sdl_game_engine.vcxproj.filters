@@ -1,0 +1,164 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="engine">
+      <UniqueIdentifier>{c5a89349-8b5d-4b30-a918-81a2b311c3f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\app">
+      <UniqueIdentifier>{c1ed3127-1ccd-4ee3-abf7-e474e914167d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\components">
+      <UniqueIdentifier>{11c5c653-b947-4d04-a141-acb16c37cd5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\core">
+      <UniqueIdentifier>{611ddcec-ee0b-486c-bda3-ea739892b4ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\editor">
+      <UniqueIdentifier>{2c04c530-63dc-4756-a4fe-42c49c3f427e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\platform">
+      <UniqueIdentifier>{93ed90b9-e5b2-4ffb-834c-c3479d34ed8a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\systems">
+      <UniqueIdentifier>{67939850-e810-4246-9a74-21a95bf4991d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\third_party">
+      <UniqueIdentifier>{f5a13115-3dd1-4238-84ad-8cc20a344f69}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\third_party\imgui">
+      <UniqueIdentifier>{106e86ba-3c16-48ea-8c0c-05f962e1df39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\third_party\nlohmann">
+      <UniqueIdentifier>{06108d78-4ecd-4f71-8ee2-8bfbb3a5b30b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="engine\app\Application.cpp">
+      <Filter>engine\app</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\components\CoreComponents.cpp">
+      <Filter>engine\components</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\core\Reflection.cpp">
+      <Filter>engine\core</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\core\SceneSerializer.cpp">
+      <Filter>engine\core</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\core\World.cpp">
+      <Filter>engine\core</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\editor\Editor.cpp">
+      <Filter>engine\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\editor\EditorPanels.cpp">
+      <Filter>engine\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\editor\EditorViewport.cpp">
+      <Filter>engine\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\platform\AssetManager.cpp">
+      <Filter>engine\platform</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\platform\Input.cpp">
+      <Filter>engine\platform</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\platform\Screenshot.cpp">
+      <Filter>engine\platform</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\systems\RenderSystem.cpp">
+      <Filter>engine\systems</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\third_party\imgui\imgui.cpp">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\third_party\imgui\imgui_draw.cpp">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\third_party\imgui\imgui_tables.cpp">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\third_party\imgui\imgui_widgets.cpp">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\third_party\imgui\imgui_impl_sdl3.cpp">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\third_party\imgui\imgui_impl_sdlrenderer3.cpp">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\third_party\imgui\imgui_stdlib.cpp">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp" />
+    <ClInclude Include="engine\app\Application.h">
+      <Filter>engine\app</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\components\CoreComponents.h">
+      <Filter>engine\components</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\core\Entity.h">
+      <Filter>engine\core</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\core\Math.h">
+      <Filter>engine\core</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\core\Reflection.h">
+      <Filter>engine\core</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\core\SceneSerializer.h">
+      <Filter>engine\core</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\core\World.h">
+      <Filter>engine\core</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\editor\Editor.h">
+      <Filter>engine\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\platform\AssetManager.h">
+      <Filter>engine\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\platform\Input.h">
+      <Filter>engine\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\platform\Screenshot.h">
+      <Filter>engine\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\systems\RenderSystem.h">
+      <Filter>engine\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\systems\System.h">
+      <Filter>engine\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\third_party\imgui\imconfig.h">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\third_party\imgui\imgui.h">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\third_party\imgui\imgui_internal.h">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\third_party\imgui\imgui_impl_sdl3.h">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\third_party\imgui\imgui_impl_sdlrenderer3.h">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\third_party\imgui\imgui_stdlib.h">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\third_party\imgui\imstb_rectpack.h">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\third_party\imgui\imstb_textedit.h">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\third_party\imgui\imstb_truetype.h">
+      <Filter>engine\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\third_party\nlohmann\json.hpp">
+      <Filter>engine\third_party\nlohmann</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
