@@ -18,6 +18,7 @@
 #include "core/Prefabs.h"
 #include "core/Reflection.h"
 #include "platform/AssetManager.h"
+#include "platform/Audio.h"
 
 // Instancias de prefab en la Jerarquia (el mismo color que en EditorPrefabs.cpp) y
 // campos en que una instancia difiere de su prefab.
@@ -250,7 +251,8 @@ bool Editor::drawField(const FieldInfo& f, void* value) {
         std::string& s = *static_cast<std::string*>(value);
         std::string v = s;
         bool edited = false;
-        if (f.hint == FieldHint::TexturePath) edited = drawTexturePicker(label, s, v);
+        if (f.hint == FieldHint::TexturePath) edited = drawFilePicker(label, s, v, false);
+        else if (f.hint == FieldHint::AudioPath) edited = drawFilePicker(label, s, v, true);
         else if (f.hint == FieldHint::Choice && f.choices) edited = drawChoice(label, f.choices(app.world(), selected), s, v);
         else edited = ImGui::InputText(label, &v);
         if (edited && v != s) { beginChange(); s = v; changed = true; }
@@ -418,41 +420,58 @@ bool Editor::drawChoice(const char* label, const std::vector<std::string>& optio
     return changed;
 }
 
-// --- Selector de texturas --------------------------------------------------------------
+// --- Selector de archivos (imagenes y sonidos) -----------------------------------------
 
 static std::string toLower(std::string s) {
     for (char& c : s) c = (char)std::tolower((unsigned char)c);
     return s;
 }
 
-void Editor::scanTextureFiles() {
+static bool isAudioFile(const std::string& ext) {
+    return ext == ".wav" || ext == ".ogg" || ext == ".opus" || ext == ".mp3" || ext == ".flac";
+}
+
+void Editor::scanAssetFiles() {
     namespace fs = std::filesystem;
     textureFiles.clear();
+    audioFiles.clear();
     std::error_code ec;
     for (fs::recursive_directory_iterator it("assets", ec), end; !ec && it != end; it.increment(ec)) {
         if (!it->is_regular_file(ec)) continue;
-        if (toLower(it->path().extension().string()) != ".png") continue;
-        textureFiles.push_back(it->path().generic_string()); // con "/" tambien en Windows
+        std::string ext = toLower(it->path().extension().string());
+        std::string path = it->path().generic_string(); // con "/" tambien en Windows
+        if (ext == ".png") textureFiles.push_back(path);
+        else if (isAudioFile(ext)) audioFiles.push_back(path);
     }
     std::sort(textureFiles.begin(), textureFiles.end());
-    textureFilesScanned = true;
+    std::sort(audioFiles.begin(), audioFiles.end());
+    assetFilesScanned = true;
     app.assets().forgetFailures(); // una imagen nueva puede ser la que faltaba
 }
 
-bool Editor::drawTexturePicker(const char* label, const std::string& current, std::string& out) {
+bool Editor::drawFilePicker(const char* label, const std::string& current, std::string& out, bool audio) {
     bool changed = false;
     ImGui::PushID(label);
 
+    // [ruta][...] (y en los sonidos [>], para escucharlo) etiqueta
     const ImGuiStyle& style = ImGui::GetStyle();
     float buttonW = ImGui::CalcTextSize("...").x + style.FramePadding.x * 2.0f;
-    ImGui::SetNextItemWidth(ImGui::CalcItemWidth() - buttonW - style.ItemInnerSpacing.x);
+    float playW = audio ? ImGui::GetFrameHeight() + style.ItemInnerSpacing.x : 0.0f;
+    ImGui::SetNextItemWidth(ImGui::CalcItemWidth() - buttonW - playW - style.ItemInnerSpacing.x);
     out = current;
     if (ImGui::InputText("##path", &out)) changed = true;
     if (!current.empty()) ImGui::SetItemTooltip("%s", current.c_str());
     ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
     if (ImGui::Button("...")) {
-        if (!textureFilesScanned) scanTextureFiles();
+        if (!assetFilesScanned) scanAssetFiles();
         ImGui::OpenPopup("##pick");
+    }
+    if (audio) {
+        ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+        ImGui::BeginDisabled(current.empty());
+        if (ImGui::Button(">", ImVec2(ImGui::GetFrameHeight(), 0))) app.audio().playSound(current);
+        ImGui::EndDisabled();
+        ImGui::SetItemTooltip("Escuchar");
     }
     ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
     ImGui::TextUnformatted(label);
@@ -460,21 +479,30 @@ bool Editor::drawTexturePicker(const char* label, const std::string& current, st
     if (ImGui::BeginPopup("##pick")) {
         ImGui::SetNextItemWidth(320.0f * uiScale);
         if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
-        ImGui::InputTextWithHint("##filter", "filtrar...", &textureFilter);
+        ImGui::InputTextWithHint("##filter", "filtrar...", &fileFilter);
         ImGui::SameLine();
-        if (ImGui::Button("Volver a buscar")) scanTextureFiles();
+        if (ImGui::Button("Volver a buscar")) scanAssetFiles();
 
-        std::string filter = toLower(textureFilter);
+        std::string filter = toLower(fileFilter);
+        const std::vector<std::string>& files = audio ? audioFiles : textureFiles;
         if (ImGui::BeginChild("##files", ImVec2(560.0f * uiScale, 320.0f * uiScale))) {
-            for (const std::string& file : textureFiles) {
+            if (files.empty()) ImGui::TextDisabled(audio ? "No hay sonidos en assets/" : "No hay imagenes en assets/");
+            int row = 0;
+            for (const std::string& file : files) {
                 if (!filter.empty() && toLower(file).find(filter) == std::string::npos) continue;
+                ImGui::PushID(row++);
+                if (audio) {
+                    // Escuchar antes de elegir.
+                    if (ImGui::SmallButton(">")) app.audio().playSound(file);
+                    ImGui::SameLine();
+                }
                 if (ImGui::Selectable(file.c_str(), file == current)) {
                     out = file;
                     changed = true;
                     ImGui::CloseCurrentPopup();
                 }
-                // Vista previa al pasar el raton.
-                if (ImGui::IsItemHovered()) {
+                // Imagenes: vista previa al pasar el raton.
+                if (!audio && ImGui::IsItemHovered()) {
                     if (SDL_Texture* tex = app.assets().loadTexture(file)) {
                         float tw = 0, th = 0;
                         SDL_GetTextureSize(tex, &tw, &th);
@@ -486,6 +514,7 @@ bool Editor::drawTexturePicker(const char* label, const std::string& current, st
                         ImGui::EndTooltip();
                     }
                 }
+                ImGui::PopID();
             }
         }
         ImGui::EndChild();

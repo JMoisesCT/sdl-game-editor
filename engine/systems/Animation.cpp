@@ -6,69 +6,15 @@
 #include <set>
 
 #include "components/CoreComponents.h"
-#include "components/PhysicsComponents.h"
 #include "components/PresentationComponents.h"
-#include "components/RuleComponents.h"
 #include "core/World.h"
 #include "platform/AssetManager.h"
-#include "systems/Rules.h"
-
-// --- Condiciones -------------------------------------------------------------------------
-
-const AnimationCondition* AnimationConditions::find(const std::string& name) const {
-    auto it = conditions.find(name);
-    return it == conditions.end() ? nullptr : &it->second;
-}
-
-std::vector<std::string> AnimationConditions::names() const {
-    std::vector<std::string> out;
-    for (const auto& [name, condition] : conditions) out.push_back(name);
-    return out; // std::map ya los tiene ordenados
-}
-
-namespace {
-    // En el aire: tiene cuerpo con gravedad y no esta apoyado. Un cuerpo sin gravedad
-    // (top-down, una nave) nunca esta "en el aire". El apoyo del PlatformerMotor, si
-    // hay, es el suavizado por el coyote time: no parpadea en los bordes.
-    bool isAirborne(World& w, Entity e) {
-        const RigidBody2D* rb = w.get<RigidBody2D>(e);
-        if (!rb || rb->gravity == 0.0f) return false;
-        if (const PlatformerMotor* m = w.get<PlatformerMotor>(e)) return !m->grounded;
-        return !rb->grounded;
-    }
-
-    float verticalSpeed(World& w, Entity e) {
-        const RigidBody2D* rb = w.get<RigidBody2D>(e);
-        return rb ? rb->velocity.y : 0.0f;
-    }
-}
-
-void registerEngineAnimationConditions(AnimationConditions& c) {
-    c.add("grounded", [](World& w, Entity e) { return !isAirborne(w, e); });
-    c.add("airborne", [](World& w, Entity e) { return isAirborne(w, e); });
-    // y crece hacia abajo: subir es velocidad negativa.
-    c.add("rising", [](World& w, Entity e) { return isAirborne(w, e) && verticalSpeed(w, e) < 0.0f; });
-    c.add("falling", [](World& w, Entity e) { return isAirborne(w, e) && verticalSpeed(w, e) > 0.0f; });
-    c.add("moving", [](World& w, Entity e) {
-        const RigidBody2D* rb = w.get<RigidBody2D>(e);
-        return rb && std::hypot(rb->velocity.x, rb->velocity.y) > 1.0f;
-    });
-    c.add("dead", [](World& w, Entity e) { return isDead(w, e); });
-    c.add("hurt", [](World& w, Entity e) {
-        const Health* h = w.get<Health>(e);
-        return h && h->hp > 0 && h->invulnerable > 0.0f;
-    });
-    c.add("collected", [](World& w, Entity e) {
-        const Collectible* c = w.get<Collectible>(e);
-        return c && c->collected;
-    });
-    c.add("activated", [](World& w, Entity e) {
-        const Checkpoint* cp = w.get<Checkpoint>(e);
-        return cp && cp->activated;
-    });
-}
 
 // --- Reproduccion ------------------------------------------------------------------------
+
+// Seg que se le perdonan a un cuadro para darlo por cumplido (ver update). Mayor que el
+// temblor tipico del reloj con VSync (~1 ms) y mucho menor que un frame.
+static const float FRAME_TIME_MARGIN = 0.002f;
 
 namespace {
     const AnimationClip* findClip(const SpriteAnimator& a, const std::string& name) {
@@ -140,11 +86,16 @@ void SpriteAnimatorSystem::update(World& world, float dt) {
         const int count = clip->frames.empty() ? columns * rows : (int)clip->frames.size();
 
         // Avanza tantos cuadros como quepan en el tiempo acumulado (a pocos fps, o con
-        // un frame lento, pueden ser varios).
+        // un frame lento, pueden ser varios). Con MARGEN: a 20 fps un cuadro dura 50 ms,
+        // justo 3 frames de 60 Hz, pero el reloj real tiembla y 3 frames pueden sumar
+        // 49,8 ms. Sin margen ese cuadro esperaria un 4.o frame y el siguiente duraria 2:
+        // la animacion iria a tirones (3, 4, 2, 3...). Lo que se adelanta se descuenta
+        // del cuadro siguiente (timer queda negativo), asi la velocidad media no cambia.
         if (!a.finished && clip->fps > 0.0f && a.speed > 0.0f) {
             const float frameTime = 1.0f / clip->fps;
+            const float margin = std::fmin(FRAME_TIME_MARGIN, frameTime * 0.25f);
             a.timer += dt * a.speed;
-            while (a.timer >= frameTime) {
+            while (a.timer >= frameTime - margin) {
                 a.timer -= frameTime;
                 if (a.frame + 1 < count) {
                     ++a.frame;
@@ -186,7 +137,7 @@ void AnimatorStateMachineSystem::update(World& world, float) {
     world.each<AnimatorStateMachine>([&](Entity e, AnimatorStateMachine& fsm) {
         const std::string* chosen = &fsm.defaultClip;
         for (const AnimationRule& rule : fsm.rules) {
-            const AnimationCondition* condition = conditions.find(rule.condition);
+            const Condition* condition = conditions.find(rule.condition);
             if (!condition) {
                 if (warned.insert(rule.condition).second)
                     SDL_Log("AnimatorStateMachine: no existe la condicion '%s' (la regla no se cumple nunca)",

@@ -13,6 +13,9 @@
     "AnimatorStateMachine": {"defaultClip":"idle","rules":[
       {"clip":"pressed","condition":"goalReached"}
     ]},
+    "SoundEffects": {"sounds":[
+      {"condition":"goalReached","sound":"assets/audio/sfx/win.wav","volume":0.8}
+    ]},
     "LevelGoal": {"targetTag":"Player"}
   }
 }

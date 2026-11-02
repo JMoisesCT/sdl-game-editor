@@ -6,7 +6,7 @@
 #include "core/Math.h"
 
 class ComponentRegistry;
-class AnimationConditions;
+class ConditionRegistry;
 
 // Componentes de PRESENTACION: animacion, camara que sigue, fondos con parallax y
 // texto. Como todos, son SOLO datos; los mueven los sistemas de systems/Animation.h y
@@ -60,7 +60,7 @@ struct SpriteAnimator {
 // Una regla del AnimatorStateMachine: si la condicion se cumple, suena ese clip.
 struct AnimationRule {
     std::string clip;
-    std::string condition;    // nombre de una condicion registrada (AnimationConditions)
+    std::string condition;    // nombre de una condicion registrada (ConditionRegistry)
 };
 
 // Elige que clip suena a partir de REGLAS en vez de una cascada de if. Cada frame se
@@ -73,7 +73,7 @@ struct AnimationRule {
 //     (si no, idle)
 // Las condiciones son funciones de C++ con nombre (la logica sigue en C++): el motor
 // trae las basicas (grounded, rising, dead...) y el juego suma las suyas. Ver
-// systems/Animation.h.
+// systems/Conditions.h.
 //
 // Solo cambia de clip cuando cambia la regla ganadora: asi un clip puede encadenar con
 // su 'next' (bandera que sale -> bandera ondeando) sin que la maquina lo reinicie.
@@ -160,4 +160,4 @@ struct Text {
 // Declara los componentes de arriba a la reflexion. La llama Application al arrancar,
 // despues de registerRuleComponents. 'conditions' da la lista de condiciones que
 // ofrece el Inspector en las reglas del AnimatorStateMachine.
-void registerPresentationComponents(ComponentRegistry& registry, const AnimationConditions& conditions);
+void registerPresentationComponents(ComponentRegistry& registry, const ConditionRegistry& conditions);

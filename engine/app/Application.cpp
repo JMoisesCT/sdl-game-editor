@@ -3,12 +3,17 @@
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 
+#include <cmath>
+
+#include "components/AudioComponents.h"
 #include "components/CoreComponents.h"
 #include "components/PhysicsComponents.h"
 #include "components/PresentationComponents.h"
 #include "components/RuleComponents.h"
 #include "editor/Editor.h"
 #include "platform/AssetManager.h"
+#include "platform/Audio.h"
+#include "platform/GameCanvas.h"
 #include "platform/Input.h"
 #include "platform/Screenshot.h"
 #include "systems/RenderSystem.h"
@@ -60,18 +65,21 @@ bool Application::init(const AppConfig& config) {
     // VSync: el editor no necesita 2000 fps quemando la CPU.
     SDL_SetRenderVSync(sdlRenderer, 1);
 
-    // Sin editor, el juego se dibuja a su resolucion y SDL lo escala a la ventana
-    // con bandas negras si la proporcion no coincide.
-    if (!config.editor)
-        SDL_SetRenderLogicalPresentation(sdlRenderer, config.gameWidth, config.gameHeight,
-                                         SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    // Sin editor, el juego se dibuja a su resolucion en un lienzo que se escala a la
+    // ventana (con bandas negras si la proporcion no coincide; ver GameCanvas).
+    gameCanvas = std::make_unique<GameCanvas>(sdlRenderer);
+
+    // Sin dispositivo de audio se sigue igual, mudo (el motivo va al log).
+    audioDevice = std::make_unique<Audio>();
+    audioDevice->init();
 
     assetManager = std::make_unique<AssetManager>(sdlRenderer);
     registerCoreComponents(components);
     registerPhysicsComponents(components);
     registerRuleComponents(components);
-    registerEngineAnimationConditions(animConditions);
-    registerPresentationComponents(components, animConditions);
+    registerEngineConditions(conditionRegistry);
+    registerPresentationComponents(components, conditionRegistry);
+    registerAudioComponents(components, conditionRegistry);
 
     if (config.editor) {
         editor = std::make_unique<Editor>(*this);
@@ -136,11 +144,15 @@ void Application::stop() {
         SDL_Log("Stop: no se pudo restaurar la escena: %s", error.c_str());
     playSnapshot = Json();
     playMode = PlayMode::Edit;
+    // Lo que sonaba era del juego: al detener se corta (y se sale de una pausa).
+    audioDevice->stopAll();
+    audioDevice->setPaused(false);
 }
 
 void Application::setPaused(bool paused) {
     if (playMode == PlayMode::Edit) return;
     playMode = paused ? PlayMode::Paused : PlayMode::Play;
+    audioDevice->setPaused(paused);
 }
 
 int Application::run() {
@@ -195,6 +207,8 @@ int Application::run() {
 }
 
 void Application::renderGameDirect() {
+    // El juego, a su resolucion, en el lienzo.
+    if (!gameCanvas->begin(appConfig.gameWidth, appConfig.gameHeight)) return;
     View view;
     Color bg;
     findCameraView(sceneWorld, appConfig.gameWidth, appConfig.gameHeight, view, &bg);
@@ -202,6 +216,18 @@ void Application::renderGameDirect() {
     SDL_RenderClear(sdlRenderer);
     renderWorld(sceneWorld, *assetManager, sdlRenderer, view);
     renderScreenTexts(sceneWorld, *assetManager, sdlRenderer, screenView(appConfig.gameWidth, appConfig.gameHeight));
+
+    // El lienzo, lo mas grande que quepa en la ventana y centrado (con bandas negras).
+    int winW = 0, winH = 0;
+    SDL_GetRenderOutputSize(sdlRenderer, &winW, &winH);
+    float k = std::fmin((float)winW / appConfig.gameWidth, (float)winH / appConfig.gameHeight);
+    float w = std::round(appConfig.gameWidth * k), h = std::round(appConfig.gameHeight * k);
+    SDL_Texture* image = gameCanvas->scaledFor(w, h); // deja el destino en la ventana
+    SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, 255);
+    SDL_RenderClear(sdlRenderer);
+    if (!image || w < 1.0f || h < 1.0f) return;
+    SDL_FRect dst{ std::round((winW - w) * 0.5f), std::round((winH - h) * 0.5f), w, h };
+    SDL_RenderTexture(sdlRenderer, image, nullptr, &dst);
 }
 
 void Application::shutdown() {
@@ -213,6 +239,8 @@ void Application::shutdown() {
     }
     sceneWorld.clear(true);
     assetManager.reset();
+    gameCanvas.reset();
+    if (audioDevice) { audioDevice->shutdown(); audioDevice.reset(); }
     if (sdlRenderer) { SDL_DestroyRenderer(sdlRenderer); sdlRenderer = nullptr; }
     if (sdlWindow) { SDL_DestroyWindow(sdlWindow); sdlWindow = nullptr; }
     if (ttfReady) { TTF_Quit(); ttfReady = false; }

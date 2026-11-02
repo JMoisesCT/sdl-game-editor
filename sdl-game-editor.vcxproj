@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="engine\app\Application.cpp" />
+    <ClCompile Include="engine\components\AudioComponents.cpp" />
     <ClCompile Include="engine\components\CoreComponents.cpp" />
     <ClCompile Include="engine\components\PhysicsComponents.cpp" />
     <ClCompile Include="engine\components\PresentationComponents.cpp" />
@@ -34,9 +35,13 @@
     <ClCompile Include="engine\editor\EditorTilemap.cpp" />
     <ClCompile Include="engine\editor\EditorViewport.cpp" />
     <ClCompile Include="engine\platform\AssetManager.cpp" />
+    <ClCompile Include="engine\platform\Audio.cpp" />
+    <ClCompile Include="engine\platform\GameCanvas.cpp" />
     <ClCompile Include="engine\platform\Input.cpp" />
     <ClCompile Include="engine\platform\Screenshot.cpp" />
     <ClCompile Include="engine\systems\Animation.cpp" />
+    <ClCompile Include="engine\systems\AudioSystems.cpp" />
+    <ClCompile Include="engine\systems\Conditions.cpp" />
     <ClCompile Include="engine\systems\Physics.cpp" />
     <ClCompile Include="engine\systems\PlatformerMotorSystem.cpp" />
     <ClCompile Include="engine\systems\Presentation.cpp" />
@@ -56,6 +61,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine\app\Application.h" />
+    <ClInclude Include="engine\components\AudioComponents.h" />
     <ClInclude Include="engine\components\CoreComponents.h" />
     <ClInclude Include="engine\components\PhysicsComponents.h" />
     <ClInclude Include="engine\components\PresentationComponents.h" />
@@ -68,9 +74,13 @@
     <ClInclude Include="engine\core\World.h" />
     <ClInclude Include="engine\editor\Editor.h" />
     <ClInclude Include="engine\platform\AssetManager.h" />
+    <ClInclude Include="engine\platform\Audio.h" />
+    <ClInclude Include="engine\platform\GameCanvas.h" />
     <ClInclude Include="engine\platform\Input.h" />
     <ClInclude Include="engine\platform\Screenshot.h" />
     <ClInclude Include="engine\systems\Animation.h" />
+    <ClInclude Include="engine\systems\AudioSystems.h" />
+    <ClInclude Include="engine\systems\Conditions.h" />
     <ClInclude Include="engine\systems\Physics.h" />
     <ClInclude Include="engine\systems\PlatformerMotorSystem.h" />
     <ClInclude Include="engine\systems\Presentation.h" />

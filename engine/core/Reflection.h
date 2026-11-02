@@ -45,6 +45,7 @@ enum class FieldType { Bool, Int, Float, String, Vec2, Color, IntRect, IntList, 
 enum class FieldHint {
     None,
     TexturePath, // String: ruta a una imagen; el Inspector ofrece elegirla de assets/
+    AudioPath,   // String: ruta a un sonido (wav, ogg, opus); se elige de assets/ y se escucha
     Choice,      // String: el Inspector ofrece una lista de valores (FieldInfo::choices)
 };
 
@@ -162,6 +163,7 @@ public:
     FieldsBuilder& speed(float s) { last().speed = s; return *this; }
     FieldsBuilder& tooltip(const char* text) { last().tooltip = text; return *this; }
     FieldsBuilder& texture() { last().hint = FieldHint::TexturePath; return *this; }
+    FieldsBuilder& audio() { last().hint = FieldHint::AudioPath; return *this; }
     // Un String con valores para elegir (el Inspector muestra una lista desplegable).
     FieldsBuilder& choices(ChoiceProvider provider) {
         last().hint = FieldHint::Choice;

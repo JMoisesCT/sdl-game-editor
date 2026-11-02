@@ -93,6 +93,11 @@
         "EntityInfo": {"name":"HUD Meta","tag":"HudBanner"},
         "Transform": {"position":[640.0,140.0],"rotation":0.0,"scale":[1.0,1.0]},
         "Text": {"text":"NIVEL   COMPLETADO","font":"assets/ninja_adventure/Ui/Font/NormalFont.ttf","size":48,"color":[255,232,96,255],"align":"center","screenSpace":true,"visible":true,"order":100}
+    }},
+    { "id": 17, "components": {
+        "EntityInfo": {"name":"Musica","tag":""},
+        "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[1.0,1.0]},
+        "Music": {"music":"assets/audio/music/platformer_theme.wav","volume":0.35,"loop":true}
     }}
   ]
 }

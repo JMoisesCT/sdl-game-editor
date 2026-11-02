@@ -13,6 +13,9 @@
     ]},
     "AnimatorStateMachine": {"defaultClip":"idle","rules":[
       {"clip":"collected","condition":"collected"}
+    ]},
+    "SoundEffects": {"sounds":[
+      {"condition":"collected","sound":"assets/audio/sfx/collect.wav","volume":0.7}
     ]}
   }
 }

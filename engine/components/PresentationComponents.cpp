@@ -1,7 +1,7 @@
 #include "components/PresentationComponents.h"
 
 #include "core/Reflection.h"
-#include "systems/Animation.h"
+#include "systems/Conditions.h"
 
 // Los nombres de los clips del SpriteAnimator de esa entidad (para elegirlos en el
 // Inspector). Con 'none', primero "" = ninguno.
@@ -13,7 +13,7 @@ static std::vector<std::string> clipNames(const World& world, Entity e, bool non
     return names;
 }
 
-void registerPresentationComponents(ComponentRegistry& registry, const AnimationConditions& conditions) {
+void registerPresentationComponents(ComponentRegistry& registry, const ConditionRegistry& conditions) {
     // Las listas van al final: en el archivo ocupan una linea por elemento.
     registry.add<SpriteAnimator>("SpriteAnimator")
         .field("startClip", &SpriteAnimator::startClip)
@@ -36,7 +36,7 @@ void registerPresentationComponents(ComponentRegistry& registry, const Animation
                 .field("destroyOnEnd", &AnimationClip::destroyOnEnd).tooltip("Sin loop: al terminar destruye la entidad");
         });
 
-    const AnimationConditions* conds = &conditions; // vive en Application, como el registro
+    const ConditionRegistry* conds = &conditions; // vive en Application, como el registro
     registry.add<AnimatorStateMachine>("AnimatorStateMachine")
         .field("defaultClip", &AnimatorStateMachine::defaultClip)
             .choices([](const World& w, Entity e) { return clipNames(w, e, false); })

@@ -14,6 +14,9 @@
     ]},
     "AnimatorStateMachine": {"defaultClip":"noFlag","rules":[
       {"clip":"flagOut","condition":"activated"}
+    ]},
+    "SoundEffects": {"sounds":[
+      {"condition":"activated","sound":"assets/audio/sfx/checkpoint.wav","volume":0.7}
     ]}
   }
 }

@@ -28,8 +28,13 @@ bool findCameraView(World& world, int width, int height, View& view, Color* back
     world.each<Camera, Transform>([&](Entity, Camera& cam, Transform& t) {
         if (found) return;
         found = true;
-        view.center = t.position;
         view.zoom = cam.zoom > 0.0f ? cam.zoom : 1.0f;
+        // El centro, en pixeles ENTEROS de pantalla. Una camara que se mueve en
+        // fracciones de pixel (el suavizado de FollowCamera) haria que cada objeto
+        // redondee su borde en un frame distinto: el jugador y el suelo se correrian un
+        // pixel por separado y todo temblaria. Asi lo quieto se mueve todo junto.
+        view.center = { std::round(t.position.x * view.zoom) / view.zoom,
+                        std::round(t.position.y * view.zoom) / view.zoom };
         if (background) *background = cam.background;
     });
     return found;

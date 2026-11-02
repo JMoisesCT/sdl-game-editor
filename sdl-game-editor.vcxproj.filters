@@ -39,6 +39,9 @@
     <ClCompile Include="engine\app\Application.cpp">
       <Filter>engine\app</Filter>
     </ClCompile>
+    <ClCompile Include="engine\components\AudioComponents.cpp">
+      <Filter>engine\components</Filter>
+    </ClCompile>
     <ClCompile Include="engine\components\CoreComponents.cpp">
       <Filter>engine\components</Filter>
     </ClCompile>
@@ -78,6 +81,12 @@
     <ClCompile Include="engine\editor\EditorViewport.cpp">
       <Filter>engine\editor</Filter>
     </ClCompile>
+    <ClCompile Include="engine\platform\GameCanvas.cpp">
+      <Filter>engine\platform</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\platform\Audio.cpp">
+      <Filter>engine\platform</Filter>
+    </ClCompile>
     <ClCompile Include="engine\platform\AssetManager.cpp">
       <Filter>engine\platform</Filter>
     </ClCompile>
@@ -86,6 +95,12 @@
     </ClCompile>
     <ClCompile Include="engine\platform\Screenshot.cpp">
       <Filter>engine\platform</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\systems\Conditions.cpp">
+      <Filter>engine\systems</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\systems\AudioSystems.cpp">
+      <Filter>engine\systems</Filter>
     </ClCompile>
     <ClCompile Include="engine\systems\Animation.cpp">
       <Filter>engine\systems</Filter>
@@ -139,6 +154,9 @@
     <ClInclude Include="engine\app\Application.h">
       <Filter>engine\app</Filter>
     </ClInclude>
+    <ClInclude Include="engine\components\AudioComponents.h">
+      <Filter>engine\components</Filter>
+    </ClInclude>
     <ClInclude Include="engine\components\CoreComponents.h">
       <Filter>engine\components</Filter>
     </ClInclude>
@@ -172,6 +190,12 @@
     <ClInclude Include="engine\editor\Editor.h">
       <Filter>engine\editor</Filter>
     </ClInclude>
+    <ClInclude Include="engine\platform\GameCanvas.h">
+      <Filter>engine\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\platform\Audio.h">
+      <Filter>engine\platform</Filter>
+    </ClInclude>
     <ClInclude Include="engine\platform\AssetManager.h">
       <Filter>engine\platform</Filter>
     </ClInclude>
@@ -180,6 +204,12 @@
     </ClInclude>
     <ClInclude Include="engine\platform\Screenshot.h">
       <Filter>engine\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\systems\Conditions.h">
+      <Filter>engine\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\systems\AudioSystems.h">
+      <Filter>engine\systems</Filter>
     </ClInclude>
     <ClInclude Include="engine\systems\Animation.h">
       <Filter>engine\systems</Filter>

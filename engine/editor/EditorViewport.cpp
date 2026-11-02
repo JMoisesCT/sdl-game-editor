@@ -16,6 +16,7 @@
 #include "components/PhysicsComponents.h"
 #include "components/PresentationComponents.h"
 #include "platform/AssetManager.h"
+#include "platform/GameCanvas.h"
 #include "systems/Physics.h"
 #include "systems/Tilemaps.h"
 
@@ -411,26 +412,30 @@ void Editor::centerOnCamera() {
 
 void Editor::drawGameView(Vec2 pos, Vec2 size) {
     const AppConfig& cfg = app.config();
-    SDL_Texture* target = ensureTarget(gameTarget, gameTargetW, gameTargetH, cfg.gameWidth, cfg.gameHeight);
-    if (!target) return;
+    if (!gameCanvas) gameCanvas = std::make_unique<GameCanvas>(app.renderer());
+    if (!gameCanvas->begin(cfg.gameWidth, cfg.gameHeight)) return;
 
     View view;
     Color bg;
     bool hasCamera = findCameraView(app.world(), cfg.gameWidth, cfg.gameHeight, view, &bg);
     SDL_Renderer* r = app.renderer();
-    SDL_SetRenderTarget(r, target);
     SDL_SetRenderDrawColor(r, bg.r, bg.g, bg.b, 255);
     SDL_RenderClear(r);
     renderWorld(app.world(), app.assets(), r, view);
     renderScreenTexts(app.world(), app.assets(), r, screenView(cfg.gameWidth, cfg.gameHeight));
-    SDL_SetRenderTarget(r, nullptr);
 
-    // La resolucion del juego, escalada para que quepa entera (con bandas).
+    // La resolucion del juego, escalada para que quepa entera (con bandas). El tamano
+    // se redondea antes de pedir la textura: es el que se va a dibujar de verdad.
     float k = std::min(size.x / cfg.gameWidth, size.y / cfg.gameHeight);
-    if (k <= 0.0f) return;
-    float w = cfg.gameWidth * k, h = cfg.gameHeight * k;
+    if (k <= 0.0f) {
+        SDL_SetRenderTarget(r, nullptr);
+        return;
+    }
+    float w = std::round(cfg.gameWidth * k), h = std::round(cfg.gameHeight * k);
+    SDL_Texture* target = gameCanvas->scaledFor(w, h);
+    if (!target) return;
     ImVec2 p0(std::round(pos.x + (size.x - w) * 0.5f), std::round(pos.y + (size.y - h) * 0.5f));
-    ImVec2 p1(p0.x + std::round(w), p0.y + std::round(h));
+    ImVec2 p1(p0.x + w, p0.y + h);
     ImDrawList* dl = ImGui::GetWindowDrawList();
     dl->AddRectFilled(toIm(pos), ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(0, 0, 0, 255));
     dl->AddImage((ImTextureID)(intptr_t)target, p0, p1);

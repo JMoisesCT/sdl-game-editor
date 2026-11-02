@@ -191,10 +191,43 @@ bool isSolidArea(World& world, Vec2 min, Vec2 max) {
     return solid;
 }
 
+namespace {
+    // Las cajas solidas (las que frenan) del World.
+    std::vector<Entity> solidBoxes(World& world) {
+        std::vector<Entity> solids;
+        world.each<BoxCollider, Transform>([&](Entity e, BoxCollider& c, Transform&) {
+            if (!c.isTrigger) solids.push_back(e);
+        });
+        return solids;
+    }
+
+    // Sonda de apoyo: una franja fina bajo los pies del cuerpo, contra los tilemaps y
+    // las cajas solidas. Mientras sube no se mira: rozar el borde de una plataforma al
+    // saltar no debe contar como aterrizar.
+    bool probeGround(World& world, Entity e, const RigidBody2D& rb, const std::vector<Entity>& solids) {
+        Vec2 min, max;
+        const BoxCollider* box = world.get<BoxCollider>(e);
+        if (rb.velocity.y < 0.0f || !box || box->isTrigger || !colliderBounds(world, e, min, max)) return false;
+        Vec2 probeMin{ min.x, max.y };
+        Vec2 probeMax{ max.x, max.y + PhysicsSystem::GROUND_PROBE };
+        if (isSolidArea(world, probeMin, probeMax)) return true;
+        for (Entity other : solids) {
+            Vec2 oMin, oMax;
+            if (other != e && colliderBounds(world, other, oMin, oMax) &&
+                boxesOverlap({ probeMin.x + SKIN, probeMin.y }, { probeMax.x - SKIN, probeMax.y }, oMin, oMax))
+                return true;
+        }
+        return false;
+    }
+}
+
 void PhysicsSystem::onPlay(World& world) {
-    world.each<RigidBody2D, Transform>([](Entity, RigidBody2D& rb, Transform& t) {
+    // El apoyo se mide ya al empezar: si no, el primer frame todo cuerpo "esta en el
+    // aire" (un frame de animacion de caida y un aterrizaje que suena al pulsar Jugar).
+    const std::vector<Entity> solids = solidBoxes(world);
+    world.each<RigidBody2D, Transform>([&](Entity e, RigidBody2D& rb, Transform& t) {
         rb.previous = t.position;
-        rb.grounded = false;
+        rb.grounded = probeGround(world, e, rb, solids);
     });
 }
 
@@ -218,35 +251,13 @@ void PhysicsSystem::update(World& world, float dt) {
     });
 
     // 3. Pares de cajas solidas (fuerza bruta: cada par una vez).
-    std::vector<Entity> solids;
-    world.each<BoxCollider, Transform>([&](Entity e, BoxCollider& c, Transform&) {
-        if (!c.isTrigger) solids.push_back(e);
-    });
+    const std::vector<Entity> solids = solidBoxes(world);
     for (std::size_t i = 0; i < solids.size(); ++i)
         for (std::size_t j = i + 1; j < solids.size(); ++j)
             resolvePair(world, solids[i], solids[j]);
 
-    // 4. Sonda de apoyo: una franja fina bajo los pies de cada cuerpo que no sube.
-    // Mientras sube no se mira: rozar el borde de una plataforma al saltar no debe
-    // contar como aterrizar.
+    // 4. Sonda de apoyo (ver probeGround) para los que no quedaron apoyados al separarlos.
     world.each<RigidBody2D, Transform>([&](Entity e, RigidBody2D& rb, Transform&) {
-        Vec2 min, max;
-        const BoxCollider* box = world.get<BoxCollider>(e);
-        if (rb.grounded || rb.velocity.y < 0.0f || !box || box->isTrigger || !colliderBounds(world, e, min, max))
-            return;
-        Vec2 probeMin{ min.x, max.y };
-        Vec2 probeMax{ max.x, max.y + GROUND_PROBE };
-        if (isSolidArea(world, probeMin, probeMax)) {
-            rb.grounded = true;
-            return;
-        }
-        for (Entity other : solids) {
-            Vec2 oMin, oMax;
-            if (other != e && colliderBounds(world, other, oMin, oMax) &&
-                boxesOverlap({ probeMin.x + SKIN, probeMin.y }, { probeMax.x - SKIN, probeMax.y }, oMin, oMax)) {
-                rb.grounded = true;
-                return;
-            }
-        }
+        if (!rb.grounded) rb.grounded = probeGround(world, e, rb, solids);
     });
 }

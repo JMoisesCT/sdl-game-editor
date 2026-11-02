@@ -1,0 +1,20 @@
+Audio del juego de ejemplo
+==========================
+
+Todos los archivos de esta carpeta se generaron por sintesis (ondas cuadrada,
+triangular y ruido, al estilo de 8 bits) especialmente para este proyecto: no
+vienen de ningun pack de terceros y se pueden usar libremente.
+
+  sfx/jump.wav        salto del jugador
+  sfx/land.wav        aterrizaje
+  sfx/hurt.wav        golpe (sigue vivo)
+  sfx/die.wav         muerte
+  sfx/collect.wav     fruta recogida
+  sfx/checkpoint.wav  bandera activada
+  sfx/win.wav         meta
+  music/platformer_theme.wav   loop de 8 compases (12,8 s) que empalma sin corte
+
+WAV 16 bits mono a 44,1 kHz. Para cambiarlos por otros (por ejemplo el audio CC0
+del pack Ninja Adventure): copiar los archivos a assets/audio/ y elegirlos en el
+Inspector (SoundEffects de cada prefab, Music de la entidad "Musica"). El motor
+lee WAV, OGG Vorbis y Opus.

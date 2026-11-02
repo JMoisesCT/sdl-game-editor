@@ -7,12 +7,14 @@
 #include "core/Reflection.h"
 #include "core/SceneSerializer.h"
 #include "core/World.h"
-#include "systems/Animation.h"
+#include "systems/Conditions.h"
 #include "systems/System.h"
 
 struct SDL_Window;   // declaraciones adelantadas: SDL solo aparece en el .cpp
 struct SDL_Renderer;
 class AssetManager;
+class Audio;
+class GameCanvas;
 class Editor;
 
 struct AppConfig {
@@ -44,7 +46,7 @@ public:
     Application(const Application&) = delete;
     Application& operator=(const Application&) = delete;
 
-    // SDL, SDL_ttf, ventana, renderer y (si config.editor) el editor. Tambien registra
+    // SDL, SDL_ttf, ventana, renderer, audio y (si config.editor) el editor. Tambien registra
     // los componentes basicos del motor. false si algo falla (el motivo va al log).
     bool init(const AppConfig& config);
 
@@ -53,9 +55,9 @@ public:
     ComponentRegistry& registry() { return components; }
     // Los prefabs (.prefab.json) que usa la escena; ver core/Prefabs.h.
     PrefabLibrary& prefabs() { return prefabLibrary; }
-    // Las condiciones con nombre de las reglas de animacion (ver systems/Animation.h).
-    // Trae las del motor; el juego suma las suyas.
-    AnimationConditions& animationConditions() { return animConditions; }
+    // Las condiciones con nombre (ver systems/Conditions.h) que usan las reglas de
+    // animacion y de sonido. Trae las del motor; el juego suma las suyas.
+    ConditionRegistry& conditions() { return conditionRegistry; }
     void addSystem(std::unique_ptr<System> system);
 
     // Carga la escena. Si el archivo no existe, empieza una escena vacia que se
@@ -83,6 +85,7 @@ public:
     // --- Acceso para el editor y los sistemas ---------------------------------------
     World& world() { return sceneWorld; }
     AssetManager& assets() { return *assetManager; }
+    Audio& audio() { return *audioDevice; }
     SDL_Renderer* renderer() const { return sdlRenderer; }
     SDL_Window* window() const { return sdlWindow; }
     const AppConfig& config() const { return appConfig; }
@@ -99,9 +102,11 @@ private:
     bool ttfReady = false;
 
     std::unique_ptr<AssetManager> assetManager;
+    std::unique_ptr<Audio> audioDevice;
+    std::unique_ptr<GameCanvas> gameCanvas; // sin editor: el juego a su resolucion, escalado a la ventana
     ComponentRegistry components;
     PrefabLibrary prefabLibrary{ components };
-    AnimationConditions animConditions;
+    ConditionRegistry conditionRegistry;
     World sceneWorld;
     std::vector<std::unique_ptr<System>> systemList;
     std::unique_ptr<Editor> editor;

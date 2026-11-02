@@ -171,13 +171,7 @@ componente `LevelGoal` (la meta) y escribe el HUD.
   `Sprite`: así la fruta de cada instancia sigue siendo un *override* del `Sprite`.
 - **`AnimatorStateMachine`**: elige el clip con **reglas** "clip si condición", en orden; gana
   la primera que se cumpla y, si ninguna, suena `defaultClip`. Las condiciones son funciones
-  de C++ con nombre: el motor trae `grounded`, `airborne`, `rising`, `falling`, `moving`,
-  `dead`, `hurt`, `collected` y `activated`, y el juego suma las suyas (el ejemplo agrega
-  `goalReached`):
-
-  ```cpp
-  app.animationConditions().add("attacking", [](World& w, Entity e) { /* ... */ });
-  ```
+  de C++ con nombre (ver más abajo).
 - **`FollowCamera`** (en la entidad de la `Camera`): sigue a la entidad con `targetTag` con
   zona muerta, suavizado, adelanto hacia donde corre (`lookAhead`) y sin salirse de los
   tilemaps. Elegida, la vista Escena muestra su zona muerta.
@@ -187,6 +181,33 @@ componente `LevelGoal` (la meta) y escribe el HUD.
   pantalla del juego (el **HUD**). En la vista Escena el HUD se ve sobre el recuadro de la
   cámara y se arrastra como cualquier entidad. El juego solo cambia el contenido; dónde va,
   la fuente y el color se eligen en el editor.
+- **Pixel art nítido a cualquier tamaño**: el juego se dibuja a su resolución y se muestra
+  agrandado con vecino más cercano al entero de arriba y después ajustado con suavizado
+  (`GameCanvas`). Escalar directo a un factor no entero deforma los píxeles (unos de 3 px,
+  otros de 4) y las animaciones parecen saltar.
+
+### Audio
+
+- **`SoundEffects`**: una lista de reglas "suena *este archivo* cuando *esta condición*
+  empieza a cumplirse", con su volumen. Vale igual para un suceso (`jumped`, `damaged`) que
+  para un estado (`dead`, `collected`): suena una vez, al empezar.
+- **`Music`**: la música de fondo de la escena (archivo, volumen, loop).
+- Al detener el juego se corta el sonido; en pausa se congela. En el Inspector, el botón
+  **`>`** junto a un archivo de audio lo hace sonar.
+- Formatos: WAV, OGG Vorbis y Opus (SDL3_mixer). Los sonidos y la música del ejemplo
+  (`assets/audio/`) se generaron por síntesis para el proyecto.
+
+### Condiciones
+
+Las reglas de animación y de sonido eligen su condición por **nombre** en el Inspector; cada
+condición es una función de C++. El motor trae estados (`grounded`, `airborne`, `rising`,
+`falling`, `moving`, `dead`, `hurt`, `collected`, `activated`) y sucesos de un frame
+(`jumped`, `landed`, `damaged`, `respawned`), y el juego suma las suyas (el ejemplo agrega
+`goalReached`):
+
+```cpp
+app.conditions().add("attacking", [](World& w, Entity e) { /* ... */ });
+```
 
 ### Escenas de ejemplo
 
@@ -194,7 +215,7 @@ componente `LevelGoal` (la meta) y escribe el HUD.
 
 - `platformer.scene.json`: plataformas de Pixel Adventure, armado con prefabs: jugador,
   frutas, checkpoint, sierra, pinchos, meta y una zona de muerte bajo el pozo; fondo con
-  parallax, cámara que sigue (con zoom 1,5) y HUD de vida y frutas.
+  parallax, cámara que sigue (con zoom 1,5), HUD de vida y frutas, efectos de sonido y música.
 - `topdown.scene.json`: un piso de Ninja Adventure, para un juego cenital.
 - `shmup.scene.json`: un fondo largo de Pixel Shmup, que se recorre hacia arriba.
 
@@ -222,11 +243,12 @@ engine/
   components/  componentes del motor (EntityInfo, Transform, Sprite, Tilemap, Camera,
                RigidBody2D, BoxCollider, PlatformerMotor, Health, Hazard, KillZone,
                Collectible, Checkpoint, Respawn, SpriteAnimator, AnimatorStateMachine,
-               FollowCamera, ParallaxBackground, Text)
+               FollowCamera, ParallaxBackground, Text, SoundEffects, Music)
   systems/     interfaz System, RenderSystem, PhysicsSystem, PlatformerMotorSystem,
                sistemas de reglas (Rules), de animación (Animation), FollowCamera y
-               Parallax (Presentation) y consultas de Tilemaps
-  platform/    Input, AssetManager, Screenshot
+               Parallax (Presentation), sonido y música (AudioSystems), condiciones
+               con nombre (Conditions) y consultas de Tilemaps
+  platform/    Input, AssetManager, Screenshot, Audio (SDL3_mixer), GameCanvas
   app/         Application: ventana, bucle, modos Edit / Play / Pausa
   editor/      el editor (Dear ImGui)
   third_party/ nlohmann/json y Dear ImGui (vendorizadas)
@@ -250,7 +272,7 @@ Un único proyecto de **Visual Studio 2026** (`sdl-game-editor.vcxproj`, sin `.s
   | **SDL3** | **3.4.14** | `D:\SDL3` | ventana, renderer, input, tiempo |
   | **SDL3_image** | **3.4.4** | `D:\SDL3_image` | cargar PNG |
   | **SDL3_ttf** | **3.2.2** | `D:\SDL3_ttf` | texto |
-  | **SDL3_mixer** | **3.2.4** | `D:\SDL3_mixer` | audio (enlazado, aún sin usar) |
+  | **SDL3_mixer** | **3.2.4** | `D:\SDL3_mixer` | audio |
 
   Cada una se descomprime (paquete de desarrollo para VC) en su carpeta de `D:\`, de modo que
   queden `<carpeta>\include` y `<carpeta>\lib\x64`. Si usas otras rutas, ajusta
@@ -288,5 +310,8 @@ copia de `assets/` que está a su lado.
   **Pixel-boy y AAA**. **CC0** (dominio público; atribución no obligatoria pero apreciada).
 - **[Pixel Shmup](https://kenney.nl/assets/pixel-shmup)** de **Kenney**. **CC0**. Ver
   `assets/kenney_pixelshmup/License.txt`.
+
+- **Audio** (`assets/audio/`): efectos y música generados por síntesis para este proyecto,
+  sin licencia de terceros.
 
 Se usan con fines educativos.

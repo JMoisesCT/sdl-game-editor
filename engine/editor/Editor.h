@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -8,6 +9,7 @@
 #include "systems/RenderSystem.h"
 
 class Application;
+class GameCanvas;
 struct ComponentInfo;
 struct FieldInfo;
 struct Tilemap;
@@ -101,10 +103,11 @@ private:
     // Lista desplegable con esas opciones. true si se eligio otra (queda en out).
     bool drawChoice(const char* label, const std::vector<std::string>& options,
                     const std::string& current, std::string& out);
-    // Campo de ruta + boton que lista las imagenes de assets/. true si se eligio o
-    // escribio otra ruta (queda en out; quien llama decide si la aplica).
-    bool drawTexturePicker(const char* label, const std::string& current, std::string& out);
-    void scanTextureFiles();
+    // Campo de ruta + boton que lista las imagenes (o, con audio, los sonidos) de
+    // assets/; los sonidos se pueden escuchar. true si se eligio o escribio otra ruta
+    // (queda en out; quien llama decide si la aplica).
+    bool drawFilePicker(const char* label, const std::string& current, std::string& out, bool audio);
+    void scanAssetFiles();
 
     Entity createEntity();
     void duplicateSelected();
@@ -182,8 +185,7 @@ private:
     // Texturas de render de las dos vistas.
     SDL_Texture* sceneTarget = nullptr;
     int sceneTargetW = 0, sceneTargetH = 0;
-    SDL_Texture* gameTarget = nullptr;
-    int gameTargetW = 0, gameTargetH = 0;
+    std::unique_ptr<GameCanvas> gameCanvas; // la vista de juego: lienzo + escalado nitido
 
     // Deshacer / rehacer: copias de la escena con su numero de version.
     struct Snapshot { Json scene; int version = 0; };
@@ -200,8 +202,9 @@ private:
     std::string windowTitle;
 
     std::vector<std::string> textureFiles; // .png bajo assets/, para elegir texturas
-    bool textureFilesScanned = false;
-    std::string textureFilter;             // texto del filtro de esa lista
+    std::vector<std::string> audioFiles;   // .wav, .ogg... bajo assets/, para elegir sonidos
+    bool assetFilesScanned = false;
+    std::string fileFilter;                // texto del filtro de esas listas
 
     // Tilemaps (estado del editor: no se guarda en la escena).
     TileTool tileTool = TileTool::Move;

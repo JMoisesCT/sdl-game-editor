@@ -8,7 +8,7 @@
 #include "components/RuleComponents.h"
 #include "core/Reflection.h"
 #include "core/World.h"
-#include "systems/Animation.h"
+#include "systems/Conditions.h"
 #include "systems/Physics.h"
 #include "systems/Rules.h"
 
@@ -23,7 +23,7 @@ void registerPlatformerComponents(ComponentRegistry& registry) {
         .field("targetTag", &LevelGoal::targetTag).tooltip("Etiqueta de quien completa el nivel al tocarla");
 }
 
-void registerPlatformerConditions(AnimationConditions& conditions) {
+void registerPlatformerConditions(ConditionRegistry& conditions) {
     conditions.add("goalReached", [](World& w, Entity e) {
         const LevelGoal* goal = w.get<LevelGoal>(e);
         return goal && goal->reached;

@@ -22,6 +22,12 @@
       {"clip":"jump","condition":"rising"},
       {"clip":"fall","condition":"airborne"},
       {"clip":"run","condition":"moving"}
+    ]},
+    "SoundEffects": {"sounds":[
+      {"condition":"jumped","sound":"assets/audio/sfx/jump.wav","volume":0.6},
+      {"condition":"landed","sound":"assets/audio/sfx/land.wav","volume":0.5},
+      {"condition":"hurt","sound":"assets/audio/sfx/hurt.wav","volume":0.8},
+      {"condition":"dead","sound":"assets/audio/sfx/die.wav","volume":0.8}
     ]}
   }
 }

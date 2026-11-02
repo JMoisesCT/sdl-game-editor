@@ -10,6 +10,7 @@
 #include <filesystem>
 
 #include "app/Application.h"
+#include "platform/GameCanvas.h"
 
 // Pasos de deshacer que se guardan como maximo (cada uno es una copia de la escena).
 static const std::size_t MAX_UNDO = 200;
@@ -58,7 +59,7 @@ bool Editor::init() {
 
 void Editor::shutdown() {
     if (sceneTarget) { SDL_DestroyTexture(sceneTarget); sceneTarget = nullptr; }
-    if (gameTarget) { SDL_DestroyTexture(gameTarget); gameTarget = nullptr; }
+    gameCanvas.reset();
     if (!guiReady) return;
     ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();

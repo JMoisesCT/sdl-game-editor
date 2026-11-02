@@ -5,13 +5,14 @@
 #include "game/PlatformerControl.h"
 #include "game/PlatformerRules.h"
 #include "systems/Animation.h"
+#include "systems/AudioSystems.h"
 #include "systems/Physics.h"
 #include "systems/PlatformerMotorSystem.h"
 #include "systems/Presentation.h"
 #include "systems/Rules.h"
 
 // La aplicacion es duena del bucle: aqui solo se configura, se registran las piezas
-// del juego (componentes y sistemas) y se abre la escena.
+// del juego (componentes, condiciones y sistemas) y se abre la escena.
 //
 // Con el argumento --play arranca sin editor, jugando la escena directamente (como
 // lo veria el jugador).
@@ -27,14 +28,14 @@ int main(int argc, char* argv[]) {
     if (!app.init(config)) return 1;
 
     // Componentes del juego: antes de abrir la escena, para que se carguen. Y sus
-    // condiciones de animacion (las del motor ya estan).
+    // condiciones (las del motor ya estan).
     registerPlatformerComponents(app.registry());
-    registerPlatformerConditions(app.animationConditions());
+    registerPlatformerConditions(app.conditions());
 
     // Sistemas. Corren en el orden en que se agregan, y aqui el orden es la cadena de
     // cada frame:
     //   teclas -> intencion -> velocidad -> posicion y choques -> reglas -> partida
-    //   -> presentacion (animacion, camara, fondo).
+    //   -> presentacion (animacion, sonido, camara, fondo).
     app.addSystem(std::make_unique<PlatformerControlSystem>()); // juego: teclas -> intencion
     app.addSystem(std::make_unique<PlatformerMotorSystem>());   // motor: intencion -> velocidad
     app.addSystem(std::make_unique<PhysicsSystem>());           // motor: movimiento y choques
@@ -48,10 +49,13 @@ int main(int argc, char* argv[]) {
     app.addSystem(std::make_unique<RespawnSystem>());
     app.addSystem(std::make_unique<PlatformerRulesSystem>());   // juego: frutas, meta y HUD
     // Presentacion: con todo ya resuelto en este frame. La maquina de estados elige el
-    // clip y el animador lo avanza; la camara sigue la posicion final (tambien tras
-    // reaparecer).
-    app.addSystem(std::make_unique<AnimatorStateMachineSystem>(app.animationConditions()));
+    // clip y el animador lo avanza; los sonidos ven los avisos de un frame (jumped,
+    // damaged...) antes de que se apaguen; la camara sigue la posicion final (tambien
+    // tras reaparecer).
+    app.addSystem(std::make_unique<AnimatorStateMachineSystem>(app.conditions()));
     app.addSystem(std::make_unique<SpriteAnimatorSystem>(app.assets()));
+    app.addSystem(std::make_unique<SoundSystem>(app.audio(), app.conditions()));
+    app.addSystem(std::make_unique<MusicSystem>(app.audio()));
     app.addSystem(std::make_unique<FollowCameraSystem>(config.gameWidth, config.gameHeight));
     app.addSystem(std::make_unique<ParallaxSystem>());
 

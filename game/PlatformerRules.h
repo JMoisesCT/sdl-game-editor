@@ -3,7 +3,7 @@
 
 #include "systems/System.h"
 
-class AnimationConditions;
+class ConditionRegistry;
 class ComponentRegistry;
 
 // Codigo del JUEGO (no del motor): las reglas propias de ESTE plataformas, armadas
@@ -24,9 +24,9 @@ struct LevelGoal {
 // abrir la escena.
 void registerPlatformerComponents(ComponentRegistry& registry);
 
-// Condiciones de animacion del juego, para las reglas de un AnimatorStateMachine:
+// Condiciones del juego (systems/Conditions.h), para AnimatorStateMachine y SoundEffects:
 //   goalReached  la LevelGoal de la entidad ya se toco (la meta se hunde)
-void registerPlatformerConditions(AnimationConditions& conditions);
+void registerPlatformerConditions(ConditionRegistry& conditions);
 
 // La partida: cuenta las frutas (Collectible con tag "Pickup") que hay y las que se
 // recogieron, y si se llego a la meta. El motor no lleva ninguna cuenta: este sistema
