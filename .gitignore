@@ -410,11 +410,6 @@ FodyWeavers.xsd
 # se ignora cualquier arbol residual por si quedo de antes.
 vcpkg_installed/
 
-# --- Tiled (editor de mapas) ---
-# Los alumnos editan los mapas, asi que SI se suben: el mapa (.json/.tmx),
-# el tileset (.png) y el .tiled-project (config compartida del editor).
-# Solo se ignora el estado local de cada editor:
-*.tiled-session
 # --- Dear ImGui (editor de niveles) ---
 # El editor desactiva imgui.ini; por si acaso, no se sube el estado local de ventanas.
 imgui.ini

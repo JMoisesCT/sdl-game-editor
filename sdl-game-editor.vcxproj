@@ -31,7 +31,6 @@
     <ClCompile Include="engine\platform\AssetManager.cpp" />
     <ClCompile Include="engine\platform\Input.cpp" />
     <ClCompile Include="engine\platform\Screenshot.cpp" />
-    <ClCompile Include="engine\platform\TiledImport.cpp" />
     <ClCompile Include="engine\systems\RenderSystem.cpp" />
     <ClCompile Include="engine\systems\Tilemaps.cpp" />
     <ClCompile Include="engine\third_party\imgui\imgui.cpp" />
@@ -55,7 +54,6 @@
     <ClInclude Include="engine\platform\AssetManager.h" />
     <ClInclude Include="engine\platform\Input.h" />
     <ClInclude Include="engine\platform\Screenshot.h" />
-    <ClInclude Include="engine\platform\TiledImport.h" />
     <ClInclude Include="engine\systems\RenderSystem.h" />
     <ClInclude Include="engine\systems\Tilemaps.h" />
     <ClInclude Include="engine\systems\System.h" />

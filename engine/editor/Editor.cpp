@@ -5,6 +5,9 @@
 #include <imgui/imgui_impl_sdl3.h>
 #include <imgui/imgui_impl_sdlrenderer3.h>
 
+#include <algorithm>
+#include <filesystem>
+
 #include "app/Application.h"
 
 // Pasos de deshacer que se guardan como maximo (cada uno es una copia de la escena).
@@ -177,6 +180,12 @@ void Editor::drawToolbar() {
     ImGui::TextDisabled("|");
     ImGui::SameLine();
     ImGui::BeginDisabled(!editing);
+    if (ImGui::Button("Abrir...")) {
+        scanSceneFiles();
+        ImGui::OpenPopup("##open");
+    }
+    ImGui::SetItemTooltip("Abre otra escena de assets/");
+    ImGui::SameLine();
     if (ImGui::Button("Guardar")) save();
     ImGui::SetItemTooltip("Ctrl+S");
     ImGui::SameLine();
@@ -189,14 +198,8 @@ void Editor::drawToolbar() {
     if (ImGui::Button("Rehacer")) redo();
     ImGui::SetItemTooltip("Ctrl+Y / Ctrl+Shift+Z");
     ImGui::EndDisabled();
-    ImGui::SameLine();
-    if (ImGui::Button("Importar Tiled...")) {
-        scanMapFiles();
-        ImGui::OpenPopup("##importTiled");
-    }
-    ImGui::SetItemTooltip("Convierte un mapa de Tiled (.json) en capas Tilemap de la escena");
     ImGui::EndDisabled();
-    drawImportPopup(); // fuera del bloque deshabilitado: si no, su lista saldria gris
+    drawOpenPopup(); // fuera del bloque deshabilitado: si no, su lista saldria gris
 
     ImGui::SameLine();
     ImGui::TextDisabled("|");
@@ -290,6 +293,36 @@ void Editor::save() {
         setStatus("Guardado: " + app.scenePath());
     } else {
         setStatus("No se pudo guardar (ver el log)");
+    }
+}
+
+void Editor::scanSceneFiles() {
+    namespace fs = std::filesystem;
+    static const std::string EXT = ".scene.json";
+    sceneFiles.clear();
+    std::error_code ec;
+    for (fs::recursive_directory_iterator it("assets", ec), end; !ec && it != end; it.increment(ec)) {
+        if (!it->is_regular_file(ec)) continue;
+        std::string file = it->path().generic_string(); // con "/" tambien en Windows
+        if (file.size() > EXT.size() && file.compare(file.size() - EXT.size(), EXT.size(), EXT) == 0)
+            sceneFiles.push_back(file);
+    }
+    std::sort(sceneFiles.begin(), sceneFiles.end());
+}
+
+void Editor::drawOpenPopup() {
+    if (!ImGui::BeginPopup("##open")) return;
+    std::string chosen;
+    if (sceneFiles.empty()) ImGui::TextDisabled("No hay escenas (.scene.json) en assets/");
+    for (const std::string& file : sceneFiles)
+        if (ImGui::Selectable(file.c_str(), file == app.scenePath())) chosen = file;
+    if (!chosen.empty()) ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
+
+    // Ya fuera del popup: confirmDiscard puede abrir un cuadro nativo que bloquea.
+    if (!chosen.empty() && confirmDiscard("abrir otra escena")) {
+        if (app.openScene(chosen)) setStatus("Abierta: " + chosen);
+        else setStatus("No se pudo abrir " + chosen + " (ver el log)");
     }
 }
 

@@ -1,5 +1,6 @@
-// Edicion de tilemaps: la paleta del tileset (en el Inspector), las herramientas para
-// pintar en la vista de escena y el importador de mapas de Tiled.
+// Edicion de tilemaps: la paleta del tileset (en el Inspector) y las herramientas para
+// pintar en la vista de escena. Los mapas se arman SOLO aqui: las celdas se guardan en
+// la escena (no hay archivo de mapa aparte ni editor externo).
 //
 // Se pinta SIEMPRE en la capa elegida (la entidad seleccionada). Todo cambio de celda
 // pasa por setCell, que llama a beginChange antes de escribir: un trazo entero (desde
@@ -11,17 +12,13 @@
 #include <imgui/imgui.h>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstdlib>
-#include <cstring>
-#include <filesystem>
 #include <utility>
 
 #include "app/Application.h"
 #include "components/CoreComponents.h"
 #include "platform/AssetManager.h"
-#include "platform/TiledImport.h"
 #include "systems/Tilemaps.h"
 
 // --- Seleccion y herramienta -----------------------------------------------------------
@@ -362,62 +359,4 @@ void Editor::drawTilemapGizmos() {
     if (tileTool == TileTool::Erase) SDL_SetRenderDrawColor(r, 255, 90, 90, 255);
     else SDL_SetRenderDrawColor(r, 80, 220, 255, 255);
     SDL_RenderRect(r, &rect);
-}
-
-// --- Importar de Tiled -----------------------------------------------------------------
-
-static bool endsWith(const std::string& s, const char* suffix) {
-    std::size_t n = std::strlen(suffix);
-    return s.size() >= n && s.compare(s.size() - n, n, suffix) == 0;
-}
-
-void Editor::scanMapFiles() {
-    namespace fs = std::filesystem;
-    mapFiles.clear();
-    std::error_code ec;
-    for (fs::recursive_directory_iterator it("assets", ec), end; !ec && it != end; it.increment(ec)) {
-        if (!it->is_regular_file(ec)) continue;
-        std::string file = it->path().generic_string();
-        std::string lower = file;
-        for (char& c : lower) c = (char)std::tolower((unsigned char)c);
-        // Las escenas y los niveles del v1 tambien son .json, pero no son mapas.
-        if (!endsWith(lower, ".json") || endsWith(lower, ".scene.json") || endsWith(lower, ".level.json"))
-            continue;
-        mapFiles.push_back(file);
-    }
-    std::sort(mapFiles.begin(), mapFiles.end());
-}
-
-void Editor::drawImportPopup() {
-    if (!ImGui::BeginPopup("##importTiled")) return;
-    ImGui::TextUnformatted("Mapa de Tiled (.json) a capas Tilemap de la escena");
-    ImGui::TextDisabled("Capas en CSV y tileset incrustado en el mapa.");
-    ImGui::SetNextItemWidth(120.0f * uiScale);
-    ImGui::DragFloat("escala", &importScale, 0.05f, 0.1f, 16.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-    ImGui::SetItemTooltip("Escala del Transform de las capas (2 = tiles al doble)");
-    ImGui::Separator();
-    if (mapFiles.empty()) ImGui::TextDisabled("No hay archivos .json en assets/");
-    for (const std::string& file : mapFiles) {
-        if (ImGui::Selectable(file.c_str())) {
-            importTiled(file);
-            ImGui::CloseCurrentPopup();
-        }
-    }
-    ImGui::EndPopup();
-}
-
-void Editor::importTiled(const std::string& path) {
-    if (!app.isEditing()) return;
-    std::vector<ImportedLayer> layers;
-    std::string error;
-    // Primero se lee todo; solo si salio bien se toca el World.
-    if (!loadTiledMap(path, layers, error)) {
-        setStatus("No se pudo importar " + path + ": " + error);
-        return;
-    }
-    beginChange();
-    std::vector<Entity> created = addImportedLayers(app.world(), layers, { 0.0f, 0.0f }, importScale);
-    selected = created.front();
-    setStatus("Importado " + path + ": " + std::to_string(created.size()) +
-              (created.size() == 1 ? " capa" : " capas"));
 }

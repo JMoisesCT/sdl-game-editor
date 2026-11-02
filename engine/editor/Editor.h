@@ -19,7 +19,7 @@ union SDL_Event;
 // componente nuevo del juego aparece en el Inspector sin tocar el editor.
 //
 // Paneles (Dear ImGui, posicion fija):
-//   - Barra superior: Jugar/Detener, Pausa, Guardar, Deshacer/Rehacer, grilla.
+//   - Barra superior: Jugar/Detener, Pausa, Guardar, Deshacer/Rehacer, Abrir, grilla.
 //   - Jerarquia (izquierda): las entidades; crear, duplicar, borrar.
 //   - Inspector (derecha): los componentes de la seleccionada, editables.
 //   - Vista (centro): pestanas "Escena" (camara libre del editor) y "Juego" (lo que
@@ -38,7 +38,7 @@ union SDL_Event;
 //
 // Se reparte en cuatro .cpp: Editor.cpp (marco, barra, deshacer, atajos),
 // EditorPanels.cpp (Jerarquia e Inspector), EditorViewport.cpp (vistas) y
-// EditorTilemap.cpp (paleta, pinceles e importar de Tiled).
+// EditorTilemap.cpp (paleta y pinceles).
 class Editor {
 public:
     explicit Editor(Application& app);
@@ -73,6 +73,8 @@ private:
     void setStatus(const std::string& text);
     void save();
     void togglePlay();
+    void scanSceneFiles();
+    void drawOpenPopup();  // lista de escenas; al elegir una, pregunta si hay cambios
 
     void beginChange();       // antes de modificar el World
     void commitChange();      // anota el paso pendiente (si lo hay)
@@ -119,9 +121,6 @@ private:
     void setCell(Tilemap& map, int col, int row, int tile); // beginChange si cambia
     void fillFrom(Tilemap& map, int col, int row);
     void drawTilemapGizmos();        // dentro del destino de la vista de escena
-    void drawImportPopup();
-    void scanMapFiles();
-    void importTiled(const std::string& path);
 
     Application& app;
     bool guiReady = false;
@@ -182,6 +181,6 @@ private:
     int lastCol = 0, lastRow = 0;  // ultima celda pintada del trazo
     bool hoverCell = false;        // el raton esta sobre la vista con una herramienta de tiles
     int hoverCol = 0, hoverRow = 0;
-    std::vector<std::string> mapFiles; // .json bajo assets/, para importar de Tiled
-    float importScale = 1.0f;
+
+    std::vector<std::string> sceneFiles; // .scene.json bajo assets/, para "Abrir..."
 };

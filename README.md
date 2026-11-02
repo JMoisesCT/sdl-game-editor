@@ -5,7 +5,7 @@ propósito es **educativo**: que estudiantes que ya conocen SDL3 básico armen j
 editando escenas en un editor propio, sin pelear con la API cruda de SDL.
 
 > **Estado:** en desarrollo, por fases. Ya están el núcleo (ECS + reflexión + escenas en
-> JSON), el editor y los tilemaps (pintar con paleta, importar de Tiled). Faltan la física y
+> JSON), el editor y los tilemaps (se pintan con paleta en el propio editor). Faltan la física y
 > los sistemas de juego: hoy una escena se puede editar, guardar y "jugar", pero todavía no
 > hay nada que se mueva solo.
 
@@ -70,12 +70,20 @@ en los sprites).
   sólido. "Ver solidos" resalta en la vista las celdas que frenan. Una capa con `collision`
   desmarcado es pura decoración.
 - El tamaño del mapa (`cells`) se cambia en el Inspector, al pulsar Enter.
-- **Importar Tiled...** (barra superior) convierte un mapa de [Tiled](https://www.mapeditor.org/)
-  (`.json`, capas en CSV y tileset incrustado) en capas `Tilemap`. Se importa **una vez**:
-  después el mapa se edita aquí y se guarda en la escena.
+- Para una capa nueva: **+ Nueva**, luego **Agregar componente > Tilemap**, y elige la
+  imagen del tileset en el campo `tileset`.
 
-En el `.scene.json` las celdas se guardan una fila por línea (`-1` = vacía), así que el
-mapa se lee en el archivo y un diff muestra solo las filas que cambiaron.
+Los mapas se arman **solo en este editor**: no hay archivo de mapa aparte ni editor externo.
+Las celdas se guardan dentro del `.scene.json`, una fila por línea (`-1` = vacía), así que
+el mapa se lee en el archivo y un diff muestra solo las filas que cambiaron.
+
+### Escenas de ejemplo
+
+**Abrir...** (barra superior) lista las escenas de `assets/`:
+
+- `platformer.scene.json`: plataformas de Pixel Adventure, con jugador, frutas y checkpoint.
+- `topdown.scene.json`: un piso de Ninja Adventure, para un juego cenital.
+- `shmup.scene.json`: un fondo largo de Pixel Shmup, que se recorre hacia arriba.
 
 | Acción | Control |
 |---|---|
@@ -100,11 +108,11 @@ engine/
   core/        Entity, World (ECS), Reflection, SceneSerializer
   components/  componentes del motor (EntityInfo, Transform, Sprite, Tilemap, Camera)
   systems/     interfaz System, RenderSystem y consultas de Tilemaps
-  platform/    Input, AssetManager, Screenshot, TiledImport
+  platform/    Input, AssetManager, Screenshot
   app/         Application: ventana, bucle, modos Edit / Play / Pausa
   editor/      el editor (Dear ImGui)
   third_party/ nlohmann/json y Dear ImGui (vendorizadas)
-assets/        sprites, mapas y escenas (assets/scenes/*.scene.json)
+assets/        sprites, tilesets y escenas (assets/scenes/*.scene.json)
 main.cpp
 ```
 

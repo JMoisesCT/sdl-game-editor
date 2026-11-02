@@ -69,9 +69,6 @@
     <ClCompile Include="engine\platform\Screenshot.cpp">
       <Filter>engine\platform</Filter>
     </ClCompile>
-    <ClCompile Include="engine\platform\TiledImport.cpp">
-      <Filter>engine\platform</Filter>
-    </ClCompile>
     <ClCompile Include="engine\systems\RenderSystem.cpp">
       <Filter>engine\systems</Filter>
     </ClCompile>
@@ -131,9 +128,6 @@
       <Filter>engine\platform</Filter>
     </ClInclude>
     <ClInclude Include="engine\platform\Screenshot.h">
-      <Filter>engine\platform</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\platform\TiledImport.h">
       <Filter>engine\platform</Filter>
     </ClInclude>
     <ClInclude Include="engine\systems\RenderSystem.h">
