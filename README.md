@@ -84,7 +84,7 @@ main.cpp
 
 ## Cómo compilar y ejecutar
 
-Un único proyecto de **Visual Studio 2026** (`sdl_game_engine.vcxproj`, sin `.sln`).
+Un único proyecto de **Visual Studio 2026** (`sdl-game-editor.vcxproj`, sin `.sln`).
 
 ### Requisitos
 
@@ -107,7 +107,7 @@ Un único proyecto de **Visual Studio 2026** (`sdl_game_engine.vcxproj`, sin `.s
 
 ### Pasos
 
-1. Abre `sdl_game_engine.vcxproj` en Visual Studio 2026.
+1. Abre `sdl-game-editor.vcxproj` en Visual Studio 2026.
 2. Elige **x64** (sirven **Debug** y **Release**; Win32 no está soportado).
 3. Compila y ejecuta (F5). El post-build copia las DLLs de SDL3 y la carpeta `assets/`
    junto al ejecutable.

@@ -10,7 +10,7 @@
 // lo veria el jugador).
 int main(int argc, char* argv[]) {
     AppConfig config;
-    config.title = "SDL Engine v2";
+    config.title = "SDL Game Editor";
     config.gameWidth = 1280;
     config.gameHeight = 720;
     for (int i = 1; i < argc; ++i)

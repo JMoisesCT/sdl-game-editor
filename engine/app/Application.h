@@ -14,7 +14,7 @@ class AssetManager;
 class Editor;
 
 struct AppConfig {
-    std::string title = "SDL Engine";
+    std::string title = "SDL Game Editor";
     int gameWidth = 1280;   // resolucion del juego: lo que ve el jugador (y la vista
     int gameHeight = 720;   // "Juego" del editor, que la escala para que quepa)
     bool editor = true;     // false: abre la escena y juega directo, sin paneles
