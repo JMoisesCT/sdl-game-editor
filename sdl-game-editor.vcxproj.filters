@@ -45,6 +45,12 @@
     <ClCompile Include="engine\components\PhysicsComponents.cpp">
       <Filter>engine\components</Filter>
     </ClCompile>
+    <ClCompile Include="engine\components\RuleComponents.cpp">
+      <Filter>engine\components</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\core\Prefabs.cpp">
+      <Filter>engine\core</Filter>
+    </ClCompile>
     <ClCompile Include="engine\core\Reflection.cpp">
       <Filter>engine\core</Filter>
     </ClCompile>
@@ -58,6 +64,9 @@
       <Filter>engine\editor</Filter>
     </ClCompile>
     <ClCompile Include="engine\editor\EditorPanels.cpp">
+      <Filter>engine\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\editor\EditorPrefabs.cpp">
       <Filter>engine\editor</Filter>
     </ClCompile>
     <ClCompile Include="engine\editor\EditorTilemap.cpp">
@@ -82,6 +91,9 @@
       <Filter>engine\systems</Filter>
     </ClCompile>
     <ClCompile Include="engine\systems\RenderSystem.cpp">
+      <Filter>engine\systems</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\systems\Rules.cpp">
       <Filter>engine\systems</Filter>
     </ClCompile>
     <ClCompile Include="engine\systems\Tilemaps.cpp">
@@ -111,6 +123,9 @@
     <ClCompile Include="game\PlatformerControl.cpp">
       <Filter>game</Filter>
     </ClCompile>
+    <ClCompile Include="game\PlatformerRules.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClInclude Include="engine\app\Application.h">
       <Filter>engine\app</Filter>
@@ -121,10 +136,16 @@
     <ClInclude Include="engine\components\PhysicsComponents.h">
       <Filter>engine\components</Filter>
     </ClInclude>
+    <ClInclude Include="engine\components\RuleComponents.h">
+      <Filter>engine\components</Filter>
+    </ClInclude>
     <ClInclude Include="engine\core\Entity.h">
       <Filter>engine\core</Filter>
     </ClInclude>
     <ClInclude Include="engine\core\Math.h">
+      <Filter>engine\core</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\core\Prefabs.h">
       <Filter>engine\core</Filter>
     </ClInclude>
     <ClInclude Include="engine\core\Reflection.h">
@@ -157,6 +178,9 @@
     <ClInclude Include="engine\systems\RenderSystem.h">
       <Filter>engine\systems</Filter>
     </ClInclude>
+    <ClInclude Include="engine\systems\Rules.h">
+      <Filter>engine\systems</Filter>
+    </ClInclude>
     <ClInclude Include="engine\systems\Tilemaps.h">
       <Filter>engine\systems</Filter>
     </ClInclude>
@@ -164,6 +188,9 @@
       <Filter>engine\systems</Filter>
     </ClInclude>
     <ClInclude Include="game\PlatformerControl.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\PlatformerRules.h">
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="engine\third_party\imgui\imconfig.h">

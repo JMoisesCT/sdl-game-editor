@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "core/Prefabs.h"
 #include "core/Reflection.h"
 #include "core/SceneSerializer.h"
 #include "core/World.h"
@@ -49,12 +50,19 @@ public:
     // El juego agrega aqui sus componentes (antes de abrir la escena, para que se
     // carguen) y sus sistemas (corren en el orden en que se agregan).
     ComponentRegistry& registry() { return components; }
+    // Los prefabs (.prefab.json) que usa la escena; ver core/Prefabs.h.
+    PrefabLibrary& prefabs() { return prefabLibrary; }
     void addSystem(std::unique_ptr<System> system);
 
     // Carga la escena. Si el archivo no existe, empieza una escena vacia que se
     // guardara en esa ruta. false si existe pero no se pudo leer.
     bool openScene(const std::string& path);
     bool saveScene(); // solo editando (jugando, la escena esta "prestada" al juego)
+
+    // La escena en memoria como JSON (igual que el archivo: las instancias de prefab
+    // solo con sus overrides) y de vuelta. Lo usan Play/Stop y el deshacer del editor.
+    Json snapshot();
+    bool restore(const Json& scene, std::string& error);
 
     // Bucle principal hasta que se cierre la ventana. Devuelve el codigo de salida.
     int run();
@@ -88,6 +96,7 @@ private:
 
     std::unique_ptr<AssetManager> assetManager;
     ComponentRegistry components;
+    PrefabLibrary prefabLibrary{ components };
     World sceneWorld;
     std::vector<std::unique_ptr<System>> systemList;
     std::unique_ptr<Editor> editor;

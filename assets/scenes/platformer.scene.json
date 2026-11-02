@@ -7,33 +7,25 @@
         "Transform": {"position":[640.0,360.0],"rotation":0.0,"scale":[1.0,1.0]},
         "Camera": {"zoom":1.0,"background":[33,31,48,255]}
     }},
-    { "id": 2, "components": {
-        "EntityInfo": {"name":"Jugador","tag":"Player"},
-        "Transform": {"position":[384.0,480.0],"rotation":0.0,"scale":[2.0,2.0]},
-        "Sprite": {"texture":"assets/pixel_adventure/Main Characters/Mask Dude/Idle (32x32).png","source":[0,0,32,32],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":10},
-        "RigidBody2D": {"velocity":[0.0,0.0],"gravity":980.0},
-        "BoxCollider": {"size":[18.0,26.0],"offset":[0.0,3.0],"isTrigger":false},
-        "PlatformerMotor": {"maxSpeed":180.0,"accel":1600.0,"decel":2000.0,"airAccel":1000.0,"airDecel":500.0,"jumpHeight":110.0,"coyoteTime":0.1,"jumpBufferTime":0.12,"cutJumpMultiplier":0.45,"maxFallSpeed":600.0,"maxAirJumps":0}
+    { "id": 2, "prefab": "assets/prefabs/player.prefab.json", "components": {
+        "Transform": {"position":[384.0,480.0]}
     }},
-    { "id": 3, "components": {
-        "EntityInfo": {"name":"Manzana","tag":"Pickup"},
-        "Transform": {"position":[480.0,416.0],"rotation":0.0,"scale":[2.0,2.0]},
-        "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Apple.png","source":[0,0,32,32],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0}
+    { "id": 3, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
+        "EntityInfo": {"name":"Manzana"},
+        "Transform": {"position":[480.0,416.0]}
     }},
-    { "id": 4, "components": {
-        "EntityInfo": {"name":"Banana","tag":"Pickup"},
-        "Transform": {"position":[576.0,384.0],"rotation":0.0,"scale":[2.0,2.0]},
-        "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Bananas.png","source":[0,0,32,32],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0}
+    { "id": 4, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
+        "EntityInfo": {"name":"Banana"},
+        "Transform": {"position":[576.0,384.0]},
+        "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Bananas.png"}
     }},
-    { "id": 5, "components": {
-        "EntityInfo": {"name":"Cereza","tag":"Pickup"},
-        "Transform": {"position":[672.0,416.0],"rotation":0.0,"scale":[2.0,2.0]},
-        "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Cherries.png","source":[0,0,32,32],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0}
+    { "id": 5, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
+        "EntityInfo": {"name":"Cereza"},
+        "Transform": {"position":[672.0,416.0]},
+        "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Cherries.png"}
     }},
-    { "id": 6, "components": {
-        "EntityInfo": {"name":"Checkpoint","tag":""},
-        "Transform": {"position":[896.0,448.0],"rotation":0.0,"scale":[2.0,2.0]},
-        "Sprite": {"texture":"assets/pixel_adventure/Items/Checkpoints/Checkpoint/Checkpoint (Flag Idle)(64x64).png","source":[0,0,64,64],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0}
+    { "id": 6, "prefab": "assets/prefabs/checkpoint.prefab.json", "components": {
+        "Transform": {"position":[896.0,448.0]}
     }},
     { "id": 7, "components": {
         "EntityInfo": {"name":"Terreno","tag":""},
@@ -64,6 +56,22 @@
           [ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
           [ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
         ]}
+    }},
+    { "id": 8, "prefab": "assets/prefabs/saw.prefab.json", "components": {
+        "Transform": {"position":[992.0,488.0]}
+    }},
+    { "id": 9, "prefab": "assets/prefabs/spikes.prefab.json", "components": {
+        "Transform": {"position":[1056.0,496.0]}
+    }},
+    { "id": 10, "prefab": "assets/prefabs/spikes.prefab.json", "components": {
+        "Transform": {"position":[1088.0,496.0]}
+    }},
+    { "id": 11, "prefab": "assets/prefabs/level_end.prefab.json", "components": {
+        "Transform": {"position":[1168.0,448.0]}
+    }},
+    { "id": 12, "prefab": "assets/prefabs/kill_zone.prefab.json", "components": {
+        "Transform": {"position":[640.0,900.0]},
+        "BoxCollider": {"size":[3840.0,200.0]}
     }}
   ]
 }

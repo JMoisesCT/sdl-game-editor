@@ -5,6 +5,7 @@
 
 #include "components/CoreComponents.h"
 #include "components/PhysicsComponents.h"
+#include "components/RuleComponents.h"
 #include "editor/Editor.h"
 #include "platform/AssetManager.h"
 #include "platform/Input.h"
@@ -67,6 +68,7 @@ bool Application::init(const AppConfig& config) {
     assetManager = std::make_unique<AssetManager>(sdlRenderer);
     registerCoreComponents(components);
     registerPhysicsComponents(components);
+    registerRuleComponents(components);
 
     if (config.editor) {
         editor = std::make_unique<Editor>(*this);
@@ -83,6 +85,7 @@ bool Application::openScene(const std::string& path) {
     if (playMode != PlayMode::Edit) stop();
     currentScenePath = path;
     sceneWorld.clear(true);
+    prefabLibrary.clear(); // los prefabs se vuelven a leer: pueden haber cambiado en disco
 
     bool ok = true;
     if (!SDL_GetPathInfo(path.c_str(), nullptr)) {
@@ -90,8 +93,7 @@ bool Application::openScene(const std::string& path) {
     } else {
         Json scene;
         std::string error;
-        if (!loadSceneFile(path, scene, error) ||
-            !deserializeWorld(sceneWorld, components, scene, error)) {
+        if (!loadSceneFile(path, scene, error) || !restore(scene, error)) {
             SDL_Log("No se pudo cargar la escena '%s': %s", path.c_str(), error.c_str());
             ok = false;
         }
@@ -104,12 +106,20 @@ bool Application::openScene(const std::string& path) {
 
 bool Application::saveScene() {
     if (playMode != PlayMode::Edit || currentScenePath.empty()) return false;
-    return saveSceneFile(currentScenePath, serializeWorld(sceneWorld, components));
+    return saveSceneFile(currentScenePath, snapshot());
+}
+
+Json Application::snapshot() {
+    return serializeWorld(sceneWorld, components, &prefabLibrary);
+}
+
+bool Application::restore(const Json& scene, std::string& error) {
+    return deserializeWorld(sceneWorld, components, &prefabLibrary, scene, error);
 }
 
 void Application::play() {
     if (playMode != PlayMode::Edit) return;
-    playSnapshot = serializeWorld(sceneWorld, components);
+    playSnapshot = snapshot();
     playMode = PlayMode::Play;
     // La tecla o el clic que inicio el juego no debe contar como recien pulsado.
     Input::reset();
@@ -119,7 +129,7 @@ void Application::play() {
 void Application::stop() {
     if (playMode == PlayMode::Edit) return;
     std::string error;
-    if (!deserializeWorld(sceneWorld, components, playSnapshot, error))
+    if (!restore(playSnapshot, error))
         SDL_Log("Stop: no se pudo restaurar la escena: %s", error.c_str());
     playSnapshot = Json();
     playMode = PlayMode::Edit;

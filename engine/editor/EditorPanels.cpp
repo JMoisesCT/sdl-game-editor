@@ -15,8 +15,14 @@
 
 #include "app/Application.h"
 #include "components/CoreComponents.h"
+#include "core/Prefabs.h"
 #include "core/Reflection.h"
 #include "platform/AssetManager.h"
+
+// Instancias de prefab en la Jerarquia (el mismo color que en EditorPrefabs.cpp) y
+// campos en que una instancia difiere de su prefab.
+static const ImVec4 PREFAB_COLOR(0.45f, 0.75f, 1.0f, 1.0f);
+static const ImVec4 OVERRIDE_COLOR(1.0f, 0.72f, 0.3f, 1.0f);
 
 // --- Jerarquia -------------------------------------------------------------------------
 
@@ -47,14 +53,19 @@ void Editor::drawHierarchy() {
     if (ImGui::BeginChild("##entities")) {
         for (Entity e : world.entities()) {
             std::string label = entityLabel(e) + "###e" + std::to_string(e);
-            if (ImGui::Selectable(label.c_str(), selected == e, ImGuiSelectableFlags_AllowDoubleClick)) {
+            const PrefabInstance* link = world.get<PrefabInstance>(e);
+            if (link) ImGui::PushStyleColor(ImGuiCol_Text, PREFAB_COLOR);
+            bool clicked = ImGui::Selectable(label.c_str(), selected == e, ImGuiSelectableFlags_AllowDoubleClick);
+            if (link) ImGui::PopStyleColor();
+            if (clicked) {
                 selected = e;
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) frameEntity(e);
             }
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
                 const EntityInfo* info = world.get<EntityInfo>(e);
-                ImGui::SetTooltip("id %u%s%s", e, info && !info->tag.empty() ? "  tag: " : "",
-                                  info ? info->tag.c_str() : "");
+                ImGui::SetTooltip("id %u%s%s%s%s", e, info && !info->tag.empty() ? "  tag: " : "",
+                                  info ? info->tag.c_str() : "", link ? "\nprefab: " : "",
+                                  link ? link->path.c_str() : "");
             }
             if (ImGui::BeginPopupContextItem()) {
                 selected = e;
@@ -96,10 +107,10 @@ void Editor::duplicateSelected() {
     if (!world.isAlive(selected)) return;
     beginChange();
     // Copiar = serializar y deserializar en una entidad nueva: copia exactamente lo
-    // que se guarda en el archivo, ni mas ni menos.
-    Json copy = serializeEntity(world, app.registry(), selected);
+    // que se guarda en el archivo, ni mas ni menos (una instancia sigue enlazada).
+    Json copy = serializeEntity(world, app.registry(), &app.prefabs(), selected);
     Entity e = world.create();
-    deserializeComponents(world, app.registry(), e, copy["components"]);
+    deserializeEntity(world, app.registry(), &app.prefabs(), e, copy);
     if (EntityInfo* info = world.get<EntityInfo>(e)) info->name += " (copia)";
     if (Transform* t = world.get<Transform>(e)) {
         t->position.x += gridSize; // corrida un paso, para que se vea que hay dos
@@ -130,7 +141,15 @@ void Editor::drawInspector() {
     }
 
     ImGui::Text("Entidad %u", selected);
+    drawPrefabHeader();
     ImGui::Separator();
+
+    // Si es instancia de un prefab, lo que difiere de el (la forma en que se guarda en
+    // la escena): esos campos se resaltan.
+    Json overrides;
+    if (const PrefabInstance* link = world.get<PrefabInstance>(selected))
+        if (app.prefabs().find(link->path))
+            overrides = serializeEntity(world, registry, &app.prefabs(), selected)["components"];
 
     const ComponentInfo* toRemove = nullptr;
     for (const auto& infoPtr : registry.all()) {
@@ -144,7 +163,13 @@ void Editor::drawInspector() {
             ? ImGui::CollapsingHeader(info.name.c_str(), &keep, ImGuiTreeNodeFlags_DefaultOpen)
             : ImGui::CollapsingHeader(info.name.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
         if (open) {
-            for (const FieldInfo& f : info.fields) drawField(f, f.in(component));
+            auto changed = overrides.find(info.name); // sin prefab, overrides es null: end()
+            for (const FieldInfo& f : info.fields) {
+                bool over = changed != overrides.end() && changed->contains(f.name);
+                if (over) ImGui::PushStyleColor(ImGuiCol_Text, OVERRIDE_COLOR);
+                drawField(f, f.in(component));
+                if (over) ImGui::PopStyleColor();
+            }
             if (info.fields.empty()) ImGui::TextDisabled("(sin campos)");
         }
         if (!keep) toRemove = &info;
@@ -155,7 +180,8 @@ void Editor::drawInspector() {
         toRemove->remove(world, selected);
     }
 
-    // Unica excepcion al Inspector generico: la paleta para pintar un Tilemap.
+    // Excepciones al Inspector generico: la cabecera de prefab (arriba) y la paleta
+    // para pintar un Tilemap.
     drawTilePalette();
 
     ImGui::Spacing();

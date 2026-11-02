@@ -8,8 +8,12 @@
 #include <set>
 #include <sstream>
 
+#include "core/Prefabs.h"
+
 static const char* SCENE_FORMAT = "sdl_engine_scene";
 static const int SCENE_VERSION = 1;
+static const char* PREFAB_FORMAT = "sdl_engine_prefab";
+static const int PREFAB_VERSION = 1;
 
 // --- Un campo <-> JSON -------------------------------------------------------------
 
@@ -97,19 +101,74 @@ static void readField(const FieldInfo& f, void* p, const Json& j) {
 
 // --- Entidades ---------------------------------------------------------------------
 
-Json serializeEntity(const World& world, const ComponentRegistry& registry, Entity e) {
+// Todos los campos de un componente.
+static Json componentFields(const ComponentInfo& info, const void* c) {
+    Json fields = Json::object();
+    for (const FieldInfo& f : info.fields) fields[f.name] = writeField(f, f.in(c));
+    return fields;
+}
+
+Json serializeEntity(const World& world, const ComponentRegistry& registry,
+                     PrefabLibrary* prefabs, Entity e) {
+    // Si es instancia, se compara contra los componentes (completos) de su prefab.
+    const PrefabInstance* link = world.get<PrefabInstance>(e);
+    const Json* base = link && prefabs ? prefabs->find(link->path) : nullptr;
+
     Json components = Json::object();
     for (const auto& info : registry.all()) {
         const void* c = info->get(world, e);
         if (!c) continue;
-        Json fields = Json::object();
-        for (const FieldInfo& f : info->fields) fields[f.name] = writeField(f, f.in(c));
-        components[info->name] = std::move(fields);
+        Json fields = componentFields(*info, c);
+        auto inBase = base ? base->find(info->name) : Json::const_iterator();
+        if (base && inBase != base->end()) {
+            // Solo lo que difiere del prefab. Si no difiere nada, ni se nombra.
+            Json diff = Json::object();
+            for (auto it = fields.begin(); it != fields.end(); ++it) {
+                auto bf = inBase->find(it.key());
+                if (bf == inBase->end() || *bf != it.value()) diff[it.key()] = it.value();
+            }
+            if (!diff.empty()) components[info->name] = std::move(diff);
+        } else {
+            components[info->name] = std::move(fields);
+        }
     }
+
     Json out = Json::object();
     out["id"] = e;
+    if (link) {
+        out["prefab"] = link->path;
+        // Componentes del prefab que esta instancia ya no tiene.
+        Json removed = Json::array();
+        if (base)
+            for (auto it = base->begin(); it != base->end(); ++it) {
+                const ComponentInfo* info = registry.find(it.key());
+                if (info && !info->has(world, e)) removed.push_back(it.key());
+            }
+        if (!removed.empty()) out["removed"] = std::move(removed);
+    }
     out["components"] = std::move(components);
     return out;
+}
+
+void deserializeEntity(World& world, const ComponentRegistry& registry,
+                       PrefabLibrary* prefabs, Entity e, const Json& entity) {
+    if (!entity.is_object()) return;
+    auto prefab = entity.find("prefab");
+    if (prefab != entity.end() && prefab->is_string()) {
+        std::string path = prefab->get<std::string>();
+        world.add<PrefabInstance>(e).path = path;
+        // Primero el prefab completo; si no se puede leer, la entidad queda solo con
+        // sus overrides (y conserva el enlace, para cuando el prefab vuelva).
+        if (const Json* base = prefabs ? prefabs->find(path) : nullptr)
+            deserializeComponents(world, registry, e, *base);
+        auto removed = entity.find("removed");
+        if (removed != entity.end() && removed->is_array())
+            for (const Json& name : *removed)
+                if (const ComponentInfo* info = name.is_string() ? registry.find(name.get<std::string>()) : nullptr)
+                    info->remove(world, e);
+    }
+    auto comps = entity.find("components");
+    if (comps != entity.end()) deserializeComponents(world, registry, e, *comps);
 }
 
 void deserializeComponents(World& world, const ComponentRegistry& registry, Entity e,
@@ -124,16 +183,19 @@ void deserializeComponents(World& world, const ComponentRegistry& registry, Enti
                 SDL_Log("Escena: componente desconocido '%s' (se ignora)", it.key().c_str());
             continue;
         }
-        void* c = info->add(world, e);
+        // Si ya lo tiene (viene del prefab), se escribe encima; si no, nace con sus
+        // valores por defecto.
+        void* c = info->get(world, e);
+        if (!c) c = info->add(world, e);
         if (!it.value().is_object()) continue;
         for (const FieldInfo& f : info->fields) {
             auto fj = it.value().find(f.name);
-            if (fj == it.value().end()) continue; // falta: queda el valor por defecto
+            if (fj == it.value().end()) continue; // falta: queda el valor que tenia
             try {
                 readField(f, f.in(c), *fj);
             } catch (const Json::exception&) {
-                SDL_Log("Escena: %s.%s de la entidad %u tiene un valor invalido (se usa el de "
-                        "por defecto)", info->name.c_str(), f.name.c_str(), e);
+                SDL_Log("Escena: %s.%s de la entidad %u tiene un valor invalido (se ignora)",
+                        info->name.c_str(), f.name.c_str(), e);
             }
         }
     }
@@ -141,9 +203,9 @@ void deserializeComponents(World& world, const ComponentRegistry& registry, Enti
 
 // --- World -------------------------------------------------------------------------
 
-Json serializeWorld(const World& world, const ComponentRegistry& registry) {
+Json serializeWorld(const World& world, const ComponentRegistry& registry, PrefabLibrary* prefabs) {
     Json entities = Json::array();
-    for (Entity e : world.entities()) entities.push_back(serializeEntity(world, registry, e));
+    for (Entity e : world.entities()) entities.push_back(serializeEntity(world, registry, prefabs, e));
     Json scene = Json::object();
     scene["format"] = SCENE_FORMAT;
     scene["version"] = SCENE_VERSION;
@@ -151,8 +213,8 @@ Json serializeWorld(const World& world, const ComponentRegistry& registry) {
     return scene;
 }
 
-bool deserializeWorld(World& world, const ComponentRegistry& registry, const Json& scene,
-                      std::string& error) {
+bool deserializeWorld(World& world, const ComponentRegistry& registry, PrefabLibrary* prefabs,
+                      const Json& scene, std::string& error) {
     world.clear();
     if (!scene.is_object() || scene.value("format", "") != SCENE_FORMAT) {
         error = "no es un archivo de escena (falta \"format\": \"sdl_engine_scene\")";
@@ -176,8 +238,7 @@ bool deserializeWorld(World& world, const ComponentRegistry& registry, const Jso
             SDL_Log("Escena: entidad con id %u invalido o repetido; pasa a ser la %u", id, fresh);
             id = fresh;
         }
-        auto comps = ej.find("components");
-        if (comps != ej.end()) deserializeComponents(world, registry, id, *comps);
+        deserializeEntity(world, registry, prefabs, id, ej);
     }
     return true;
 }
@@ -196,14 +257,16 @@ static bool isMatrix(const Json& j) {
 }
 
 // Una fila por linea y los numeros alineados a la derecha: asi el mapa se "ve" en el
-// archivo y pintar una celda cambia una sola linea del diff.
-static void writeMatrix(std::ostream& out, const Json& m) {
+// archivo y pintar una celda cambia una sola linea del diff. 'indent' es la sangria
+// de la linea del componente: las filas van 2 espacios mas adentro.
+static void writeMatrix(std::ostream& out, const Json& m, int indent) {
     std::size_t width = 1;
     for (const Json& row : m)
         for (const Json& v : row) width = std::max(width, v.dump().size());
+    const std::string rowIndent(indent + 2, ' ');
     out << "[";
     for (std::size_t i = 0; i < m.size(); ++i) {
-        out << (i == 0 ? "\n" : ",\n") << "          [";
+        out << (i == 0 ? "\n" : ",\n") << rowIndent << "[";
         const Json& row = m[i];
         for (std::size_t k = 0; k < row.size(); ++k) {
             std::string s = row[k].dump();
@@ -212,12 +275,12 @@ static void writeMatrix(std::ostream& out, const Json& m) {
         }
         out << "]";
     }
-    out << "\n        ]";
+    out << "\n" << std::string(indent, ' ') << "]";
 }
 
 // Un componente en su linea, igual que dump(): {"campo":valor,...}. La excepcion son
 // los campos matriz, que van una fila por linea (ver writeMatrix).
-static void writeComponent(std::ostream& out, const Json& c) {
+static void writeComponent(std::ostream& out, const Json& c, int indent) {
     if (!c.is_object()) {
         out << c.dump();
         return;
@@ -228,10 +291,61 @@ static void writeComponent(std::ostream& out, const Json& c) {
         if (!first) out << ",";
         first = false;
         out << Json(it.key()).dump() << ":";
-        if (isMatrix(it.value())) writeMatrix(out, it.value());
+        if (isMatrix(it.value())) writeMatrix(out, it.value(), indent);
         else out << it.value().dump();
     }
     out << "}";
+}
+
+// Los componentes de una entidad o de un prefab, uno por linea, con esa sangria. Deja
+// el cursor despues de la ultima linea (sin salto); false si no habia ninguno.
+static bool writeComponentLines(std::ostream& out, const Json& comps, int indent) {
+    bool first = true;
+    for (auto it = comps.begin(); it != comps.end(); ++it) {
+        out << (first ? "\n" : ",\n");
+        out << std::string(indent, ' ') << Json(it.key()).dump() << ": ";
+        writeComponent(out, it.value(), indent);
+        first = false;
+    }
+    return !first;
+}
+
+// Escribe con temporal + renombrar: un corte a mitad no deja el archivo roto.
+static bool writeTextFile(const std::string& path, const std::string& text) {
+    std::string tmpPath = path + ".tmp";
+    {
+        std::ofstream file(tmpPath, std::ios::binary);
+        if (!file) {
+            SDL_Log("No se pudo crear '%s'", tmpPath.c_str());
+            return false;
+        }
+        file << text;
+        if (!file) {
+            SDL_Log("Fallo la escritura de '%s'", tmpPath.c_str());
+            return false;
+        }
+    }
+    if (!SDL_RenamePath(tmpPath.c_str(), path.c_str())) {
+        SDL_Log("No se pudo reemplazar '%s': %s", path.c_str(), SDL_GetError());
+        SDL_RemovePath(tmpPath.c_str());
+        return false;
+    }
+    return true;
+}
+
+static bool readJsonFile(const std::string& path, Json& out, std::string& error) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) {
+        error = "no se pudo abrir '" + path + "'";
+        return false;
+    }
+    try {
+        out = Json::parse(file);
+    } catch (const Json::exception& ex) {
+        error = std::string("JSON invalido: ") + ex.what();
+        return false;
+    }
+    return true;
 }
 
 bool saveSceneFile(const std::string& path, const Json& scene) {
@@ -247,51 +361,48 @@ bool saveSceneFile(const std::string& path, const Json& scene) {
     for (std::size_t i = 0; i < entities.size(); ++i) {
         const Json& ej = entities[i];
         out << (i == 0 ? "\n" : ",\n");
-        out << "    { \"id\": " << ej.at("id").dump() << ", \"components\": {";
-        const Json& comps = ej.at("components");
-        bool first = true;
-        for (auto it = comps.begin(); it != comps.end(); ++it) {
-            out << (first ? "\n" : ",\n");
-            out << "        " << Json(it.key()).dump() << ": ";
-            writeComponent(out, it.value());
-            first = false;
-        }
-        out << (first ? "}}" : "\n    }}");
+        out << "    { \"id\": " << ej.at("id").dump();
+        if (ej.contains("prefab")) out << ", \"prefab\": " << ej["prefab"].dump();
+        if (ej.contains("removed")) out << ", \"removed\": " << ej["removed"].dump();
+        out << ", \"components\": {";
+        bool any = writeComponentLines(out, ej.at("components"), 8);
+        out << (any ? "\n    }}" : "}}");
     }
     out << (entities.empty() ? "]\n}\n" : "\n  ]\n}\n");
-
-    std::string tmpPath = path + ".tmp";
-    {
-        std::ofstream file(tmpPath, std::ios::binary);
-        if (!file) {
-            SDL_Log("saveSceneFile: no se pudo crear '%s'", tmpPath.c_str());
-            return false;
-        }
-        file << out.str();
-        if (!file) {
-            SDL_Log("saveSceneFile: fallo la escritura de '%s'", tmpPath.c_str());
-            return false;
-        }
-    }
-    if (!SDL_RenamePath(tmpPath.c_str(), path.c_str())) {
-        SDL_Log("saveSceneFile: no se pudo reemplazar '%s': %s", path.c_str(), SDL_GetError());
-        SDL_RemovePath(tmpPath.c_str());
-        return false;
-    }
-    return true;
+    return writeTextFile(path, out.str());
 }
 
 bool loadSceneFile(const std::string& path, Json& scene, std::string& error) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file) {
-        error = "no se pudo abrir '" + path + "'";
+    return readJsonFile(path, scene, error);
+}
+
+bool savePrefabFile(const std::string& path, const Json& components) {
+    std::ostringstream out;
+    out << "{\n";
+    out << "  \"format\": " << Json(PREFAB_FORMAT).dump() << ",\n";
+    out << "  \"version\": " << PREFAB_VERSION << ",\n";
+    out << "  \"components\": {";
+    bool any = writeComponentLines(out, components, 4);
+    out << (any ? "\n  }\n}\n" : "}\n}\n");
+    return writeTextFile(path, out.str());
+}
+
+bool loadPrefabFile(const std::string& path, Json& components, std::string& error) {
+    Json file;
+    if (!readJsonFile(path, file, error)) return false;
+    if (!file.is_object() || file.value("format", "") != PREFAB_FORMAT) {
+        error = "no es un prefab (falta \"format\": \"sdl_engine_prefab\")";
         return false;
     }
-    try {
-        scene = Json::parse(file);
-    } catch (const Json::exception& ex) {
-        error = std::string("JSON invalido: ") + ex.what();
+    if (file.value("version", 0) > PREFAB_VERSION) {
+        error = "el prefab es de una version mas nueva del motor";
         return false;
     }
+    auto comps = file.find("components");
+    if (comps == file.end() || !comps->is_object()) {
+        error = "falta el objeto \"components\"";
+        return false;
+    }
+    components = *comps;
     return true;
 }

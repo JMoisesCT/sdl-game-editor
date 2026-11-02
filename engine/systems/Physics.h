@@ -41,7 +41,9 @@ bool colliderBounds(World& world, Entity e, Vec2& min, Vec2& max);
 
 // Si las cajas de dos entidades se superponen (tocarse borde con borde no cuenta).
 // Incluye triggers: sirve para recoger, danar o activar sin pasar por la fisica.
-bool collidersOverlap(World& world, Entity a, Entity b);
+// Con margin > 0 las cajas se agrandan esos px por cada lado: asi cuenta tambien el
+// CONTACTO entre dos cajas solidas, que la fisica deja justo borde con borde.
+bool collidersOverlap(World& world, Entity a, Entity b, float margin = 0.0f);
 
 // Si algun Tilemap tiene una celda solida dentro de ese rectangulo del mundo.
 bool isSolidArea(World& world, Vec2 min, Vec2 max);

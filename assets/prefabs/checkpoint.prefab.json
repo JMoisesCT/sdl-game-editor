@@ -1,0 +1,11 @@
+{
+  "format": "sdl_engine_prefab",
+  "version": 1,
+  "components": {
+    "EntityInfo": {"name":"Checkpoint","tag":""},
+    "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[2.0,2.0]},
+    "Sprite": {"texture":"assets/pixel_adventure/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png","source":[0,0,64,64],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0},
+    "BoxCollider": {"size":[10.0,46.0],"offset":[-9.0,9.0],"isTrigger":true},
+    "Checkpoint": {"targetTag":"Player","offset":[-9.0,16.0],"activeTexture":"assets/pixel_adventure/Items/Checkpoints/Checkpoint/Checkpoint (Flag Idle)(64x64).png"}
+  }
+}

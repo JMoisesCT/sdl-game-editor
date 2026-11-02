@@ -4,6 +4,7 @@
 #include "components/PhysicsComponents.h"
 #include "core/World.h"
 #include "platform/Input.h"
+#include "systems/Rules.h"
 
 static const char* TAG_PLAYER = "Player";
 
@@ -17,6 +18,12 @@ void PlatformerControlSystem::update(World& world, float) {
     // Se filtra por tag, nunca por nombre: el nombre es para las personas.
     world.each<PlatformerMotor, EntityInfo>([&](Entity e, PlatformerMotor& motor, EntityInfo& info) {
         if (info.tag != TAG_PLAYER) return;
+        // Muerto no se controla: sin intencion, y el Respawn hace el resto.
+        if (isDead(world, e)) {
+            motor.moveInput = 0.0f;
+            motor.jumpPressed = motor.jumpHeld = false;
+            return;
+        }
         motor.moveInput = move;
         motor.jumpPressed = jumpPressed; // flanco: un solo frame
         motor.jumpHeld = jumpHeld;       // para el salto corto

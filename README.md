@@ -6,8 +6,9 @@ editando escenas en un editor propio, sin pelear con la API cruda de SDL.
 
 > **Estado:** en desarrollo, por fases. Ya están el núcleo (ECS + reflexión + escenas en
 > JSON), el editor, los tilemaps (se pintan con paleta en el propio editor) y la física con
-> el motor de plataformas: en la escena de ejemplo el jugador corre y salta sobre el mapa.
-> Faltan los prefabs, las reglas de juego (vida, daño, recolectables) y la animación.
+> el motor de plataformas, los prefabs y las reglas de juego (vida, daño, frutas,
+> checkpoints): en la escena de ejemplo se juega un nivel completo. Falta la presentación
+> (animación, cámara que sigue, texto/HUD).
 
 ## Cómo está pensado
 
@@ -45,7 +46,10 @@ editando escenas en un editor propio, sin pelear con la API cruda de SDL.
 
 ## El editor
 
-- **Jerarquía** (izquierda): las entidades de la escena; crear, duplicar y borrar.
+- **Jerarquía** (izquierda): las entidades de la escena; crear, duplicar y borrar. Las
+  instancias de prefab se ven en azul.
+- **Prefabs** (izquierda, abajo): los prefabs de `assets/`; doble clic o arrastrar a la
+  vista para colocar uno.
 - **Inspector** (derecha): los componentes de la entidad elegida, editables; agregar y
   quitar componentes.
 - **Vista** (centro), con dos pestañas:
@@ -99,13 +103,64 @@ el mapa se lee en el archivo y un diff muestra solo las filas que cambiaron.
 
 Los sistemas corren en el orden en que `main.cpp` los agrega, y ese orden es la cadena de
 cada frame: control (teclas → intención) → `PlatformerMotorSystem` (intención → velocidad)
-→ `PhysicsSystem` (velocidad → posición, choques y apoyo).
+→ `PhysicsSystem` (velocidad → posición, choques y apoyo) → reglas (vida, daño, frutas,
+checkpoints, reaparición) → reglas del juego.
+
+### Prefabs
+
+Un **prefab** es una entidad molde guardada en su propio archivo (`assets/prefabs/*.prefab.json`):
+el jugador, una fruta, unos pinchos. Ocupan el lugar que en un motor "a código" tendría una
+función que arma cada objeto.
+
+- **Colocar**: doble clic en el panel Prefabs (aparece en el centro de la vista) o
+  arrastrarlo a la vista.
+- Una **instancia** queda **enlazada** a su prefab: en la escena solo se guarda en qué
+  difiere de él (la posición, el nombre, la textura de *otra* fruta...). Cambiar el prefab
+  cambia todas sus instancias, salvo en lo que cada una sobrescribió. En el Inspector, los
+  campos sobrescritos se ven en **naranja**.
+- **Crear prefab...** (Inspector de una entidad suelta): la guarda como prefab y la enlaza.
+- **Aplicar**: los cambios de la instancia pasan al prefab (y a todas sus instancias), salvo
+  la posición y el nombre. El archivo del prefab se guarda en el acto: Deshacer vuelve atrás
+  la escena, no el prefab.
+- **Revertir**: la instancia vuelve a ser igual al prefab (conserva posición y nombre).
+- **Desvincular**: deja de ser instancia; conserva sus componentes.
+- **Actualizar** (panel Prefabs) vuelve a leer los prefabs del disco, si se editaron a mano.
+
+En el archivo de escena, una instancia se ve así:
+
+```json
+{ "id": 4, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
+    "EntityInfo": {"name":"Banana"},
+    "Transform": {"position":[576.0,384.0]},
+    "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Bananas.png"}
+}}
+```
+
+### Reglas de juego
+
+Componentes de datos y sistemas del motor que funcionan por **contacto entre cajas**
+(`BoxCollider`, normalmente trigger) y deciden a quién afectan por la **etiqueta** (`tag`):
+
+- **`Health`**: vida, invulnerabilidad tras un golpe (el sprite parpadea) y muerte.
+- **`Hazard`**: quita vida al que lo toca y lo empuja (pinchos, sierras).
+- **`KillZone`**: mata en el acto, aunque sea invulnerable (la franja bajo el nivel).
+- **`Collectible`**: se recoge al tocarlo y desaparece (frutas, monedas).
+- **`Checkpoint`**: fija el punto de reaparición de quien lo toca (y cambia su imagen).
+- **`Respawn`**: en el jugador; al morir espera un momento y reaparece en el último
+  checkpoint con la vida llena.
+
+No hay *callbacks*: lo que pasa en un frame queda como un aviso de un frame en el componente
+(`justDamaged`, `justDied`, `justCollected`...). Las reglas propias de **un** juego van en
+`game/`: en el ejemplo, `PlatformerRules` cuenta las frutas recogidas y registra el
+componente `LevelGoal` (la meta). Por ahora lo informa en el log; el HUD llega con la
+presentación.
 
 ### Escenas de ejemplo
 
 **Abrir...** (barra superior) lista las escenas de `assets/`:
 
-- `platformer.scene.json`: plataformas de Pixel Adventure, con jugador, frutas y checkpoint.
+- `platformer.scene.json`: plataformas de Pixel Adventure, armado con prefabs: jugador,
+  frutas, checkpoint, sierra, pinchos, meta y una zona de muerte bajo el pozo.
 - `topdown.scene.json`: un piso de Ninja Adventure, para un juego cenital.
 - `shmup.scene.json`: un fondo largo de Pixel Shmup, que se recorre hacia arriba.
 
@@ -129,17 +184,19 @@ Con el argumento `--play`, el ejecutable abre la escena y la juega directamente,
 
 ```
 engine/
-  core/        Entity, World (ECS), Reflection, SceneSerializer
+  core/        Entity, World (ECS), Reflection, SceneSerializer, Prefabs
   components/  componentes del motor (EntityInfo, Transform, Sprite, Tilemap, Camera,
-               RigidBody2D, BoxCollider, PlatformerMotor)
-  systems/     interfaz System, RenderSystem, PhysicsSystem, PlatformerMotorSystem y
-               consultas de Tilemaps
+               RigidBody2D, BoxCollider, PlatformerMotor, Health, Hazard, KillZone,
+               Collectible, Checkpoint, Respawn)
+  systems/     interfaz System, RenderSystem, PhysicsSystem, PlatformerMotorSystem,
+               sistemas de reglas (Rules) y consultas de Tilemaps
   platform/    Input, AssetManager, Screenshot
   app/         Application: ventana, bucle, modos Edit / Play / Pausa
   editor/      el editor (Dear ImGui)
   third_party/ nlohmann/json y Dear ImGui (vendorizadas)
-game/          código del juego de ejemplo (PlatformerControl: teclas -> intención)
-assets/        sprites, tilesets y escenas (assets/scenes/*.scene.json)
+game/          código del juego de ejemplo (PlatformerControl: teclas -> intención;
+               PlatformerRules: frutas y meta)
+assets/        sprites, tilesets, prefabs (assets/prefabs/) y escenas (assets/scenes/)
 main.cpp       registra los sistemas en orden y abre la escena
 ```
 
@@ -182,7 +239,7 @@ copia de `assets/` que está a su lado.
 ### Librerías
 
 - **[nlohmann/json](https://github.com/nlohmann/json)** de **Niels Lohmann** — JSON para
-  escenas y mapas. Licencia **MIT**, vendorizada en `engine/third_party/nlohmann/json.hpp`.
+  escenas y prefabs. Licencia **MIT**, vendorizada en `engine/third_party/nlohmann/json.hpp`.
 - **[Dear ImGui](https://github.com/ocornut/imgui)** de **Omar Cornut** y colaboradores —
   interfaz del editor. Licencia **MIT**, vendorizada (v1.92.9b) en
   `engine/third_party/imgui/`, con su `LICENSE.txt` y un `VENDORED.txt` con el origen.

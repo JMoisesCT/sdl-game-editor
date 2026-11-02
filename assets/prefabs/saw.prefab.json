@@ -1,0 +1,11 @@
+{
+  "format": "sdl_engine_prefab",
+  "version": 1,
+  "components": {
+    "EntityInfo": {"name":"Sierra","tag":"Hazard"},
+    "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[2.0,2.0]},
+    "Sprite": {"texture":"assets/pixel_adventure/Traps/Saw/On (38x38).png","source":[0,0,38,38],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0},
+    "BoxCollider": {"size":[32.0,32.0],"offset":[0.0,0.0],"isTrigger":true},
+    "Hazard": {"damage":1,"targetTag":"Player","knockback":[300.0,340.0],"repeat":true}
+  }
+}

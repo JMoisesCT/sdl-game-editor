@@ -6,6 +6,7 @@
 #include <imgui/imgui_impl_sdlrenderer3.h>
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 
 #include "app/Application.h"
@@ -140,9 +141,16 @@ void Editor::layoutAndDraw() {
         drawToolbar();
     ImGui::End();
 
+    // Columna izquierda: Jerarquia arriba y Prefabs abajo.
+    float hierarchyH = std::round(bodyH * 0.62f);
     ImGui::SetNextWindowPos(ImVec2(origin.x, origin.y + toolbarH));
-    ImGui::SetNextWindowSize(ImVec2(leftW, bodyH));
+    ImGui::SetNextWindowSize(ImVec2(leftW, hierarchyH));
     if (ImGui::Begin("Jerarquia", nullptr, fixed)) drawHierarchy();
+    ImGui::End();
+
+    ImGui::SetNextWindowPos(ImVec2(origin.x, origin.y + toolbarH + hierarchyH));
+    ImGui::SetNextWindowSize(ImVec2(leftW, bodyH - hierarchyH));
+    if (ImGui::Begin("Prefabs", nullptr, fixed)) drawPrefabList();
     ImGui::End();
 
     ImGui::SetNextWindowPos(ImVec2(origin.x + leftW + centerW, origin.y + toolbarH));
@@ -299,18 +307,23 @@ void Editor::save() {
     }
 }
 
-void Editor::scanSceneFiles() {
+std::vector<std::string> Editor::listAssetFiles(const std::string& suffix) {
     namespace fs = std::filesystem;
-    static const std::string EXT = ".scene.json";
-    sceneFiles.clear();
+    std::vector<std::string> files;
     std::error_code ec;
     for (fs::recursive_directory_iterator it("assets", ec), end; !ec && it != end; it.increment(ec)) {
         if (!it->is_regular_file(ec)) continue;
         std::string file = it->path().generic_string(); // con "/" tambien en Windows
-        if (file.size() > EXT.size() && file.compare(file.size() - EXT.size(), EXT.size(), EXT) == 0)
-            sceneFiles.push_back(file);
+        if (file.size() > suffix.size() &&
+            file.compare(file.size() - suffix.size(), suffix.size(), suffix) == 0)
+            files.push_back(file);
     }
-    std::sort(sceneFiles.begin(), sceneFiles.end());
+    std::sort(files.begin(), files.end());
+    return files;
+}
+
+void Editor::scanSceneFiles() {
+    sceneFiles = listAssetFiles(".scene.json");
 }
 
 void Editor::drawOpenPopup() {
@@ -346,7 +359,7 @@ void Editor::togglePlay() {
 
 void Editor::beginChange() {
     if (!app.isEditing() || changePending) return;
-    pendingBefore = serializeWorld(app.world(), app.registry());
+    pendingBefore = app.snapshot();
     changePending = true;
 }
 
@@ -360,6 +373,11 @@ void Editor::commitChange() {
     redoStack.clear();
 }
 
+void Editor::cancelChange() {
+    pendingBefore = Json();
+    changePending = false;
+}
+
 void Editor::commitIfIdle() {
     // El gesto termina al soltar el raton o al salir del campo que se editaba: asi
     // arrastrar un valor, escribir un nombre o un trazo del pincel es UN paso, no uno
@@ -371,7 +389,7 @@ void Editor::undo() {
     if (!app.isEditing()) return;
     commitChange();
     if (undoStack.empty()) return;
-    redoStack.push_back({ serializeWorld(app.world(), app.registry()), version });
+    redoStack.push_back({ app.snapshot(), version });
     Snapshot s = std::move(undoStack.back());
     undoStack.pop_back();
     restore(s.scene);
@@ -382,7 +400,7 @@ void Editor::undo() {
 void Editor::redo() {
     if (!app.isEditing() || redoStack.empty()) return;
     commitChange();
-    undoStack.push_back({ serializeWorld(app.world(), app.registry()), version });
+    undoStack.push_back({ app.snapshot(), version });
     Snapshot s = std::move(redoStack.back());
     redoStack.pop_back();
     restore(s.scene);
@@ -392,7 +410,7 @@ void Editor::redo() {
 
 void Editor::restore(const Json& scene) {
     std::string error;
-    if (!deserializeWorld(app.world(), app.registry(), scene, error))
+    if (!app.restore(scene, error))
         SDL_Log("Editor: no se pudo restaurar la escena: %s", error.c_str());
     if (!app.world().isAlive(selected)) selected = NullEntity;
     dragging = pressOnEntity = painting = false;

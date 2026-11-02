@@ -21,6 +21,7 @@ union SDL_Event;
 // Paneles (Dear ImGui, posicion fija):
 //   - Barra superior: Jugar/Detener, Pausa, Guardar, Deshacer/Rehacer, Abrir, grilla.
 //   - Jerarquia (izquierda): las entidades; crear, duplicar, borrar.
+//   - Prefabs (izquierda, debajo): los .prefab.json, para colocar instancias.
 //   - Inspector (derecha): los componentes de la seleccionada, editables.
 //   - Vista (centro): pestanas "Escena" (camara libre del editor) y "Juego" (lo que
 //     ve el jugador, a la resolucion del juego). Cada una se dibuja en su textura.
@@ -36,9 +37,15 @@ union SDL_Event;
 // clic en la vista de escena pinta las celdas de ESA capa en vez de elegir entidades.
 // Cada trazo (pulsar, arrastrar, soltar) es un paso de deshacer.
 //
-// Se reparte en cuatro .cpp: Editor.cpp (marco, barra, deshacer, atajos),
-// EditorPanels.cpp (Jerarquia e Inspector), EditorViewport.cpp (vistas) y
-// EditorTilemap.cpp (paleta y pinceles).
+// Prefabs: el panel Prefabs (bajo la Jerarquia) lista los .prefab.json de assets/;
+// doble clic o arrastrar a la vista coloca una instancia. Con una instancia elegida,
+// el Inspector muestra su prefab, resalta los campos que difieren de el y ofrece
+// Aplicar, Revertir y Desvincular. Aplicar guarda el prefab en el acto: deshacer
+// vuelve atras la escena, no el archivo del prefab.
+//
+// Se reparte en cinco .cpp: Editor.cpp (marco, barra, deshacer, atajos),
+// EditorPanels.cpp (Jerarquia e Inspector), EditorViewport.cpp (vistas),
+// EditorTilemap.cpp (paleta y pinceles) y EditorPrefabs.cpp (prefabs).
 class Editor {
 public:
     explicit Editor(Application& app);
@@ -74,11 +81,14 @@ private:
     void save();
     void togglePlay();
     void scanSceneFiles();
+    // Archivos bajo assets/ que terminan en suffix, con "/" y ordenados.
+    static std::vector<std::string> listAssetFiles(const std::string& suffix);
     void drawOpenPopup();  // lista de escenas; al elegir una, pregunta si hay cambios
 
     void beginChange();       // antes de modificar el World
     void commitChange();      // anota el paso pendiente (si lo hay)
     void commitIfIdle();      // ...pero solo si el gesto ya termino
+    void cancelChange();      // olvida el paso pendiente (solo si aun no se modifico nada)
     void undo();
     void redo();
     void restore(const Json& scene);
@@ -121,6 +131,20 @@ private:
     void setCell(Tilemap& map, int col, int row, int tile); // beginChange si cambia
     void fillFrom(Tilemap& map, int col, int row);
     void drawTilemapGizmos();        // dentro del destino de la vista de escena
+
+    // --- EditorPrefabs.cpp ---
+    void drawPrefabList();           // panel Prefabs
+    void scanPrefabFiles();
+    void reloadPrefabs();            // vuelve a leer los prefabs y rearma las instancias
+    Entity placePrefab(const std::string& path, Vec2 position); // instancia nueva, elegida
+    void drawPrefabHeader();         // en el Inspector: su prefab, o "Crear prefab"
+    void createPrefabFromSelected(const std::string& name);
+    void applyToPrefab();            // la seleccion pasa a ser el prefab
+    void revertToPrefab();           // la seleccion vuelve a ser igual al prefab
+    void unlinkPrefab();
+    // Quita todos los componentes de la entidad y la vuelve a armar desde ese JSON
+    // (forma de serializeEntity), conservando su id.
+    void rebuildEntity(Entity e, const Json& entity);
 
     Application& app;
     bool guiReady = false;
@@ -184,4 +208,8 @@ private:
     int hoverCol = 0, hoverRow = 0;
 
     std::vector<std::string> sceneFiles; // .scene.json bajo assets/, para "Abrir..."
+
+    std::vector<std::string> prefabFiles; // .prefab.json bajo assets/, para el panel Prefabs
+    bool prefabFilesScanned = false;
+    std::string newPrefabName;            // texto del cuadro "Crear prefab"
 };

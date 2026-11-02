@@ -83,6 +83,20 @@ void Editor::drawSceneView(Vec2 pos, Vec2 size) {
     sceneView.height = (int)size.y;
     handleSceneInput(pos, hovered);
 
+    // Un prefab arrastrado desde el panel Prefabs: se coloca donde se suelta.
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PREFAB")) {
+            ImVec2 m = ImGui::GetIO().MousePos;
+            Vec2 p = sceneView.screenToWorld({ m.x - pos.x, m.y - pos.y });
+            if (snapToGrid && !ImGui::GetIO().KeyAlt) {
+                p.x = std::round(p.x / gridSize) * gridSize;
+                p.y = std::round(p.y / gridSize) * gridSize;
+            }
+            placePrefab(static_cast<const char*>(payload->Data), p);
+        }
+        ImGui::EndDragDropTarget();
+    }
+
     // Despues se dibuja la escena con la vista ya actualizada.
     SDL_Texture* target = ensureTarget(sceneTarget, sceneTargetW, sceneTargetH, (int)size.x, (int)size.y);
     if (!target) return;

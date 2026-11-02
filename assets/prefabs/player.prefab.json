@@ -1,0 +1,14 @@
+{
+  "format": "sdl_engine_prefab",
+  "version": 1,
+  "components": {
+    "EntityInfo": {"name":"Jugador","tag":"Player"},
+    "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[2.0,2.0]},
+    "Sprite": {"texture":"assets/pixel_adventure/Main Characters/Mask Dude/Idle (32x32).png","source":[0,0,32,32],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":10},
+    "RigidBody2D": {"velocity":[0.0,0.0],"gravity":980.0},
+    "BoxCollider": {"size":[18.0,26.0],"offset":[0.0,3.0],"isTrigger":false},
+    "PlatformerMotor": {"maxSpeed":180.0,"accel":1600.0,"decel":2000.0,"airAccel":1000.0,"airDecel":500.0,"jumpHeight":110.0,"coyoteTime":0.1,"jumpBufferTime":0.12,"cutJumpMultiplier":0.45,"maxFallSpeed":600.0,"maxAirJumps":0},
+    "Health": {"maxHP":3,"invulnerabilityTime":1.2,"blinkInterval":0.08,"destroyOnDeath":false},
+    "Respawn": {"delay":0.7}
+  }
+}

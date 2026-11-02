@@ -1,0 +1,10 @@
+{
+  "format": "sdl_engine_prefab",
+  "version": 1,
+  "components": {
+    "EntityInfo": {"name":"Zona de muerte","tag":""},
+    "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[1.0,1.0]},
+    "BoxCollider": {"size":[256.0,64.0],"offset":[0.0,0.0],"isTrigger":true},
+    "KillZone": {"targetTag":"Player"}
+  }
+}

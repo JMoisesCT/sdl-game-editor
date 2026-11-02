@@ -171,9 +171,11 @@ bool colliderBounds(World& world, Entity e, Vec2& min, Vec2& max) {
     return true;
 }
 
-bool collidersOverlap(World& world, Entity a, Entity b) {
+bool collidersOverlap(World& world, Entity a, Entity b, float margin) {
     Vec2 aMin, aMax, bMin, bMax;
     if (a == b || !colliderBounds(world, a, aMin, aMax) || !colliderBounds(world, b, bMin, bMax)) return false;
+    aMin = { aMin.x - margin, aMin.y - margin };
+    aMax = { aMax.x + margin, aMax.y + margin };
     return boxesOverlap(aMin, aMax, bMin, bMax);
 }
 
