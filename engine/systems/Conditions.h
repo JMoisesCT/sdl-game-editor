@@ -47,5 +47,5 @@ private:
 //   Sucesos (un solo frame, de los avisos justX):
 //     jumped    despego (PlatformerMotor)  landed    aterrizo (PlatformerMotor)
 //     damaged   recibio un golpe (Health)  respawned reaparecio (Respawn)
-//     bounced   el Bouncer lanzo a alguien
+//     bounced   el Bouncer lanzo a alguien dropped   bajo de una plataforma (PlatformerMotor)
 void registerEngineConditions(ConditionRegistry& conditions);

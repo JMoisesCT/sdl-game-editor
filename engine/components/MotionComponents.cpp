@@ -18,7 +18,9 @@ void registerMotionComponents(ComponentRegistry& registry) {
         .field("gravity", &FallingPlatform::gravity).range(0.0f, 10000.0f).speed(5.0f).tooltip("px/seg^2 al caer")
         .field("maxFallSpeed", &FallingPlatform::maxFallSpeed).range(0.0f, 5000.0f).speed(5.0f).tooltip("px/seg")
         .field("respawnTime", &FallingPlatform::respawnTime).range(0.0f, 60.0f).speed(0.05f)
-            .tooltip("Seg desde que empieza a caer hasta volver a su lugar (0 = no vuelve)");
+            .tooltip("Seg desde que empieza a caer hasta volver a su lugar (0 = no vuelve)")
+        .field("fadeInTime", &FallingPlatform::fadeInTime).range(0.0f, 10.0f).speed(0.01f)
+            .tooltip("Seg que tarda en aparecer al volver (fundido del tint del Sprite; 0 = de golpe)");
 
     registry.add<Bouncer>("Bouncer")
         .field("bounceHeight", &Bouncer::bounceHeight).range(0.0f, 5000.0f).speed(1.0f).tooltip("px que sube lo que rebota")

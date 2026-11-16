@@ -248,6 +248,10 @@ void Editor::drawToolbar() {
     }
 }
 
+bool Editor::isTypingText() const {
+    return ImGui::GetCurrentContext() && ImGui::GetIO().WantTextInput;
+}
+
 void Editor::handleShortcuts() {
     ImGuiIO& io = ImGui::GetIO();
     if (io.WantTextInput) return; // escribiendo en un campo: las teclas son del campo

@@ -15,10 +15,20 @@ namespace {
     // bordes coinciden) y se resolverian choques que no existen.
     const float SKIN = 0.01f;
 
-    void boxOf(const BoxCollider& c, const Transform& t, Vec2& min, Vec2& max) {
+    // Hacia donde esta volteado el dibujo de la entidad, con la misma regla que
+    // RenderSystem: flip del Sprite y signo de la escala se combinan.
+    struct Mirror { bool x = false, y = false; };
+
+    Mirror mirrorOf(World& world, Entity e, const Transform& t) {
+        const Sprite* s = world.get<Sprite>(e);
+        return { (s && s->flipX) != (t.scale.x < 0.0f), (s && s->flipY) != (t.scale.y < 0.0f) };
+    }
+
+    // Caja en el mundo. El offset se refleja con el dibujo (ver BoxCollider).
+    void boxOf(const BoxCollider& c, const Transform& t, Mirror m, Vec2& min, Vec2& max) {
         float sx = std::fabs(t.scale.x), sy = std::fabs(t.scale.y);
-        float cx = t.position.x + c.offset.x * sx;
-        float cy = t.position.y + c.offset.y * sy;
+        float cx = t.position.x + c.offset.x * sx * (m.x ? -1.0f : 1.0f);
+        float cy = t.position.y + c.offset.y * sy * (m.y ? -1.0f : 1.0f);
         float hw = std::fabs(c.size.x) * sx * 0.5f;
         float hh = std::fabs(c.size.y) * sy * 0.5f;
         min = { cx - hw, cy - hh };
@@ -97,7 +107,7 @@ namespace {
     }
 
     void resolveAgainstTilemap(const Tilemap& map, const Transform& mt, const BoxCollider& box,
-                               Transform& t, RigidBody2D& rb) {
+                               Mirror mirror, Transform& t, RigidBody2D& rb) {
         Vec2 min, max;
         float newY = t.position.y;
         float dx = t.position.x - rb.previous.x; // cuanto se movio en cada eje
@@ -106,7 +116,7 @@ namespace {
         // Pasada X, con la Y de ANTES de moverse: a esa altura lo unico que puede haber
         // delante es una pared, nunca el suelo que se esta pisando.
         t.position.y = rb.previous.y;
-        boxOf(box, t, min, max);
+        boxOf(box, t, mirror, min, max);
         float pushX = pushOutX(map, mt, min, max, dx);
         if (pushX != 0.0f) {
             t.position.x += pushX;
@@ -115,7 +125,7 @@ namespace {
 
         // Pasada Y, ya con la X corregida.
         t.position.y = newY;
-        boxOf(box, t, min, max);
+        boxOf(box, t, mirror, min, max);
         float pushY = pushOutY(map, mt, min, max, dy);
         if (pushY != 0.0f) {
             t.position.y += pushY;
@@ -126,10 +136,11 @@ namespace {
 
     // Plataforma de un sentido (su borde de arriba en pMin.y) contra el cuerpo 'body':
     // solo lo sube encima si cae y en el paso anterior tenia los pies por encima del
-    // borde. La plataforma no se mueve nunca (aunque tenga RigidBody2D).
+    // borde. La plataforma no se mueve nunca (aunque tenga RigidBody2D). Un cuerpo que
+    // esta bajando de una (ignoreOneWay) las atraviesa todas.
     void resolveOneWay(World& world, Entity body, Vec2 pMin, Vec2 bMax) {
         RigidBody2D* rb = world.get<RigidBody2D>(body);
-        if (!rb || rb->velocity.y < 0.0f) return; // subiendo: la atraviesa
+        if (!rb || rb->velocity.y < 0.0f || rb->ignoreOneWay > 0.0f) return; // subiendo: la atraviesa
         Transform& t = *world.get<Transform>(body);
         float previousBottom = bMax.y - (t.position.y - rb->previous.y);
         if (previousBottom > pMin.y + PhysicsSystem::ONE_WAY_TOLERANCE) return; // venia de abajo o de costado
@@ -189,7 +200,7 @@ bool colliderBounds(World& world, Entity e, Vec2& min, Vec2& max) {
     const BoxCollider* c = world.get<BoxCollider>(e);
     const Transform* t = world.get<Transform>(e);
     if (!c || !t) return false;
-    boxOf(*c, *t, min, max);
+    boxOf(*c, *t, mirrorOf(world, e, *t), min, max);
     return true;
 }
 
@@ -223,28 +234,45 @@ namespace {
         return solids;
     }
 
+    // Sobre que esta parado un cuerpo: nada, solo plataformas de un sentido, o algo
+    // macizo (un tile solido o una caja comun; gana si hay de los dos).
+    enum class Ground { None, OneWayOnly, Solid };
+
     // Sonda de apoyo: una franja fina bajo los pies del cuerpo, contra los tilemaps y
     // las cajas solidas. Mientras sube no se mira: rozar el borde de una plataforma al
-    // saltar no debe contar como aterrizar.
-    bool probeGround(World& world, Entity e, const RigidBody2D& rb, const std::vector<Entity>& solids) {
+    // saltar no debe contar como aterrizar. Bajando de una plataforma de un sentido
+    // (ignoreOneWay), esas no sostienen.
+    Ground groundUnder(World& world, Entity e, const RigidBody2D& rb, const std::vector<Entity>& solids) {
         Vec2 min, max;
         const BoxCollider* box = world.get<BoxCollider>(e);
-        if (rb.velocity.y < 0.0f || !box || box->isTrigger || !colliderBounds(world, e, min, max)) return false;
+        if (rb.velocity.y < 0.0f || !box || box->isTrigger || !colliderBounds(world, e, min, max))
+            return Ground::None;
         Vec2 probeMin{ min.x, max.y };
         Vec2 probeMax{ max.x, max.y + PhysicsSystem::GROUND_PROBE };
-        if (isSolidArea(world, probeMin, probeMax)) return true;
+        if (isSolidArea(world, probeMin, probeMax)) return Ground::Solid;
+        Ground found = Ground::None;
         for (Entity other : solids) {
             Vec2 oMin, oMax;
             if (other == e || !colliderBounds(world, other, oMin, oMax) ||
                 !boxesOverlap({ probeMin.x + SKIN, probeMin.y }, { probeMax.x - SKIN, probeMax.y }, oMin, oMax))
                 continue;
+            if (!world.get<BoxCollider>(other)->oneWay) return Ground::Solid;
             // Una de un sentido solo sostiene si los pies estan en su borde, no a
             // mitad de atravesarla.
-            if (world.get<BoxCollider>(other)->oneWay && max.y > oMin.y + 0.5f) continue;
-            return true;
+            if (rb.ignoreOneWay > 0.0f || max.y > oMin.y + 0.5f) continue;
+            found = Ground::OneWayOnly;
         }
-        return false;
+        return found;
     }
+
+    bool probeGround(World& world, Entity e, const RigidBody2D& rb, const std::vector<Entity>& solids) {
+        return groundUnder(world, e, rb, solids) != Ground::None;
+    }
+}
+
+bool isOnOneWayOnly(World& world, Entity body) {
+    const RigidBody2D* rb = world.get<RigidBody2D>(body);
+    return rb && groundUnder(world, body, *rb, solidBoxes(world)) == Ground::OneWayOnly;
 }
 
 bool isStandingOn(World& world, Entity body, Entity platform) {
@@ -283,6 +311,7 @@ void PhysicsSystem::onPlay(World& world) {
     const std::vector<Entity> solids = solidBoxes(world);
     world.each<RigidBody2D, Transform>([&](Entity e, RigidBody2D& rb, Transform& t) {
         rb.previous = t.position;
+        rb.ignoreOneWay = 0.0f;
         rb.grounded = probeGround(world, e, rb, solids);
     });
 }
@@ -292,6 +321,7 @@ void PhysicsSystem::update(World& world, float dt) {
     world.each<RigidBody2D, Transform>([dt](Entity, RigidBody2D& rb, Transform& t) {
         rb.previous = t.position;
         rb.grounded = false;
+        if (rb.ignoreOneWay > 0.0f) rb.ignoreOneWay = std::max(rb.ignoreOneWay - dt, 0.0f);
         rb.velocity.y += rb.gravity * dt;
         t.position.x += rb.velocity.x * dt;
         t.position.y += rb.velocity.y * dt;
@@ -301,8 +331,9 @@ void PhysicsSystem::update(World& world, float dt) {
     world.each<RigidBody2D, Transform>([&](Entity e, RigidBody2D& rb, Transform& t) {
         const BoxCollider* box = world.get<BoxCollider>(e);
         if (!box || box->isTrigger) return;
+        const Mirror mirror = mirrorOf(world, e, t);
         world.each<Tilemap, Transform>([&](Entity m, Tilemap& map, Transform& mt) {
-            if (m != e && map.collision) resolveAgainstTilemap(map, mt, *box, t, rb);
+            if (m != e && map.collision) resolveAgainstTilemap(map, mt, *box, mirror, t, rb);
         });
     });
 

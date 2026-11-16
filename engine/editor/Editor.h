@@ -73,6 +73,10 @@ public:
 
     bool isDirty() const { return changePending || version != savedVersion; }
 
+    // Si se esta escribiendo en un campo de un panel: entonces las teclas son del
+    // campo y no del juego (Application apaga el teclado de Input).
+    bool isTypingText() const;
+
 private:
     // --- Editor.cpp ---
     void layoutAndDraw();

@@ -7,7 +7,8 @@
 // plataformas. Cambiar los controles (o enchufar un mando, o una IA) es cambiar solo
 // este sistema.
 //
-// Controles: flechas o A/D para moverse; Espacio, W o flecha arriba para saltar.
+// Controles: flechas o A/D para moverse; Espacio, W o flecha arriba para saltar; abajo
+// (flecha o S) + salto para bajar de una plataforma de un sentido.
 //
 // Va ANTES de PlatformerMotorSystem (ver main.cpp): si fuera despues, la tecla llegaria
 // al motor un frame tarde.

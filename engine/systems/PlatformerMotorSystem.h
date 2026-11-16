@@ -4,9 +4,11 @@
 struct PlatformerMotor;
 struct RigidBody2D;
 
-// Traduce la INTENCION de cada PlatformerMotor (moveInput, jumpPressed, jumpHeld) en
-// la velocidad de su RigidBody2D: acelera y frena hacia la velocidad deseada, salta
-// (con coyote time y jump buffer), corta el salto al soltar y limita la caida.
+// Traduce la INTENCION de cada PlatformerMotor (moveInput, jumpPressed, jumpHeld,
+// dropHeld) en la velocidad de su RigidBody2D: acelera y frena hacia la velocidad
+// deseada, salta (con coyote time y jump buffer), corta el salto al soltar, limita la
+// caida y, con abajo + salto sobre una plataforma de un sentido, se deja caer de ella
+// (RigidBody2D::ignoreOneWay).
 //
 // ORDEN de los sistemas en cada frame:
 //     control del juego (teclas -> intencion)

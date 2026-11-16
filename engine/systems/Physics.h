@@ -30,7 +30,8 @@ class World;
 // PLATAFORMAS DE UN SENTIDO (BoxCollider::oneWay): solo frenan a un cuerpo que cae y
 // que en el paso anterior tenia los pies por encima de la plataforma (con
 // ONE_WAY_TOLERANCE de margen, para las que suben y lo alcanzan). Nunca empujan de
-// costado ni hacia abajo.
+// costado ni hacia abajo. Un cuerpo con RigidBody2D::ignoreOneWay > 0 (lo pone el
+// PlatformerMotor con abajo + salto) las atraviesa hacia abajo mientras dure.
 class PhysicsSystem : public System {
 public:
     static constexpr float GROUND_PROBE = 2.0f;      // px de mundo bajo los pies
@@ -53,6 +54,10 @@ bool collidersOverlap(World& world, Entity a, Entity b, float margin = 0.0f);
 
 // Si algun Tilemap tiene una celda solida dentro de ese rectangulo del mundo.
 bool isSolidArea(World& world, Vec2 min, Vec2 max);
+
+// Si 'body' (con RigidBody2D) esta apoyado SOLO en plataformas de un sentido (no en
+// un tile solido ni en una caja comun): de ahi se puede bajar. Ver dropThroughTime.
+bool isOnOneWayOnly(World& world, Entity body);
 
 // Si 'body' (con RigidBody2D) esta parado sobre la caja solida de 'platform': apoyado
 // en el ultimo paso de fisica, sin subir, con los pies en el borde de arriba de la

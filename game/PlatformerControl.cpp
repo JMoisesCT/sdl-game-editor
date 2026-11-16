@@ -14,6 +14,7 @@ void PlatformerControlSystem::update(World& world, float) {
     if (move < -1.0f) move = -1.0f;
     bool jumpPressed = Input::wasPressed(Key::Space) || Input::wasPressed(Key::W) || Input::wasPressed(Key::Up);
     bool jumpHeld = Input::isDown(Key::Space) || Input::isDown(Key::W) || Input::isDown(Key::Up);
+    bool dropHeld = Input::isDown(Key::Down) || Input::isDown(Key::S); // + salto: bajar de una plataforma
 
     // Se filtra por tag, nunca por nombre: el nombre es para las personas.
     world.each<PlatformerMotor, EntityInfo>([&](Entity e, PlatformerMotor& motor, EntityInfo& info) {
@@ -21,12 +22,13 @@ void PlatformerControlSystem::update(World& world, float) {
         // Muerto no se controla: sin intencion, y el Respawn hace el resto.
         if (isDead(world, e)) {
             motor.moveInput = 0.0f;
-            motor.jumpPressed = motor.jumpHeld = false;
+            motor.jumpPressed = motor.jumpHeld = motor.dropHeld = false;
             return;
         }
         motor.moveInput = move;
         motor.jumpPressed = jumpPressed; // flanco: un solo frame
         motor.jumpHeld = jumpHeld;       // para el salto corto
+        motor.dropHeld = dropHeld;
 
         // Hacia donde mira el sprite. Es presentacion, no fisica: por eso va aqui y
         // no en el motor.

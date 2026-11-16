@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 
 #include "components/CoreComponents.h"
 #include "components/MotionComponents.h"
@@ -118,15 +119,25 @@ void PathMoverSystem::update(World& world, float dt) {
 void FallingPlatformSystem::onPlay(World& world) {
     world.each<FallingPlatform>([](Entity, FallingPlatform& f) {
         f.started = f.triggered = f.falling = false;
-        f.timer = f.speed = 0.0f;
+        f.timer = f.speed = f.fade = 0.0f;
     });
 }
 
 void FallingPlatformSystem::update(World& world, float dt) {
     world.each<FallingPlatform, Transform>([&](Entity e, FallingPlatform& f, Transform& t) {
+        Sprite* sprite = world.get<Sprite>(e);
         if (!f.started) {
             f.started = true;
             f.origin = t.position;
+            f.baseAlpha = sprite ? sprite->tint.a : 255;
+        }
+
+        // Fundido de aparicion tras volver a su lugar. Ya es solida mientras aparece:
+        // se la ve, asi que se la puede pisar.
+        if (f.fade > 0.0f) {
+            f.fade = std::max(f.fade - dt, 0.0f);
+            float k = f.fadeInTime > 0.0f ? 1.0f - f.fade / f.fadeInTime : 1.0f;
+            if (sprite) sprite->tint.a = (std::uint8_t)std::lround(f.baseAlpha * k);
         }
         // Quieta hasta que alguien se pare encima.
         if (!f.triggered) {
@@ -151,6 +162,10 @@ void FallingPlatformSystem::update(World& world, float dt) {
             t.position = f.origin;
             f.triggered = f.falling = false;
             f.timer = f.speed = 0.0f;
+            if (f.fadeInTime > 0.0f) {
+                f.fade = f.fadeInTime;
+                if (sprite) sprite->tint.a = 0; // empieza invisible
+            }
             return;
         }
 

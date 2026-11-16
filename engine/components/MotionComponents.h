@@ -41,17 +41,21 @@ struct PathMover {
 
 // Plataforma que CAE al pisarla: cuando un cuerpo se para encima, espera 'delay'
 // segundos, cae con gravedad (llevandose al que siga encima) y, pasados respawnTime
-// segundos desde que empezo a caer, vuelve a su lugar. Necesita su BoxCollider solido
-// (normalmente oneWay) y no lleva RigidBody2D.
+// segundos desde que empezo a caer, vuelve a su lugar apareciendo de a poco (la
+// transparencia del tint del Sprite va de 0 a la original en fadeInTime). Necesita su
+// BoxCollider solido (normalmente oneWay) y no lleva RigidBody2D.
 struct FallingPlatform {
     float delay = 0.5f;          // seg entre que la pisan y que cae
     float gravity = 980.0f;      // px/seg^2 al caer
     float maxFallSpeed = 700.0f; // px/seg
     float respawnTime = 3.0f;    // seg desde que empieza a caer hasta volver (0 = no vuelve)
+    float fadeInTime = 0.4f;     // seg que tarda en aparecer al volver (0 = de golpe)
 
     // --- Estado de ejecucion (lo escribe FallingPlatformSystem) ---
     bool started = false;
     Vec2 origin;               // donde vuelve
+    int baseAlpha = 255;       // transparencia original del Sprite (la del fundido final)
+    float fade = 0.0f;         // seg que quedan del fundido de aparicion
     bool triggered = false;    // la pisaron: esta por caer o cayendo
     bool falling = false;
     float timer = 0.0f;        // seg en el estado actual

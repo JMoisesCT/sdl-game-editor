@@ -75,6 +75,10 @@ void registerEngineConditions(ConditionRegistry& c) {
         const PlatformerMotor* m = w.get<PlatformerMotor>(e);
         return m && m->justLanded;
     });
+    c.add("dropped", [](World& w, Entity e) {
+        const PlatformerMotor* m = w.get<PlatformerMotor>(e);
+        return m && m->justDropped;
+    });
     c.add("damaged", [](World& w, Entity e) {
         const Health* h = w.get<Health>(e);
         return h && h->justDamaged;

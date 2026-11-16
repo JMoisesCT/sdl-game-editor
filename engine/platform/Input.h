@@ -57,6 +57,13 @@ public:
     // provoco el cambio no se lea como recien presionada en la escena nueva.
     static void reset();
 
+    // Con false el teclado se lee como si no hubiera ninguna tecla pulsada (el raton
+    // sigue igual). El editor lo apaga mientras se escribe en un campo de un panel,
+    // para que esas teclas no muevan al jugador. Al volver a encenderlo, las teclas
+    // que ya estaban mantenidas no cuentan como recien pulsadas. Se aplica en el
+    // proximo update().
+    static void setKeyboardEnabled(bool enabled);
+
     static bool isDown(Key k);       // mantenida en este frame
     static bool wasPressed(Key k);   // paso de suelta a mantenida en este frame
     static bool wasReleased(Key k);  // paso de mantenida a suelta en este frame

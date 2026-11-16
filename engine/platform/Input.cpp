@@ -17,6 +17,9 @@ namespace {
     float wheelPending = 0.0f; // acumulado por processEvent hasta el proximo update
     float wheelFrame   = 0.0f; // lo que se giro en ESTE frame
 
+    bool keyboardEnabled = true;
+    bool keyboardResumed = false; // se acaba de volver a encender: sin flancos falsos
+
     // Traduccion Key -> scancode de SDL. Un switch (y no una tabla indexada por el
     // enum) para que agregar una tecla no dependa de mantener el orden del array.
     SDL_Scancode toScancode(Key k) {
@@ -77,7 +80,7 @@ namespace {
         const bool* sdlKeys = SDL_GetKeyboardState(&count); // SDL3: const bool*
         for (int i = 0; i < KEY_COUNT; ++i) {
             SDL_Scancode sc = toScancode(static_cast<Key>(i));
-            keysNow[i] = (sdlKeys && sc != SDL_SCANCODE_UNKNOWN && sc < count)
+            keysNow[i] = (keyboardEnabled && sdlKeys && sc != SDL_SCANCODE_UNKNOWN && sc < count)
                        ? sdlKeys[sc] : false;
         }
 
@@ -97,6 +100,12 @@ void Input::update() {
     for (int i = 0; i < KEY_COUNT; ++i)   keysPrev[i]  = keysNow[i];
     for (int i = 0; i < MOUSE_COUNT; ++i) mousePrev[i] = mouseNow[i];
     readDevices();
+    if (keyboardResumed) {
+        // Lo que ya estaba mantenido al volver (la tecla con la que se salio del
+        // campo, por ejemplo) no es una pulsacion nueva.
+        for (int i = 0; i < KEY_COUNT; ++i) keysPrev[i] = keysNow[i];
+        keyboardResumed = false;
+    }
 
     // La rueda de este frame es lo que llego en los eventos desde el update anterior.
     wheelFrame = wheelPending;
@@ -118,6 +127,11 @@ void Input::reset() {
     for (int i = 0; i < KEY_COUNT; ++i)   keysPrev[i]  = keysNow[i];
     for (int i = 0; i < MOUSE_COUNT; ++i) mousePrev[i] = mouseNow[i];
     wheelPending = wheelFrame = 0.0f;
+}
+
+void Input::setKeyboardEnabled(bool enabled) {
+    if (enabled && !keyboardEnabled) keyboardResumed = true;
+    keyboardEnabled = enabled;
 }
 
 bool Input::isDown(Key k)      { return valid(k) &&  keysNow[(int)k]; }

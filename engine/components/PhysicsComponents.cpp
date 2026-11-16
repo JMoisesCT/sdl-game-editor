@@ -10,7 +10,7 @@ void registerPhysicsComponents(ComponentRegistry& registry) {
     registry.add<BoxCollider>("BoxCollider")
         .field("size", &BoxCollider::size).range(0.0f, 4096.0f).speed(0.5f)
             .tooltip("Ancho y alto en px de la imagen (se multiplican por la escala del Transform)")
-        .field("offset", &BoxCollider::offset).speed(0.5f).tooltip("Corrimiento del centro de la caja (px de la imagen)")
+        .field("offset", &BoxCollider::offset).speed(0.5f).tooltip("Corrimiento del centro de la caja (px de la imagen; se refleja si el Sprite esta volteado)")
         .field("isTrigger", &BoxCollider::isTrigger).tooltip("Solo se superpone: no frena ni es frenado")
         .field("oneWay", &BoxCollider::oneWay)
             .tooltip("Plataforma de un sentido: solo frena a lo que cae desde arriba (se atraviesa saltando)");
@@ -26,5 +26,7 @@ void registerPhysicsComponents(ComponentRegistry& registry) {
         .field("jumpBufferTime", &PlatformerMotor::jumpBufferTime).range(0.0f, 1.0f).speed(0.01f).tooltip("Seg que se recuerda un salto pulsado antes de aterrizar")
         .field("cutJumpMultiplier", &PlatformerMotor::cutJumpMultiplier).range(0.0f, 1.0f).speed(0.01f).tooltip("Soltar el salto subiendo multiplica la velocidad por esto (1 = sin salto corto)")
         .field("maxFallSpeed", &PlatformerMotor::maxFallSpeed).range(0.0f, 5000.0f).speed(5.0f).tooltip("Velocidad maxima de caida (0 = sin limite)")
-        .field("maxAirJumps", &PlatformerMotor::maxAirJumps).range(0.0f, 10.0f).tooltip("Saltos extra en el aire (1 = doble salto)");
+        .field("maxAirJumps", &PlatformerMotor::maxAirJumps).range(0.0f, 10.0f).tooltip("Saltos extra en el aire (1 = doble salto)")
+        .field("dropThroughTime", &PlatformerMotor::dropThroughTime).range(0.0f, 2.0f).speed(0.01f)
+            .tooltip("Seg que atraviesa las plataformas de un sentido al bajar de ellas con abajo + salto (0 = no se puede bajar)");
 }

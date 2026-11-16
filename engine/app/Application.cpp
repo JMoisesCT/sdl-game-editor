@@ -181,7 +181,10 @@ int Application::run() {
         }
 
         // Estado de teclado y raton de ESTE frame, igual para todos los sistemas. Va
-        // despues de SDL_PollEvent (que es lo que refresca el estado de SDL).
+        // despues de SDL_PollEvent (que es lo que refresca el estado de SDL). Mientras se
+        // escribe en un campo del editor, el juego no ve el teclado (vale lo que dijo
+        // ImGui en el frame anterior, que es cuando se armaron los paneles).
+        Input::setKeyboardEnabled(!editor || !editor->isTypingText());
         Input::update();
 
         if (playMode == PlayMode::Play) {

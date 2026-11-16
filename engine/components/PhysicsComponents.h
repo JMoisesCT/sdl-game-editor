@@ -18,11 +18,15 @@ struct RigidBody2D {
     // --- Estado de ejecucion (lo escribe PhysicsSystem) ---
     bool grounded = false;  // apoyado sobre algo solido en el ultimo paso de fisica
     Vec2 previous;          // posicion antes de moverse en el ultimo paso
+    float ignoreOneWay = 0.0f; // seg que aun atraviesa las plataformas de un sentido (bajar de ellas)
 };
 
 // Rectangulo de colision (AABB) centrado en el Transform. Como el Sprite, se mide en
 // pixeles de la IMAGEN y se multiplica por la escala del Transform: si el personaje se
-// agranda, su caja tambien. La rotacion no se aplica (la caja nunca gira).
+// agranda, su caja tambien. La rotacion no se aplica (la caja nunca gira). El offset
+// sigue al dibujo: con el Sprite volteado (flipX/flipY, o escala negativa) el
+// corrimiento se refleja en ese eje, asi la caja no queda del lado equivocado cuando
+// el personaje se da vuelta.
 //
 // Sin RigidBody2D la caja es un obstaculo fijo; con RigidBody2D, la fisica la separa
 // de los tilemaps solidos y de las otras cajas. Un trigger no frena ni es frenado:
@@ -30,6 +34,8 @@ struct RigidBody2D {
 //
 // DE UN SENTIDO (oneWay): una plataforma fina que solo frena desde ARRIBA. Se la
 // atraviesa saltando desde abajo o de costado, y al caer sobre ella se queda parado.
+// Un cuerpo con RigidBody2D::ignoreOneWay > 0 la atraviesa tambien hacia abajo: asi
+// se baja de ella (ver PlatformerMotor::dropThroughTime).
 struct BoxCollider {
     Vec2 size{ 16.0f, 16.0f }; // ancho y alto (px de la imagen)
     Vec2 offset;               // corrimiento del centro de la caja respecto al Transform
@@ -42,7 +48,7 @@ struct BoxCollider {
 // el aire. Necesita un RigidBody2D en la misma entidad, con gravedad.
 //
 // No lee el teclado: cada frame alguien le escribe la INTENCION (moveInput, jumpPressed,
-// jumpHeld) y PlatformerMotorSystem la traduce en velocidad. Ese alguien es un sistema
+// jumpHeld, dropHeld) y PlatformerMotorSystem la traduce en velocidad. Ese alguien es un sistema
 // del juego (ver game/PlatformerControl), una IA o una repeticion: el motor no cambia.
 struct PlatformerMotor {
     // --- Ajustes ("game feel"); se guardan y se ven en el Inspector ---
@@ -57,16 +63,21 @@ struct PlatformerMotor {
     float cutJumpMultiplier = 0.45f; // al soltar subiendo, la velocidad se multiplica por esto
     float maxFallSpeed = 900.0f; // velocidad maxima de caida (0 = sin limite)
     int maxAirJumps = 0;       // saltos extra en el aire (1 = doble salto)
+    float dropThroughTime = 0.25f; // seg que atraviesa las plataformas de un sentido al
+                                   // bajar de ellas con abajo + salto (0 = no se puede)
 
     // --- Intencion: la escribe el juego CADA frame ---
     float moveInput = 0.0f;    // -1 izquierda, 0 quieto, +1 derecha (valen intermedios)
     bool jumpPressed = false;  // el boton de salto se ACABA de pulsar en este frame
     bool jumpHeld = false;     // el boton de salto sigue pulsado
+    bool dropHeld = false;     // "abajo" mantenido: junto con jumpPressed, sobre una
+                               // plataforma de un sentido, baja de ella en vez de saltar
 
     // --- Resultado: lo escribe PlatformerMotorSystem (sirve para la animacion) ---
     bool grounded = false;     // apoyo suavizado por el coyote time (ignora microcortes)
     bool justLanded = false;   // solo en el frame en que toca el suelo
     bool justJumped = false;   // solo en el frame del despegue
+    bool justDropped = false;  // solo en el frame en que se deja caer de una plataforma
 
     // --- Estado interno de PlatformerMotorSystem ---
     float coyote = 0.0f;       // tiempo que queda de la ventana de coyote

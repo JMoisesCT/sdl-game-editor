@@ -4,6 +4,7 @@
 
 #include "components/PhysicsComponents.h"
 #include "core/World.h"
+#include "systems/Physics.h"
 
 namespace {
     // Acerca 'current' a 'target' como mucho 'maxDelta', sin pasarse: la aceleracion y
@@ -24,8 +25,8 @@ void PlatformerMotorSystem::onPlay(World& world) {
     // Estado limpio al empezar: nada de saltos ni ventanas de la partida anterior.
     world.each<PlatformerMotor>([](Entity, PlatformerMotor& m) {
         m.moveInput = 0.0f;
-        m.jumpPressed = m.jumpHeld = false;
-        m.grounded = m.justLanded = m.justJumped = false;
+        m.jumpPressed = m.jumpHeld = m.dropHeld = false;
+        m.grounded = m.justLanded = m.justJumped = m.justDropped = false;
         m.coyote = m.buffer = 0.0f;
         m.airJumpsLeft = 0;
         m.jumping = m.wasGrounded = false;
@@ -33,7 +34,7 @@ void PlatformerMotorSystem::onPlay(World& world) {
 }
 
 void PlatformerMotorSystem::update(World& world, float dt) {
-    world.each<PlatformerMotor, RigidBody2D>([dt](Entity, PlatformerMotor& m, RigidBody2D& rb) {
+    world.each<PlatformerMotor, RigidBody2D>([&](Entity e, PlatformerMotor& m, RigidBody2D& rb) {
         // --- Apoyo -------------------------------------------------------------------
         bool groundedNow = rb.grounded;
         m.justLanded = groundedNow && !m.wasGrounded;
@@ -60,8 +61,21 @@ void PlatformerMotorSystem::update(World& world, float dt) {
                                  : (wantsToMove ? m.airAccel : m.airDecel);
         rb.velocity.x = moveToward(rb.velocity.x, m.moveInput * m.maxSpeed, rate * dt);
 
-        // --- Salto -------------------------------------------------------------------
+        // --- Bajar de una plataforma de un sentido: abajo + salto ---------------------
+        // Solo con una pulsacion de ESTE frame (no la del buffer: mantener abajo al
+        // caer y saltar justo antes de aterrizar no debe hacer atravesar el suelo) y
+        // solo si debajo no hay nada macizo; si lo hay, es un salto comun.
         m.justJumped = false;
+        m.justDropped = false;
+        if (m.jumpPressed && m.dropHeld && groundedNow && m.dropThroughTime > 0.0f &&
+            isOnOneWayOnly(world, e)) {
+            rb.ignoreOneWay = m.dropThroughTime;
+            m.buffer = 0.0f;  // el boton se uso para bajar
+            m.coyote = 0.0f;  // y no queda un salto "de coyote" en el aire
+            m.justDropped = true;
+        }
+
+        // --- Salto -------------------------------------------------------------------
         if (m.buffer > 0.0f) {
             bool fromGround = m.coyote > 0.0f;
             bool fromAir = !fromGround && m.airJumpsLeft > 0;
