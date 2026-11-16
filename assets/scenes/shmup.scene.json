@@ -5,7 +5,7 @@
     { "id": 1, "components": {
         "EntityInfo": {"name":"Camara","tag":"MainCamera"},
         "Transform": {"position":[0.0,-360.0],"rotation":0.0,"scale":[1.0,1.0]},
-        "Camera": {"zoom":1.0,"background":[20,24,40,255]}
+        "Camera": {"zoom":1.0,"background":[20,24,40,255],"pixelSize":3.0}
     }},
     { "id": 2, "components": {
         "EntityInfo": {"name":"Fondo","tag":""},

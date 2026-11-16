@@ -36,5 +36,8 @@ void registerCoreComponents(ComponentRegistry& registry) {
 
     registry.add<Camera>("Camera")
         .field("zoom", &Camera::zoom).range(0.1f, 10.0f).speed(0.01f)
-        .field("background", &Camera::background);
+        .field("background", &Camera::background)
+        .field("pixelSize", &Camera::pixelSize).range(0.1f, 64.0f).speed(0.05f)
+            .tooltip("px del mundo que mide un pixel del dibujo (la escala de los sprites, p. ej. 2). "
+                     "Con la escala 'Pixel perfecto', cada pixel del dibujo mide un numero entero de px de pantalla");
 }

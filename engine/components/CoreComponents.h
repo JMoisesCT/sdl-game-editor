@@ -71,9 +71,16 @@ struct Tilemap {
 
 // Lo que ve el jugador. La posicion la da el Transform de la misma entidad: ese punto
 // queda en el centro de la vista. Si hay varias, el juego usa la primera que encuentre.
+//
+// pixelSize es cuantos px del MUNDO mide un pixel del DIBUJO: la escala con que se
+// pusieron los sprites y tilemaps (2 si todo va con escala 2). Lo usa la escala "Pixel
+// perfecto" (ver app/GameScreen.h) cuando el juego se muestra mas chico o mas grande que
+// su resolucion: ajusta el zoom para que cada pixel del dibujo mida un numero ENTERO de
+// pixeles de pantalla, en vez de 2,1 (borroso) o columnas de 2 y 3 (deforme).
 struct Camera {
     float zoom = 1.0f;      // 2 = todo se ve el doble de grande
     Color background{ 32, 32, 40, 255 }; // color con que se limpia la vista del juego
+    float pixelSize = 1.0f; // px del mundo por pixel del dibujo (la escala de los sprites)
 };
 
 // Declara los componentes de arriba a la reflexion. La llama Application al arrancar,

@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "app/Application.h"
+#include "app/GameScreen.h"
 #include "components/CoreComponents.h"
 #include "components/MotionComponents.h"
 #include "components/PhysicsComponents.h"
@@ -435,37 +436,48 @@ void Editor::centerOnCamera() {
 void Editor::drawGameView(Vec2 pos, Vec2 size) {
     const AppConfig& cfg = app.config();
     if (!gameCanvas) gameCanvas = std::make_unique<GameCanvas>(app.renderer());
-    if (!gameCanvas->begin(cfg.gameWidth, cfg.gameHeight)) return;
 
-    View view;
-    Color bg;
-    bool hasCamera = findCameraView(app.world(), cfg.gameWidth, cfg.gameHeight, view, &bg);
-    SDL_Renderer* r = app.renderer();
-    SDL_SetRenderDrawColor(r, bg.r, bg.g, bg.b, 255);
-    SDL_RenderClear(r);
-    renderWorld(app.world(), app.assets(), r, view);
-    renderScreenTexts(app.world(), app.assets(), r, screenView(cfg.gameWidth, cfg.gameHeight));
-
-    // La resolucion del juego, escalada para que quepa entera (con bandas). El tamano
-    // se redondea antes de pedir la textura: es el que se va a dibujar de verdad.
-    float k = std::min(size.x / cfg.gameWidth, size.y / cfg.gameHeight);
-    if (k <= 0.0f) {
-        SDL_SetRenderTarget(r, nullptr);
-        return;
-    }
-    float w = std::round(cfg.gameWidth * k), h = std::round(cfg.gameHeight * k);
-    SDL_Texture* target = gameCanvas->scaledFor(w, h);
-    if (!target) return;
-    ImVec2 p0(std::round(pos.x + (size.x - w) * 0.5f), std::round(pos.y + (size.y - h) * 0.5f));
-    ImVec2 p1(p0.x + w, p0.y + h);
+    // El juego segun la escala elegida (ver app/GameScreen.h), centrado con bandas.
+    // Los bordes van en px enteros: con "Pixel perfecto" la imagen ya mide lo mismo
+    // que se dibuja, y medio pixel de corrimiento la volveria a suavizar.
+    GameScreen screen;
+    const bool ok = drawGameScreen(app.world(), app.assets(), app.renderer(), *gameCanvas, cfg.gameWidth,
+                                   cfg.gameHeight, cfg.scale, size.x, size.y, screen);
     ImDrawList* dl = ImGui::GetWindowDrawList();
-    dl->AddRectFilled(toIm(pos), ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(0, 0, 0, 255));
-    dl->AddImage((ImTextureID)(intptr_t)target, p0, p1);
+    const ImVec2 origin(std::round(pos.x), std::round(pos.y));
+    dl->AddRectFilled(origin, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(0, 0, 0, 255));
+    if (!ok) return;
+    ImVec2 p0(origin.x + screen.dstX, origin.y + screen.dstY);
+    ImVec2 p1(p0.x + screen.dstW, p0.y + screen.dstH);
+    ImVec2 uv0(screen.srcX / screen.textureW, screen.srcY / screen.textureH);
+    ImVec2 uv1((screen.srcX + screen.srcW) / screen.textureW, (screen.srcY + screen.srcH) / screen.textureH);
+    dl->AddImage((ImTextureID)(intptr_t)screen.texture, p0, p1, uv0, uv1);
 
-    char info[96];
-    SDL_snprintf(info, sizeof(info), "%dx%d  (%d%%)%s", cfg.gameWidth, cfg.gameHeight, (int)std::lround(k * 100.0f),
-                 hasCamera ? "" : "   sin Camera en la escena");
-    ImVec2 tp(p0.x + 8.0f * uiScale, p0.y + 6.0f * uiScale);
+    // Informacion arriba a la izquierda y el selector de escala arriba a la derecha.
+    char info[128];
+    int percent = (int)std::lround(screen.scale * 100.0f);
+    if (cfg.scale == GameScale::PixelPerfect && screen.hasCamera)
+        SDL_snprintf(info, sizeof(info), "%dx%d  (%d%%, pixel del dibujo = %g px)", cfg.gameWidth, cfg.gameHeight,
+                     percent, screen.pixel);
+    else
+        SDL_snprintf(info, sizeof(info), "%dx%d  (%d%%)%s", cfg.gameWidth, cfg.gameHeight, percent,
+                     screen.hasCamera ? "" : "   sin Camera en la escena");
+    ImVec2 tp(std::fmax(p0.x, origin.x) + 8.0f * uiScale, std::fmax(p0.y, origin.y) + 6.0f * uiScale);
     dl->AddText(ImVec2(tp.x + 1, tp.y + 1), IM_COL32(0, 0, 0, 200), info);
     dl->AddText(tp, IM_COL32(230, 230, 230, 255), info);
+
+    const float comboW = 150.0f * uiScale;
+    ImGui::SetCursorScreenPos(ImVec2(pos.x + size.x - comboW - 8.0f * uiScale, tp.y - 2.0f * uiScale));
+    ImGui::SetNextItemWidth(comboW);
+    if (ImGui::BeginCombo("##gameScale", gameScaleLabel(cfg.scale))) {
+        for (GameScale mode : { GameScale::PixelPerfect, GameScale::Fit, GameScale::Actual }) {
+            if (ImGui::Selectable(gameScaleLabel(mode), mode == cfg.scale)) app.setGameScale(mode);
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SetItemTooltip("Como se muestra el juego si la pestana no mide lo mismo que su resolucion:\n"
+                          "Pixel perfecto: cada pixel del dibujo mide un entero de px (Camera.pixelSize);\n"
+                          "  se ve un poco mas o menos de mundo.\n"
+                          "Ajustar: la imagen entera escalada (achicando se ve borrosa).\n"
+                          "100%%: tamano real, recortado si no cabe.");
 }

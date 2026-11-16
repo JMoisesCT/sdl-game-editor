@@ -212,27 +212,19 @@ int Application::run() {
 }
 
 void Application::renderGameDirect() {
-    // El juego, a su resolucion, en el lienzo.
-    if (!gameCanvas->begin(appConfig.gameWidth, appConfig.gameHeight)) return;
-    View view;
-    Color bg;
-    findCameraView(sceneWorld, appConfig.gameWidth, appConfig.gameHeight, view, &bg);
-    SDL_SetRenderDrawColor(sdlRenderer, bg.r, bg.g, bg.b, 255);
-    SDL_RenderClear(sdlRenderer);
-    renderWorld(sceneWorld, *assetManager, sdlRenderer, view);
-    renderScreenTexts(sceneWorld, *assetManager, sdlRenderer, screenView(appConfig.gameWidth, appConfig.gameHeight));
-
-    // El lienzo, lo mas grande que quepa en la ventana y centrado (con bandas negras).
+    // El juego en el lienzo, segun la escala elegida, y el lienzo centrado en la ventana
+    // (con bandas negras).
     int winW = 0, winH = 0;
     SDL_GetRenderOutputSize(sdlRenderer, &winW, &winH);
-    float k = std::fmin((float)winW / appConfig.gameWidth, (float)winH / appConfig.gameHeight);
-    float w = std::round(appConfig.gameWidth * k), h = std::round(appConfig.gameHeight * k);
-    SDL_Texture* image = gameCanvas->scaledFor(w, h); // deja el destino en la ventana
+    GameScreen screen;
+    bool ok = drawGameScreen(sceneWorld, *assetManager, sdlRenderer, *gameCanvas, appConfig.gameWidth,
+                             appConfig.gameHeight, appConfig.scale, (float)winW, (float)winH, screen);
     SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, 255);
     SDL_RenderClear(sdlRenderer);
-    if (!image || w < 1.0f || h < 1.0f) return;
-    SDL_FRect dst{ std::round((winW - w) * 0.5f), std::round((winH - h) * 0.5f), w, h };
-    SDL_RenderTexture(sdlRenderer, image, nullptr, &dst);
+    if (!ok) return;
+    SDL_FRect src{ screen.srcX, screen.srcY, screen.srcW, screen.srcH };
+    SDL_FRect dst{ screen.dstX, screen.dstY, screen.dstW, screen.dstH };
+    SDL_RenderTexture(sdlRenderer, screen.texture, &src, &dst);
 }
 
 void Application::shutdown() {

@@ -5,7 +5,7 @@
     { "id": 1, "components": {
         "EntityInfo": {"name":"Camara","tag":"MainCamera"},
         "Transform": {"position":[640.0,360.0],"rotation":0.0,"scale":[1.0,1.0]},
-        "Camera": {"zoom":1.5,"background":[33,31,48,255]},
+        "Camera": {"zoom":1.5,"background":[33,31,48,255],"pixelSize":2.0},
         "FollowCamera": {"targetTag":"Player","deadZone":[120.0,100.0],"smoothing":6.0,"lookAhead":60.0,"lookAheadSpeed":3.0,"clampToTilemaps":true}
     }},
     { "id": 2, "prefab": "assets/prefabs/player.prefab.json", "components": {

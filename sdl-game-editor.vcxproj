@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="engine\app\Application.cpp" />
+    <ClCompile Include="engine\app\GameScreen.cpp" />
     <ClCompile Include="engine\components\AudioComponents.cpp" />
     <ClCompile Include="engine\components\CoreComponents.cpp" />
     <ClCompile Include="engine\components\MotionComponents.cpp" />
@@ -63,6 +64,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine\app\Application.h" />
+    <ClInclude Include="engine\app\GameScreen.h" />
     <ClInclude Include="engine\components\AudioComponents.h" />
     <ClInclude Include="engine\components\CoreComponents.h" />
     <ClInclude Include="engine\components\MotionComponents.h" />

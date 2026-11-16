@@ -24,6 +24,14 @@ struct View {
 // la camara, si se pasa.
 bool findCameraView(World& world, int width, int height, View& view, Color* background = nullptr);
 
+// Como findCameraView, para un destino que muestra la pantalla del juego agrandada o
+// achicada por 'scale' (el destino ya mide width x height): el zoom de la camara se
+// multiplica por scale. Con pixelPerfect, ademas, se redondea para que un pixel del
+// dibujo (Camera::pixelSize px del mundo) mida un numero ENTERO de px (al menos 1):
+// se ve un poco mas o menos de mundo, pero el pixel art queda parejo y nitido.
+bool findScaledCameraView(World& world, int width, int height, float scale, bool pixelPerfect,
+                          View& view, Color* background = nullptr);
+
 // Tamano del sprite de esa entidad en el mundo (recorte o textura por la escala).
 // false si no tiene Transform + Sprite o la textura no carga.
 bool spriteWorldSize(World& world, AssetManager& assets, Entity e, Vec2& size);

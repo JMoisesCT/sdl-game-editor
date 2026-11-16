@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "app/GameScreen.h"
 #include "core/Prefabs.h"
 #include "core/Reflection.h"
 #include "core/SceneSerializer.h"
@@ -22,6 +23,9 @@ struct AppConfig {
     int gameWidth = 1280;   // resolucion del juego: lo que ve el jugador (y la vista
     int gameHeight = 720;   // "Juego" del editor, que la escala para que quepa)
     bool editor = true;     // false: abre la escena y juega directo, sin paneles
+    // Como se muestra el juego si la ventana (o la pestana Juego) no mide lo mismo que
+    // su resolucion. Ver app/GameScreen.h; el editor lo cambia en la pestana Juego.
+    GameScale scale = GameScale::PixelPerfect;
 };
 
 // Modos de la aplicacion. Editando, la escena esta quieta (no corre ningun sistema);
@@ -89,6 +93,7 @@ public:
     SDL_Renderer* renderer() const { return sdlRenderer; }
     SDL_Window* window() const { return sdlWindow; }
     const AppConfig& config() const { return appConfig; }
+    void setGameScale(GameScale scale) { appConfig.scale = scale; }
     const std::string& scenePath() const { return currentScenePath; }
     const std::vector<std::unique_ptr<System>>& systems() const { return systemList; }
 

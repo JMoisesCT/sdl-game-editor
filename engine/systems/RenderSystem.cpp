@@ -21,6 +21,11 @@ Vec2 View::screenToWorld(Vec2 s) const {
 }
 
 bool findCameraView(World& world, int width, int height, View& view, Color* background) {
+    return findScaledCameraView(world, width, height, 1.0f, false, view, background);
+}
+
+bool findScaledCameraView(World& world, int width, int height, float scale, bool pixelPerfect,
+                          View& view, Color* background) {
     view = View{};
     view.width = width;
     view.height = height;
@@ -28,7 +33,13 @@ bool findCameraView(World& world, int width, int height, View& view, Color* back
     world.each<Camera, Transform>([&](Entity, Camera& cam, Transform& t) {
         if (found) return;
         found = true;
-        view.zoom = cam.zoom > 0.0f ? cam.zoom : 1.0f;
+        view.zoom = (cam.zoom > 0.0f ? cam.zoom : 1.0f) * (scale > 0.0f ? scale : 1.0f);
+        if (pixelPerfect) {
+            // px de pantalla por pixel del dibujo, redondeado al entero mas cercano.
+            const float pixel = cam.pixelSize > 0.0f ? cam.pixelSize : 1.0f;
+            const float screenPixels = std::fmax(1.0f, std::round(view.zoom * pixel));
+            view.zoom = screenPixels / pixel;
+        }
         // El centro, en pixeles ENTEROS de pantalla. Una camara que se mueve en
         // fracciones de pixel (el suavizado de FollowCamera) haria que cada objeto
         // redondee su borde en un frame distinto: el jugador y el suelo se correrian un
