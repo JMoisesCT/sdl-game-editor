@@ -326,41 +326,104 @@ game/          código del juego de ejemplo (PlatformerControl: teclas -> intenc
 assets/        sprites, tilesets, audio, prefabs (assets/prefabs/) y escenas (assets/scenes/)
 docs/          GUIA_CODIGO_PROPIO.md: cómo sumar componentes y sistemas propios
 main.cpp       registra los sistemas en orden y abre la escena
+CMakeLists.txt la compilación (con CMakePresets.json); sdl-game-editor.vcxproj, para VS 2026
 ```
 
 ## Cómo compilar y ejecutar
 
-Un único proyecto de **Visual Studio 2026** (`sdl-game-editor.vcxproj`, sin `.sln`).
+El proyecto se compila con **CMake** (`CMakeLists.txt` y `CMakePresets.json`), así que
+puedes usar el IDE o editor que prefieras: Visual Studio, VS Code, CLion, Qt Creator o
+solo la línea de comandos. Está escrito para Windows, Linux y macOS (por ahora se probó en
+Windows, con MSVC y con GCC de MinGW-w64).
 
 ### Requisitos
 
-- **Visual Studio 2026** con el toolset de C++ (`v145`), C++17, plataforma **x64**.
-- La familia **SDL3 instalada a mano** (no viene de vcpkg), en estas versiones y rutas:
+- Un compilador de **C++17**: MSVC (Visual Studio 2022 o posterior), GCC / MinGW-w64 o
+  Clang.
+- **CMake 3.24** o posterior y **Ninja** (Visual Studio y CLion ya traen los dos).
+- **Git**, para que CMake pueda descargar SDL si no está instalada.
+- La familia **SDL3**. No hace falta instalar nada: lo que falte se descarga de GitHub y se
+  compila junto con el proyecto la primera vez que se configura (tarda unos minutos, solo
+  la primera vez en cada carpeta de compilación). Las versiones que se usan:
 
-  | Librería | Versión | Ruta esperada | Para qué |
-  |---|---|---|---|
-  | **SDL3** | **3.4.14** | `D:\SDL3` | ventana, renderer, input, tiempo |
-  | **SDL3_image** | **3.4.4** | `D:\SDL3_image` | cargar PNG |
-  | **SDL3_ttf** | **3.2.2** | `D:\SDL3_ttf` | texto |
-  | **SDL3_mixer** | **3.2.4** | `D:\SDL3_mixer` | audio |
+  | Librería | Versión | Para qué |
+  |---|---|---|
+  | **SDL3** | **3.4.14** | ventana, renderer, input, tiempo |
+  | **SDL3_image** | **3.4.4** | cargar PNG |
+  | **SDL3_ttf** | **3.2.2** | texto |
+  | **SDL3_mixer** | **3.2.4** | audio |
 
-  Cada una se descomprime (paquete de desarrollo para VC) en su carpeta de `D:\`, de modo que
-  queden `<carpeta>\include` y `<carpeta>\lib\x64`. Si usas otras rutas, ajusta
-  `AdditionalIncludeDirectories`, `AdditionalLibraryDirectories` y el `PostBuildEvent` del
-  `.vcxproj`.
+  Si prefieres usarlas ya compiladas:
+  - Descomprime los **paquetes de desarrollo** oficiales (`-VC` para Visual Studio,
+    `-mingw` para MinGW) en una carpeta `deps/` del repo (git la ignora), o en cualquier
+    otra y pásala con `-DSGE_DEPS_DIR=<carpeta>` (por ejemplo `-DSGE_DEPS_DIR=D:/` con
+    `D:\SDL3`, `D:\SDL3_image`...). Las carpetas pueden llevar la versión en el nombre
+    (`deps/SDL3-3.4.14`...).
+  - O instálalas con un gestor de paquetes (vcpkg, MSYS2, Homebrew, el de tu distribución
+    de Linux...): CMake las encuentra con `CMAKE_PREFIX_PATH` o en las rutas del sistema.
+  - `-DSGE_FETCH_SDL=OFF` apaga la descarga (si falta algo, la configuración falla).
+
+  SDL3_image y SDL3_mixer descargadas se compilan sin los formatos que necesitan
+  librerías aparte: funcionan las imágenes y WAV, OGG Vorbis, FLAC y MP3; no Opus, MOD,
+  WavPack y similares (el ejemplo solo usa PNG y WAV). En Linux, compilar SDL desde el
+  código necesita los paquetes de desarrollo del escritorio (X11 / Wayland, ALSA /
+  PulseAudio / PipeWire...): ver `docs/README-linux.md` de SDL.
 - **nlohmann/json** y **Dear ImGui** ya vienen en `engine/third_party/`: no hay nada que
   instalar.
 
-### Pasos
+### Con un IDE
 
-1. Abre `sdl-game-editor.vcxproj` en Visual Studio 2026.
-2. Elige **x64** (sirven **Debug** y **Release**; Win32 no está soportado).
-3. Compila y ejecuta (F5). El post-build copia las DLLs de SDL3 y la carpeta `assets/`
-   junto al ejecutable.
+- **Visual Studio 2022 / 2026**: **Archivo > Abrir > Carpeta...** y elige el repo. Elige la
+  configuración `debug` o `release` en la barra, `sdl-game-editor.exe` como elemento de
+  inicio, y ejecuta con F5. Si prefieres una solución clásica: `cmake --preset vs2026` (o
+  `vs2022`) la genera en `out/build/vs2026/` (`.slnx` en VS 2026, `.sln` en VS 2022).
+- **VS Code**: instala las extensiones **C/C++** y **CMake Tools**, abre la carpeta, elige
+  un preset de configuración cuando lo pida (`debug`, `release`, o `mingw-debug` /
+  `mingw-release` para forzar el GCC de MinGW en Windows) y usa **Build** y **Run** /
+  **Debug** de la barra de estado.
+- **CLion**: abre la carpeta; en **Settings > Build, Execution, Deployment > CMake** activa
+  los presets `debug` / `release`.
+- **Visual Studio 2026 con `sdl-game-editor.vcxproj`**: sigue estando, como antes. Espera
+  los paquetes VC descomprimidos en `D:\SDL3`, `D:\SDL3_image`, `D:\SDL3_ttf` y
+  `D:\SDL3_mixer` (si usas otras rutas, ajusta `AdditionalIncludeDirectories`,
+  `AdditionalLibraryDirectories` y el `PostBuildEvent`). No toma solo los archivos nuevos:
+  hay que sumarlos al proyecto.
 
-Desde Visual Studio el directorio de trabajo es la carpeta del proyecto, así que **Save**
-escribe en los `assets/` del repo. Si ejecutas el `.exe` desde otra carpeta, guarda en la
-copia de `assets/` que está a su lado.
+### Desde la línea de comandos
+
+```
+cmake --preset release
+cmake --build --preset release
+out/build/release/bin/sdl-game-editor
+```
+
+Sin presets (o sin Ninja) también vale la forma clásica:
+
+```
+cmake -S . -B out/build/release -DCMAKE_BUILD_TYPE=Release
+cmake --build out/build/release --config Release
+```
+
+El ejecutable y las librerías que necesita quedan juntos en `out/build/<preset>/bin/`. Se
+compila todo `.cpp` de `engine/` y `game/`: un archivo que sumes a `game/` entra en la
+siguiente compilación sin tocar `CMakeLists.txt`.
+
+### Dónde se leen y guardan los `assets/`
+
+El programa busca la carpeta `assets/` en la carpeta de trabajo, después junto al
+ejecutable y, con la compilación de CMake, en el repo desde el que se compiló. Así da igual
+cómo o desde dónde lo arranques: **Save escribe en los `assets/` del repo**. (El
+`.vcxproj` lo ejecuta desde la carpeta del proyecto, con el mismo resultado.)
+
+### Una carpeta para compartir
+
+```
+cmake --install out/build/release
+```
+
+deja en `out/install/release/` el ejecutable, sus librerías y una copia de `assets/`: lista
+para comprimir o abrir con doble clic (usa los `assets/` de al lado). Con una solución de
+Visual Studio, agrega `--config Release`; `--prefix <carpeta>` elige otro destino.
 
 ## Créditos y licencias de terceros
 

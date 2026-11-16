@@ -4,6 +4,9 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include <cmath>
+#include <filesystem>
+#include <system_error>
+#include <vector>
 
 #include "components/AudioComponents.h"
 #include "components/CoreComponents.h"
@@ -24,6 +27,29 @@
 // than a jump of hundreds of pixels that goes through walls.
 static const float MAX_DT = 0.05f;
 
+// Every path in a scene is relative to the folder that holds assets/. If the program was
+// started from somewhere else (a double click, an IDE that runs it from the build folder),
+// it moves to the first folder that has one: the executable's, or else the repo's (the
+// CMake build defines SGE_SOURCE_DIR, so Save writes to the repo and not to a copy).
+static void findAssetsFolder() {
+    std::error_code error;
+    if (std::filesystem::is_directory("assets", error)) return;
+
+    std::vector<std::filesystem::path> candidates;
+    if (const char* base = SDL_GetBasePath()) candidates.push_back(std::filesystem::u8path(base));
+#ifdef SGE_SOURCE_DIR
+    candidates.push_back(std::filesystem::u8path(SGE_SOURCE_DIR));
+#endif
+    for (const std::filesystem::path& folder : candidates) {
+        if (!std::filesystem::is_directory(folder / "assets", error)) continue;
+        std::filesystem::current_path(folder, error);
+        if (error) continue;
+        SDL_Log("Using the assets/ folder in %s", folder.u8string().c_str());
+        return;
+    }
+    SDL_Log("No assets/ folder found (here, next to the executable or in the project)");
+}
+
 Application::Application() = default;
 
 Application::~Application() {
@@ -32,6 +58,7 @@ Application::~Application() {
 
 bool Application::init(const AppConfig& config) {
     appConfig = config;
+    findAssetsFolder();
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         SDL_Log("Could not initialize SDL: %s", SDL_GetError());

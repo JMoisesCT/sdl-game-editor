@@ -118,10 +118,14 @@ app.addSystem(std::make_unique<FloaterSystem>());
 
 ### 4. Sumar los archivos al proyecto
 
-En Visual Studio: clic derecho en el proyecto → **Agregar → Elemento existente...** y
-elegir `Floater.h` y `Floater.cpp` (o crearlos desde **Agregar → Nuevo elemento**, que ya
-los suma). Un `.cpp` que no está en el proyecto no se compila y el enlazador se queja de
-`registerFloater` o de `FloaterSystem`.
+Con **CMake** (VS Code, CLion, Visual Studio con **Abrir carpeta**, la línea de comandos)
+no hay nada que hacer: se compila todo `.cpp` que esté en `game/` o `engine/`, y un
+archivo nuevo entra en la siguiente compilación.
+
+Con **`sdl-game-editor.vcxproj`** en Visual Studio: clic derecho en el proyecto →
+**Agregar → Elemento existente...** y elegir `Floater.h` y `Floater.cpp` (o crearlos desde
+**Agregar → Nuevo elemento**, que ya los suma). Un `.cpp` que no está en el proyecto no se
+compila y el enlazador se queja de `registerFloater` o de `FloaterSystem`.
 
 ### 5. Usarlo en el editor
 

@@ -323,41 +323,105 @@ game/          the sample game's code (PlatformerControl: keys -> intent;
 assets/        sprites, tilesets, audio, prefabs (assets/prefabs/) and scenes (assets/scenes/)
 docs/          GUIA_CODIGO_PROPIO.md: how to add your own components and systems
 main.cpp       registers the systems in order and opens the scene
+CMakeLists.txt the build (with CMakePresets.json); sdl-game-editor.vcxproj, for VS 2026
 ```
 
 ## Building and running
 
-A single **Visual Studio 2026** project (`sdl-game-editor.vcxproj`, no `.sln`).
+The project builds with **CMake** (`CMakeLists.txt` and `CMakePresets.json`), so you can
+use the IDE or editor you like: Visual Studio, VS Code, CLion, Qt Creator or just the
+command line. It is written for Windows, Linux and macOS (so far it has been tested on
+Windows, with MSVC and with MinGW-w64 GCC).
 
 ### Requirements
 
-- **Visual Studio 2026** with the C++ toolset (`v145`), C++17, **x64** platform.
-- The **SDL3 family installed by hand** (not from vcpkg), in these versions and paths:
+- A **C++17** compiler: MSVC (Visual Studio 2022 or later), GCC / MinGW-w64 or Clang.
+- **CMake 3.24** or later and **Ninja** (Visual Studio and CLion already include both).
+- **Git**, so CMake can download SDL if it is not installed.
+- The **SDL3 family**. You do not have to install anything: whatever is missing is
+  downloaded from GitHub and built together with the project on the first configure
+  (it takes a few minutes, only the first time for each build folder). The versions used:
 
-  | Library | Version | Expected path | Used for |
-  |---|---|---|---|
-  | **SDL3** | **3.4.14** | `D:\SDL3` | window, renderer, input, time |
-  | **SDL3_image** | **3.4.4** | `D:\SDL3_image` | loading PNG |
-  | **SDL3_ttf** | **3.2.2** | `D:\SDL3_ttf` | text |
-  | **SDL3_mixer** | **3.2.4** | `D:\SDL3_mixer` | audio |
+  | Library | Version | Used for |
+  |---|---|---|
+  | **SDL3** | **3.4.14** | window, renderer, input, time |
+  | **SDL3_image** | **3.4.4** | loading PNG |
+  | **SDL3_ttf** | **3.2.2** | text |
+  | **SDL3_mixer** | **3.2.4** | audio |
 
-  Unzip each one (the VC development package) into its folder in `D:\`, so that
-  `<folder>\include` and `<folder>\lib\x64` exist. If you use other paths, adjust
-  `AdditionalIncludeDirectories`, `AdditionalLibraryDirectories` and the `PostBuildEvent`
-  in the `.vcxproj`.
+  If you prefer to use them already built:
+  - Unzip the official **development packages** (`-VC` for Visual Studio, `-mingw` for
+    MinGW) into a `deps/` folder in the repo (ignored by git), or anywhere and pass that
+    folder with `-DSGE_DEPS_DIR=<folder>` (for example `-DSGE_DEPS_DIR=D:/` with `D:\SDL3`,
+    `D:\SDL3_image`...). The folders can keep their version in the name
+    (`deps/SDL3-3.4.14`...).
+  - Or install them with a package manager (vcpkg, MSYS2, Homebrew, your Linux
+    distribution...): CMake finds them through `CMAKE_PREFIX_PATH` or the system paths.
+  - `-DSGE_FETCH_SDL=OFF` turns the download off (configuring fails if something is
+    missing).
+
+  The downloaded SDL3_image and SDL3_mixer are built without the formats that need extra
+  libraries: images and WAV, OGG Vorbis, FLAC and MP3 work; Opus, MOD, WavPack and the
+  like do not (the sample only uses PNG and WAV). On Linux, building SDL from source needs
+  the development packages of your desktop (X11 / Wayland, ALSA / PulseAudio /
+  PipeWire...): see SDL's `docs/README-linux.md`.
 - **nlohmann/json** and **Dear ImGui** are already in `engine/third_party/`: nothing to
   install.
 
-### Steps
+### With an IDE
 
-1. Open `sdl-game-editor.vcxproj` in Visual Studio 2026.
-2. Choose **x64** (**Debug** and **Release** both work; Win32 is not supported).
-3. Build and run (F5). The post-build step copies the SDL3 DLLs and the `assets/` folder
-   next to the executable.
+- **Visual Studio 2022 / 2026**: **File > Open > Folder...** and choose the repo. Pick the
+  `debug` or `release` configuration in the toolbar, `sdl-game-editor.exe` as the startup
+  item, and run with F5. If you prefer a classic solution: `cmake --preset vs2026` (or
+  `vs2022`) generates it in `out/build/vs2026/` (`.slnx` in VS 2026, `.sln` in VS 2022).
+- **VS Code**: install the **C/C++** and **CMake Tools** extensions, open the folder, pick a
+  configure preset when asked (`debug`, `release`, or `mingw-debug` / `mingw-release` to
+  force MinGW's GCC on Windows) and use **Build** and **Run** / **Debug** in the status
+  bar.
+- **CLion**: open the folder; in **Settings > Build, Execution, Deployment > CMake** enable
+  the `debug` / `release` presets.
+- **Visual Studio 2026 with `sdl-game-editor.vcxproj`**: still there, as before. It
+  expects the VC packages unzipped in `D:\SDL3`, `D:\SDL3_image`, `D:\SDL3_ttf` and
+  `D:\SDL3_mixer` (if you use other paths, adjust `AdditionalIncludeDirectories`,
+  `AdditionalLibraryDirectories` and the `PostBuildEvent`). It does not pick up new files
+  by itself: add them to the project.
 
-From Visual Studio the working directory is the project folder, so **Save** writes to the
-repo's `assets/`. If you run the `.exe` from another folder, it saves to the copy of
-`assets/` next to it.
+### From the command line
+
+```
+cmake --preset release
+cmake --build --preset release
+out/build/release/bin/sdl-game-editor
+```
+
+Without presets (or without Ninja), the classic form works too:
+
+```
+cmake -S . -B out/build/release -DCMAKE_BUILD_TYPE=Release
+cmake --build out/build/release --config Release
+```
+
+The executable and the libraries it needs end up together in `out/build/<preset>/bin/`.
+Every `.cpp` in `engine/` and `game/` is compiled: a file you add to `game/` is picked up
+on the next build without touching `CMakeLists.txt`.
+
+### Where `assets/` is read and saved
+
+The program looks for the `assets/` folder in the working folder, then next to the
+executable and, with the CMake build, in the repo it was built from. So it does not matter
+how or from where you start it: **Save writes to the repo's `assets/`**. (The `.vcxproj`
+runs it from the project folder, which gives the same result.)
+
+### A folder to share
+
+```
+cmake --install out/build/release
+```
+
+leaves in `out/install/release/` the executable, its libraries and a copy of `assets/`:
+ready to zip or start with a double click (it uses the `assets/` next to it). With a
+Visual Studio solution, add `--config Release`; `--prefix <folder>` picks another
+destination.
 
 ## Credits and third-party licenses
 

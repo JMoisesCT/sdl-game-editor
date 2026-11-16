@@ -421,3 +421,11 @@ imgui.ini
 
 # --- Test build assembled at the end of each phase (exe + DLLs + assets) ---
 /build/
+
+# --- CMake ---
+# Build folders of the presets (out/build/<preset>) and of "cmake --install".
+/out/
+# SDL development packages unzipped by hand for the CMake build (SGE_DEPS_DIR).
+/deps/
+# Personal presets (your own paths).
+CMakeUserPresets.json
