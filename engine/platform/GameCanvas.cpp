@@ -16,7 +16,7 @@ bool GameCanvas::begin(int width, int height) {
         if (canvas) SDL_DestroyTexture(canvas);
         canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, width, height);
         if (!canvas) {
-            SDL_Log("GameCanvas: no se pudo crear el lienzo: %s", SDL_GetError());
+            SDL_Log("GameCanvas: could not create the canvas: %s", SDL_GetError());
             canvasW = canvasH = 0;
             return false;
         }
@@ -49,7 +49,7 @@ SDL_Texture* GameCanvas::scaledFor(float displayWidth, float displayHeight) {
         upscaled = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,
                                      canvasW * factor, canvasH * factor);
         if (!upscaled) {
-            SDL_Log("GameCanvas: no se pudo crear el lienzo agrandado: %s", SDL_GetError());
+            SDL_Log("GameCanvas: could not create the upscaled canvas: %s", SDL_GetError());
             upscaledFactor = 0;
             SDL_SetTextureScaleMode(canvas, SDL_SCALEMODE_NEAREST);
             return canvas; // mejor deformado que nada

@@ -18,66 +18,66 @@ void registerPresentationComponents(ComponentRegistry& registry, const Condition
     registry.add<SpriteAnimator>("SpriteAnimator")
         .field("startClip", &SpriteAnimator::startClip)
             .choices([](const World& w, Entity e) { return clipNames(w, e, true); })
-            .tooltip("Clip al empezar a jugar (ninguno = el primero). Un AnimatorStateMachine lo cambia")
-        .field("speed", &SpriteAnimator::speed).range(0.0f, 10.0f).speed(0.01f).tooltip("Multiplica los fps de todos los clips")
+            .tooltip("Clip when play starts (none = the first one). An AnimatorStateMachine changes it")
+        .field("speed", &SpriteAnimator::speed).range(0.0f, 10.0f).speed(0.01f).tooltip("Multiplies the fps of every clip")
         .list("clips", &SpriteAnimator::clips, [](FieldsBuilder<AnimationClip>& clip) {
-            clip.field("name", &AnimationClip::name).tooltip("Con este nombre lo piden las reglas y el codigo")
+            clip.field("name", &AnimationClip::name).tooltip("Rules and code ask for it by this name")
                 .field("texture", &AnimationClip::texture).texture()
-                    .tooltip("Imagen con los cuadros (vacio = la del Sprite al empezar)")
-                .field("frameWidth", &AnimationClip::frameWidth).range(1.0f, 2048.0f).tooltip("Ancho de un cuadro (px de la imagen)")
-                .field("frameHeight", &AnimationClip::frameHeight).range(1.0f, 2048.0f).tooltip("Alto de un cuadro (px de la imagen)")
+                    .tooltip("Image with the frames (empty = the Sprite's image at start)")
+                .field("frameWidth", &AnimationClip::frameWidth).range(1.0f, 2048.0f).tooltip("Frame width (image px)")
+                .field("frameHeight", &AnimationClip::frameHeight).range(1.0f, 2048.0f).tooltip("Frame height (image px)")
                 .field("frames", &AnimationClip::frames)
-                    .tooltip("Celdas en orden, contando por filas (vacio = todas). Una columna de 4: \"0, 4, 8, 12\"")
-                .field("fps", &AnimationClip::fps).range(0.0f, 120.0f).speed(0.1f).tooltip("Cuadros por segundo (0 = quieto)")
-                .field("loop", &AnimationClip::loop).tooltip("Sin marcar: al terminar se queda en el ultimo cuadro")
+                    .tooltip("Cells in order, counting by rows (empty = all). A column of 4: \"0, 4, 8, 12\"")
+                .field("fps", &AnimationClip::fps).range(0.0f, 120.0f).speed(0.1f).tooltip("Frames per second (0 = still)")
+                .field("loop", &AnimationClip::loop).tooltip("Unchecked: stays on the last frame when it ends")
                 .field("next", &AnimationClip::next)
                     .choices([](const World& w, Entity e) { return clipNames(w, e, true); })
-                    .tooltip("Sin loop: clip que sigue al terminar")
-                .field("destroyOnEnd", &AnimationClip::destroyOnEnd).tooltip("Sin loop: al terminar destruye la entidad");
+                    .tooltip("Without loop: clip that follows when it ends")
+                .field("destroyOnEnd", &AnimationClip::destroyOnEnd).tooltip("Without loop: destroys the entity when it ends");
         });
 
     const ConditionRegistry* conds = &conditions; // vive en Application, como el registro
     registry.add<AnimatorStateMachine>("AnimatorStateMachine")
         .field("defaultClip", &AnimatorStateMachine::defaultClip)
             .choices([](const World& w, Entity e) { return clipNames(w, e, true); })
-            .tooltip("Clip cuando no se cumple ninguna regla (ninguno = deja terminar el clip de la ultima regla)")
+            .tooltip("Clip when no rule holds (none = lets the last rule's clip finish)")
         .list("rules", &AnimatorStateMachine::rules, [conds](FieldsBuilder<AnimationRule>& rule) {
             rule.field("clip", &AnimationRule::clip)
                     .choices([](const World& w, Entity e) { return clipNames(w, e, false); })
                 .field("condition", &AnimationRule::condition)
                     .choices([conds](const World&, Entity) { return conds->names(); })
-                    .tooltip("Gana la PRIMERA regla cuya condicion se cumpla");
+                    .tooltip("The FIRST rule whose condition holds wins");
         });
 
     registry.add<FollowCamera>("FollowCamera")
-        .field("targetTag", &FollowCamera::targetTag).tooltip("Etiqueta de a quien sigue")
+        .field("targetTag", &FollowCamera::targetTag).tooltip("Tag of whom it follows")
         .field("deadZone", &FollowCamera::deadZone).range(0.0f, 4096.0f).speed(1.0f)
-            .tooltip("Rectangulo (px del mundo) en que el objetivo se mueve sin mover la camara")
-        .field("smoothing", &FollowCamera::smoothing).range(0.0f, 60.0f).speed(0.1f).tooltip("Rapidez de la camara (0 = de golpe)")
+            .tooltip("Rectangle (world px) where the target moves without moving the camera")
+        .field("smoothing", &FollowCamera::smoothing).range(0.0f, 60.0f).speed(0.1f).tooltip("Camera speed (0 = instant)")
         .field("lookAhead", &FollowCamera::lookAhead).range(0.0f, 1000.0f).speed(1.0f)
-            .tooltip("Px que adelanta la vista hacia donde va el objetivo")
+            .tooltip("Px the view leads toward where the target is heading")
         .field("lookAheadSpeed", &FollowCamera::lookAheadSpeed).range(0.0f, 60.0f).speed(0.1f)
-        .field("clampToTilemaps", &FollowCamera::clampToTilemaps).tooltip("La vista no se sale de los Tilemap de la escena");
+        .field("clampToTilemaps", &FollowCamera::clampToTilemaps).tooltip("The view stays inside the scene's Tilemaps");
 
     registry.add<ParallaxBackground>("ParallaxBackground")
-        .field("texture", &ParallaxBackground::texture).texture().tooltip("Imagen que se repite (tileable)")
+        .field("texture", &ParallaxBackground::texture).texture().tooltip("Repeating image (tileable)")
         .field("factor", &ParallaxBackground::factor).range(0.0f, 2.0f).speed(0.01f)
-            .tooltip("Cuanto acompana a la camara: 0 = quieto, 1 = como el mundo")
+            .tooltip("How much it follows the camera: 0 = still, 1 = like the world")
         .field("scale", &ParallaxBackground::scale).range(0.05f, 64.0f).speed(0.05f)
-        .field("scroll", &ParallaxBackground::scroll).speed(0.5f).tooltip("Desplazamiento propio (px/seg), solo jugando")
+        .field("scroll", &ParallaxBackground::scroll).speed(0.5f).tooltip("Its own scrolling (px/s), only while playing")
         .field("tint", &ParallaxBackground::tint)
         .field("visible", &ParallaxBackground::visible)
-        .field("order", &ParallaxBackground::order).tooltip("Capa de dibujo: menor = mas al fondo");
+        .field("order", &ParallaxBackground::order).tooltip("Draw layer: lower = further back");
 
     registry.add<Text>("Text")
         .field("text", &Text::text)
-        .field("font", &Text::font).tooltip("Archivo .ttf (ruta desde la carpeta del ejecutable)")
-        .field("size", &Text::size).range(1.0f, 512.0f).tooltip("Puntos")
+        .field("font", &Text::font).tooltip(".ttf file (path from the executable's folder)")
+        .field("size", &Text::size).range(1.0f, 512.0f).tooltip("Points")
         .field("color", &Text::color)
         .field("align", &Text::align).choices({ "left", "center", "right" })
-            .tooltip("Donde cae la posicion respecto al texto (un contador: left)")
+            .tooltip("Where the position falls relative to the text (for a counter: left)")
         .field("screenSpace", &Text::screenSpace)
-            .tooltip("HUD: la posicion es px de la pantalla del juego y no sigue a la camara")
+            .tooltip("HUD: the position is in game screen px and does not follow the camera")
         .field("visible", &Text::visible)
-        .field("order", &Text::order).tooltip("Capa de dibujo");
+        .field("order", &Text::order).tooltip("Draw layer");
 }

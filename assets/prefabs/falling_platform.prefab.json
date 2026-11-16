@@ -2,7 +2,7 @@
   "format": "sdl_engine_prefab",
   "version": 1,
   "components": {
-    "EntityInfo": {"name":"Plataforma que cae","tag":""},
+    "EntityInfo": {"name":"Falling Platform","tag":""},
     "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[2.0,2.0]},
     "Sprite": {"texture":"assets/pixel_adventure/Traps/Falling Platforms/On (32x10).png","source":[0,0,32,10],"tint":[255,255,255,255],"flipX":false,"flipY":false,"visible":true,"order":0},
     "BoxCollider": {"size":[32.0,5.0],"offset":[0.0,-2.5],"isTrigger":false,"oneWay":true},

@@ -140,7 +140,7 @@ void AnimatorStateMachineSystem::update(World& world, float) {
             const Condition* condition = conditions.find(rule.condition);
             if (!condition) {
                 if (warned.insert(rule.condition).second)
-                    SDL_Log("AnimatorStateMachine: no existe la condicion '%s' (la regla no se cumple nunca)",
+                    SDL_Log("AnimatorStateMachine: condition '%s' does not exist (the rule never holds)",
                             rule.condition.c_str());
                 continue;
             }

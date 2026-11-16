@@ -2,7 +2,7 @@
 
 Esta guía explica cómo sumar **comportamiento nuevo** a un juego hecho con el editor, de
 modo que sus valores se puedan **ver y cambiar en el Inspector**, se **guarden en la
-escena** y funcionen al pulsar **Jugar**. No hace falta tocar nada de `engine/` ni del
+escena** y funcionen al pulsar **Play**. No hace falta tocar nada de `engine/` ni del
 editor: todo va en `game/` y en `main.cpp`.
 
 ## La idea en 30 segundos
@@ -16,7 +16,7 @@ El motor es un **ECS**: entidades, componentes y sistemas.
 | **Sistema** | La **lógica**: cada frame recorre las entidades con ciertos componentes y las cambia. | `game/MiCosa.cpp` |
 | **Alta** | Registrar el componente y agregar el sistema al arrancar. | `main.cpp` |
 
-Lo que **registras** aparece solo en el Inspector y en "Agregar componente": el editor no
+Lo que **registras** aparece solo en el Inspector y en "Add component": el editor no
 conoce ningún componente en particular, lee la lista de campos.
 
 ## Ejemplo completo: un objeto que flota
@@ -71,8 +71,8 @@ public:
 
 void registerFloater(ComponentRegistry& registry) {
     registry.add<Floater>("Floater")
-        .field("amplitude", &Floater::amplitude).range(0, 200).tooltip("Px que sube y baja")
-        .field("frequency", &Floater::frequency).range(0, 10).speed(0.05f).tooltip("Vueltas por segundo");
+        .field("amplitude", &Floater::amplitude).range(0, 200).tooltip("Px it moves up and down")
+        .field("frequency", &Floater::frequency).range(0, 10).speed(0.05f).tooltip("Cycles per second");
 }
 
 void FloaterSystem::update(World& world, float dt) {
@@ -110,7 +110,7 @@ app.addSystem(std::make_unique<FloaterSystem>());
 ```
 
 - El registro va **antes de `openScene`**. Si no, al cargar la escena el componente
-  todavía no existe y se descarta (el log dice `componente desconocido 'Floater'`).
+  todavía no existe y se descarta (el log dice `unknown component 'Floater'`).
 - Los sistemas corren **en el orden en que se agregan**. Mira los comentarios de
   `main.cpp`: la cadena es control → motor → mecanismos → física → reglas → juego →
   presentación. Un sistema que mueve cosas sin física (como este) va con los mecanismos,
@@ -126,10 +126,10 @@ los suma). Un `.cpp` que no está en el proyecto no se compila y el enlazador se
 ### 5. Usarlo en el editor
 
 1. Compila y ejecuta.
-2. Elige una entidad, **Agregar componente → Floater**.
-3. Pulsa **Jugar** (`Ctrl+P`): la entidad flota. Cambia `amplitude` en el Inspector
+2. Elige una entidad, **Add component → Floater**.
+3. Pulsa **Play** (`Ctrl+P`): la entidad flota. Cambia `amplitude` en el Inspector
    **mientras juegas** para ver el efecto en el acto.
-4. **Detener** devuelve la escena a como estaba (los cambios hechos jugando se pierden: es
+4. **Stop** devuelve la escena a como estaba (los cambios hechos jugando se pierden: es
    a propósito). Cambia los valores editando y guarda con `Ctrl+S`.
 
 ## Tipos de campo
@@ -161,10 +161,10 @@ registry.add<Turret>("Turret")
     .notRemovable()                                    // (va primero) el editor no ofrece quitarlo
     .field("range", &Turret::range).range(0, 800)      // limita el valor
     .field("rate", &Turret::rate).speed(0.05f)         // cuanto cambia al arrastrar
-        .tooltip("Disparos por segundo")               // ayuda al pasar el raton
+        .tooltip("Shots per second")                   // ayuda al pasar el raton
     .field("icon", &Turret::icon).texture()            // ruta de imagen: selector con vista previa
     .field("shot", &Turret::shot).audio()              // ruta de sonido: selector con boton ">"
-    .field("mode", &Turret::mode).choices({ "fijo", "girando" })   // lista desplegable
+    .field("mode", &Turret::mode).choices({ "fixed", "spinning" }) // lista desplegable
     .list("waves", &Turret::waves, [](FieldsBuilder<Wave>& w) {    // lista de structs
         w.field("count", &Wave::count).field("delay", &Wave::delay);
     });
@@ -181,18 +181,18 @@ registry.add<Turret>("Turret")
 Todo lo que el sistema necesita recordar mientras se juega (un temporizador, la posición
 inicial, "ya empezó") va en el componente **sin registrar**:
 
-- Al pulsar **Jugar**, la escena se copia; al **Detener**, se restaura. Lo no registrado
+- Al pulsar **Play**, la escena se copia; al pulsar **Stop**, se restaura. Lo no registrado
   vuelve a su valor por defecto.
 - Inicialízalo de forma **perezosa**, como `started` en `Floater`: así vale también para
   entidades creadas mientras se juega (una bala, un enemigo que aparece).
 - Si el **sistema** (no el componente) guarda estado, por ejemplo un contador de la partida,
-  reinícialo en `onPlay(World&)`, que se llama al pulsar Jugar.
+  reinícialo en `onPlay(World&)`, que se llama al pulsar Play.
 
 ## Referencias a otras entidades (campo `Entity`)
 
 Un campo de tipo `Entity` apunta a **otra entidad de la escena**: la puerta que abre un
 botón, el objetivo de una torreta. En el Inspector se elige de una lista, o **arrastrando**
-la entidad desde la Jerarquía y soltándola sobre el campo.
+la entidad desde el panel **Hierarchy** y soltándola sobre el campo.
 
 ```cpp
 // game/Follower.h
@@ -209,7 +209,7 @@ struct Follower {
 // game/Follower.cpp
 void registerFollower(ComponentRegistry& registry) {
     registry.add<Follower>("Follower")
-        .field("target", &Follower::target).tooltip("La entidad a seguir")
+        .field("target", &Follower::target).tooltip("The entity to follow")
         .field("speed", &Follower::speed).range(0, 1000)
         .field("stopDistance", &Follower::stopDistance).range(0, 100);
 }
@@ -241,7 +241,7 @@ void FollowerSystem::update(World& world, float dt) {
   jugando, o se borró en el editor). No pasa nada malo: `world.get<T>(e)` devuelve
   `nullptr` y `world.isAlive(e)` devuelve `false`. Los ids no se reutilizan, así que nunca
   apunta "por error" a otra.
-- **Duplicar** una rama de la Jerarquía hace que las referencias **dentro** de la rama
+- **Duplicate** (duplicar) una rama de la Jerarquía hace que las referencias **dentro** de la rama
   apunten a las copias; las que apuntan **afuera** se mantienen.
 - En un **prefab** las referencias quedan vacías (un id solo tiene sentido dentro de una
   escena): cada instancia elige la suya, y se ve en naranja como cualquier *override*.
@@ -307,12 +307,12 @@ sonido.
 
 | Síntoma | Causa probable |
 |---|---|
-| El componente no aparece en "Agregar componente" | No se llamó a la función de registro, o se llamó después de `openScene`. |
+| El componente no aparece en "Add component" | No se llamó a la función de registro, o se llamó después de `openScene`. |
 | Error de enlace con `registerX` o `XSystem` | El `.cpp` no está agregado al proyecto. |
-| El log dice `componente desconocido` | La escena se cargó antes del registro, o el nombre de `add<T>("...")` cambió. |
+| El log dice `unknown component` | La escena se cargó antes del registro, o el nombre de `add<T>("...")` cambió. |
 | Un campo no se ve en el Inspector | No está registrado con `.field`. |
 | Un valor vuelve atrás al Detener | Es lo esperado: lo que cambia jugando no se guarda. Cámbialo editando. |
 | El sistema no hace nada | No se agregó con `app.addSystem`, o la entidad no tiene **todos** los componentes del `each`. |
-| No compila: "Tipo de campo no soportado" | El tipo no está en la tabla de arriba (p. ej. `double` o `short`). |
+| No compila: "Unsupported field type" | El tipo no está en la tabla de arriba (p. ej. `double` o `short`). |
 | Un número aparece como lista de entidades | Es un `unsigned` / `std::uint32_t`, que es el mismo tipo que `Entity`. Para números usa `int`. |
 | El efecto llega un frame tarde | El sistema corre antes que el que produce el dato: muévelo después en `main.cpp`. |

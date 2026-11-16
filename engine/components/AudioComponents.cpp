@@ -9,7 +9,7 @@ void registerAudioComponents(ComponentRegistry& registry, const ConditionRegistr
         .list("sounds", &SoundEffects::sounds, [conds](FieldsBuilder<SoundRule>& rule) {
             rule.field("condition", &SoundRule::condition)
                     .choices([conds](const World&, Entity) { return conds->names(); })
-                    .tooltip("Suena cuando esta condicion EMPIEZA a cumplirse")
+                    .tooltip("Plays when this condition STARTS to hold")
                 .field("sound", &SoundRule::sound).audio()
                 .field("volume", &SoundRule::volume).range(0.0f, 2.0f).speed(0.01f);
         });
@@ -17,5 +17,5 @@ void registerAudioComponents(ComponentRegistry& registry, const ConditionRegistr
     registry.add<Music>("Music")
         .field("music", &Music::music).audio()
         .field("volume", &Music::volume).range(0.0f, 2.0f).speed(0.01f)
-        .field("loop", &Music::loop).tooltip("Al terminar vuelve a empezar");
+        .field("loop", &Music::loop).tooltip("Starts over when it ends");
 }

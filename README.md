@@ -1,26 +1,29 @@
-# SDL Game Editor — editor y motor 2D educativo sobre SDL3
+**English** | [Español](README.es.md)
 
-Motor de videojuegos 2D con **editor integrado**, construido sobre SDL3 en C++17. Su
-propósito es **educativo**: que estudiantes que ya conocen SDL3 básico armen juegos
-editando escenas en un editor propio, sin pelear con la API cruda de SDL.
+# SDL Game Editor — an educational 2D engine and editor built on SDL3
 
-> **Estado:** en desarrollo, por fases. Ya están el núcleo (ECS + reflexión + escenas en
-> JSON), el editor, los tilemaps (se pintan con paleta en el propio editor), la física con
-> el motor de plataformas, los prefabs, las reglas de juego (vida, daño, frutas,
-> checkpoints) y la presentación (animación por reglas, cámara que sigue, fondo con
-> parallax, texto y HUD): en la escena de ejemplo se juega un nivel completo. Siguen los
-> ejemplos cenital y de naves.
+A 2D game engine with a **built-in editor**, written in C++17 on top of SDL3. Its goal is
+**educational**: students who already know basic SDL3 can build games by editing scenes in
+an editor, without fighting the raw SDL API.
 
-## Cómo está pensado
+> **Status:** in development, in phases. Done so far: the core (ECS + reflection + JSON
+> scenes), the editor, tilemaps (painted with a palette inside the editor), physics with a
+> platformer controller, prefabs, gameplay rules (health, damage, collectibles,
+> checkpoints), presentation (rule-driven animation, follow camera, parallax background,
+> text and HUD), audio and stage mechanisms (one-way, moving, falling platforms and
+> trampolines). The sample scene is a complete platformer level. Top-down and shoot 'em up
+> samples come next.
 
-- **La escena es un documento.** Todo lo que hay en ella se guarda en un `.scene.json`, y
-  el editor trabaja directamente sobre esos datos: lo que ves es lo que se guarda.
-- **ECS propio** (entidades, componentes y sistemas), escrito para leerse en clase:
-  - **Entidad**: solo un número.
-  - **Componente**: un `struct` de datos sin lógica (`Transform`, `Sprite`, `Camera`...).
-  - **Sistema**: el comportamiento; recorre las entidades con ciertos componentes y las
-    modifica. Solo corre mientras se juega.
-- **Reflexión mínima.** Cada componente declara sus campos una vez:
+## Design
+
+- **The scene is a document.** Everything in it is saved to a `.scene.json`, and the editor
+  works directly on that data: what you see is what gets saved.
+- **A custom ECS** (entities, components and systems), written to be read in class:
+  - **Entity**: just a number.
+  - **Component**: a plain data `struct` with no logic (`Transform`, `Sprite`, `Camera`...).
+  - **System**: the behavior; it walks the entities that have certain components and
+    changes them. Systems only run while the game is playing.
+- **Minimal reflection.** Each component declares its fields once:
 
   ```cpp
   registry.add<Transform>("Transform")
@@ -29,138 +32,159 @@ editando escenas en un editor propio, sin pelear con la API cruda de SDL.
       .field("scale",    &Transform::scale);
   ```
 
-  Con esa lista el motor lo guarda y carga en JSON, y el Inspector del editor lo muestra y
-  edita. Un componente nuevo aparece en el editor **sin tocar el editor**. Un campo puede
-  ser también una **lista de structs** (los clips de una animación), declarada con
-  `.list(...)`; un texto puede ofrecer **opciones** (`.choices(...)`) que el Inspector
-  muestra como lista desplegable, y un campo de tipo `Entity` es una **referencia a otra
-  entidad** de la escena (se elige de una lista o arrastrándola desde la Jerarquía).
-- **La aplicación es dueña del bucle.** El juego no escribe su `main` de SDL: registra sus
-  componentes y sistemas, y abre una escena.
+  From that list the engine saves and loads it as JSON, and the editor's Inspector shows
+  and edits it. A new component shows up in the editor **without touching the editor**. A
+  field can also be a **list of structs** (the clips of an animation), declared with
+  `.list(...)`; a string can offer **choices** (`.choices(...)`) that the Inspector shows
+  as a dropdown, and an `Entity` field is a **reference to another entity** in the scene
+  (picked from a list or by dragging it from the Hierarchy).
+- **The application owns the loop.** A game does not write its own SDL `main` loop: it
+  registers its components and systems, and opens a scene.
 
   ```cpp
   int main(int argc, char* argv[]) {
       Application app;
-      if (!app.init({ "Mi juego", 1280, 720 })) return 1;
-      app.registry().add<MiComponente>("MiComponente").field(/* ... */);
-      app.addSystem(std::make_unique<MiSistema>());
-      app.openScene("assets/scenes/nivel1.scene.json");
+      if (!app.init({ "My Game", 1280, 720 })) return 1;
+      app.registry().add<MyComponent>("MyComponent").field(/* ... */);
+      app.addSystem(std::make_unique<MySystem>());
+      app.openScene("assets/scenes/level1.scene.json");
       return app.run();
   }
   ```
 
-### Tu propio código
+### Your own code
 
-Para sumar comportamiento propio con valores editables en el Inspector (un componente, su
-registro y un sistema, todo en `game/`), ver la guía paso a paso
-**[docs/GUIA_CODIGO_PROPIO.md](docs/GUIA_CODIGO_PROPIO.md)**: un ejemplo completo, los
-tipos de campo, referencias a otras entidades, condiciones para animación y sonido, y los
-errores más comunes.
+To add your own behavior with values you can edit in the Inspector (a component, its
+registration and a system, all in `game/`), see the step-by-step guide
+**[docs/GUIA_CODIGO_PROPIO.md](docs/GUIA_CODIGO_PROPIO.md)** (in Spanish): a complete
+example, the field types, references to other entities, conditions for animation and
+sound, and the most common mistakes.
 
-## El editor
+## The editor
 
-- **Jerarquía** (izquierda): las entidades de la escena en **árbol**; crear, duplicar y
-  borrar. Las instancias de prefab se ven en azul. Ver [Jerarquía](#jerarquía).
-- **Prefabs** (izquierda, abajo): los prefabs de `assets/`; doble clic o arrastrar a la
-  vista para colocar uno.
-- **Inspector** (derecha): los componentes de la entidad elegida, editables; agregar y
-  quitar componentes.
-- **Vista** (centro), con dos pestañas:
-  - **Escena**: cámara libre del editor, grilla, selección y arrastre.
-  - **Juego**: lo que ve el jugador, a la resolución del juego.
-- **Jugar / Pausa / Detener**: al detener, la escena vuelve exactamente a como estaba antes
-  de jugar.
+- **Hierarchy** (left): the scene's entities as a **tree**; create, duplicate and delete.
+  Prefab instances are shown in blue. See [Hierarchy](#hierarchy).
+- **Prefabs** (left, bottom): the prefabs in `assets/`; double-click one or drag it into
+  the view to place it.
+- **Inspector** (right): the components of the selected entity, editable; add and remove
+  components.
+- **View** (center), with two tabs:
+  - **Scene**: a free editor camera, grid, selection and dragging.
+  - **Game**: what the player sees. A dropdown in its top-right corner picks how it is
+    scaled: **Pixel perfect** (default), **Fit** or **100%**.
+- **Play / Pause / Stop**: on Stop, the scene goes back to exactly how it was before
+  playing.
 
-### Jerarquía
+### Hierarchy
 
-Las entidades se pueden **anidar** para ordenar la escena en grupos ("Frutas", "Trampas",
-"HUD"...). Es una jerarquía de **organización**: el `Transform` de cada entidad sigue siendo
-su posición en el mundo, así que la física, el dibujo y las reglas no cambian.
+Entities can be **nested** to organize the scene into groups ("Fruits", "Traps",
+"HUD"...). It is an **organizational** hierarchy: each entity's `Transform` is still its
+position in the world, so physics, drawing and rules do not change.
 
-- **Arrastra** una entidad sobre otra para hacerla su **hija**; sobre el borde de arriba o de
-  abajo de otra, para ponerla **antes** o **después** (como hermana). Soltarla en el hueco
-  libre de abajo la saca de su grupo. El menú del clic derecho ofrece **Crear hija** y
-  **Sacar del grupo**.
-- Un grupo puede ser una entidad vacía (**+ Nueva**, sin sprite) que solo sirve de carpeta.
-- **Mover al padre** (en la vista o en el Inspector) mueve también a toda su rama, y
-  **Duplicar** o **Borrar** se llevan la rama entera.
-- **Jugando**, los hijos **no** siguen al padre (si un sistema destruye al padre, los hijos
-  quedan sueltos; para llevárselos, `destroyWithChildren`).
-- Un prefab es **una** entidad: al crear un prefab desde un padre, sus hijas no entran.
+- **Drag** an entity onto another to make it its **child**; onto the top or bottom edge of
+  another, to place it **before** or **after** it (as a sibling). Dropping it in the empty
+  space below takes it out of its group. The right-click menu offers **Create child** and
+  **Remove from group**.
+- A group can be an empty entity (**+ New**, no sprite) that just works as a folder.
+- **Moving a parent** (in the view or in the Inspector) also moves its whole branch, and
+  **Duplicate** or **Delete** take the whole branch along.
+- **While playing**, children do **not** follow their parent (if a system destroys the
+  parent, the children are left on their own; to take them along, use
+  `destroyWithChildren`).
+- A prefab is **one** entity: when you create a prefab from a parent, its children are not
+  included.
 
-En el archivo, una hija lleva el id de su padre: `{ "id": 7, "parent": 3, "components": {...} }`,
-y las entidades se guardan en el orden del árbol.
+In the file, a child stores its parent's id: `{ "id": 7, "parent": 3, "components": {...} }`,
+and entities are saved in tree order.
 
 ### Tilemaps
 
-Un nivel de tiles se arma con entidades que tienen el componente **`Tilemap`**: cada una es
-una **capa** (fondo, suelo, decoración...). Como cada capa tiene su propio `order`, se
-intercala con los sprites: el jugador puede quedar delante del suelo y detrás de unas
-plantas. Su `Transform` marca la **esquina superior izquierda** del mapa (no el centro, como
-en los sprites).
+A tile level is built from entities with the **`Tilemap`** component: each one is a
+**layer** (background, ground, decoration...). Since each layer has its own `order`, it
+interleaves with sprites: the player can be in front of the ground and behind some plants.
+Its `Transform` marks the map's **top-left corner** (not the center, as with sprites).
 
-- Elige una capa: el Inspector muestra la **paleta** del tileset. Clic en un tile para
-  elegirlo, o arrastra para elegir un bloque de varios.
-- Herramientas: **Pincel** (`B`), **Goma** (`E`), **Relleno** (`G`) y **Mover** (`V`).
-  `Alt+clic` en la vista toma el tile de una celda. Cada trazo se deshace de una vez.
-- **Sólidos**: con "Marcar solidos", un clic en la paleta marca o desmarca un tile como
-  sólido. "Ver solidos" resalta en la vista las celdas que frenan. Una capa con `collision`
-  desmarcado es pura decoración.
-- El tamaño del mapa (`cells`) se cambia en el Inspector, al pulsar Enter.
-- Para una capa nueva: **+ Nueva**, luego **Agregar componente > Tilemap**, y elige la
-  imagen del tileset en el campo `tileset`.
+- Select a layer: the Inspector shows the tileset **palette**. Click a tile to pick it, or
+  drag to pick a block of several.
+- Tools: **Brush** (`B`), **Eraser** (`E`), **Fill** (`G`) and **Move** (`V`). `Alt+click`
+  in the view picks a cell's tile. Each stroke is undone in one step.
+- **Solids**: with "Mark solids" on, clicking a tile in the palette marks or unmarks it as
+  solid. "Show solids" highlights the blocking cells in the view. A layer with `collision`
+  unchecked is pure decoration.
+- The map size (`cells`) is changed in the Inspector, when you press Enter.
+- For a new layer: **+ New**, then **Add component > Tilemap**, and choose the tileset image
+  in the `tileset` field.
 
-Los mapas se arman **solo en este editor**: no hay archivo de mapa aparte ni editor externo.
-Las celdas se guardan dentro del `.scene.json`, una fila por línea (`-1` = vacía), así que
-el mapa se lee en el archivo y un diff muestra solo las filas que cambiaron.
+Maps are built **only in this editor**: there is no separate map file or external editor.
+Cells are stored inside the `.scene.json`, one row per line (`-1` = empty), so the map is
+readable in the file and a diff shows only the rows that changed.
 
-### Física y motor de plataformas
+### Physics and the platformer controller
 
-- **`RigidBody2D`**: la entidad se mueve sola con su `velocity` y su `gravity` (px/s²; 0 para
-  juegos cenitales o de naves). Sin él, una entidad es estática.
-- **`BoxCollider`**: caja de colisión centrada en el `Transform`. `size` y `offset` van en
-  píxeles de la **imagen**, y se multiplican por la escala del `Transform` (como el sprite).
-  Sin `RigidBody2D` es un obstáculo fijo; con `isTrigger` no frena ni es frenado.
-- Los cuerpos chocan con las celdas sólidas de los tilemaps y entre sí. Contra los tiles se
-  resuelve **eje por eje** (así no se engancha en las costuras del suelo) y una sonda de
-  2 px bajo los pies decide si está apoyado.
-- **`PlatformerMotor`**: correr y saltar con buena sensación: aceleración y frenado, altura
-  del salto **en píxeles**, salto corto al soltar el botón, *coyote time*, *jump buffer* y
-  saltos en el aire (`maxAirJumps = 1` = doble salto). Todas sus perillas están en el
-  Inspector: tocarlas mientras se juega es el mejor ejercicio para entender el *game feel*.
-- El motor no lee el teclado: lo hace un sistema del juego (`game/PlatformerControl`) para
-  las entidades con tag `Player`. Flechas o `A`/`D` para moverse; `Espacio`, `W` o flecha
-  arriba para saltar.
-- La casilla **Colisiones** de la barra dibuja las cajas en la vista de escena (verde:
-  sólida; amarillo: trigger).
+- **`RigidBody2D`**: the entity moves on its own with its `velocity` and `gravity`
+  (px/s²; 0 for top-down or shmup games). Without it, an entity is static.
+- **`BoxCollider`**: a collision box centered on the `Transform`. `size` and `offset` are in
+  **image** pixels, multiplied by the `Transform` scale (like the sprite); the offset is
+  mirrored when the sprite is flipped. Without a `RigidBody2D` it is a fixed obstacle; with
+  `isTrigger` it neither blocks nor gets blocked; with `oneWay` it is a **one-way
+  platform** (it only stops what falls onto it from above).
+- Bodies collide with the solid cells of tilemaps and with each other. Against tiles,
+  collisions are resolved **one axis at a time** (so bodies do not snag on the seams of the
+  ground) and a 2 px probe under the feet decides whether the body is grounded.
+- **`PlatformerMotor`**: running and jumping that feel good: acceleration and braking, jump
+  height **in pixels**, short jump when the button is released, *coyote time*, *jump
+  buffer*, air jumps (`maxAirJumps = 1` = double jump) and dropping through one-way
+  platforms (down + jump). All its knobs are in the Inspector: tweaking them while playing
+  is the best exercise for understanding *game feel*.
+- The controller does not read the keyboard: a game system does that
+  (`game/PlatformerControl`) for entities tagged `Player`. Arrows or `A`/`D` to move;
+  `Space`, `W` or the up arrow to jump; down (`↓` or `S`) + jump to drop through a one-way
+  platform.
+- The **Colliders** checkbox in the toolbar draws the boxes in the Scene view (green:
+  solid; yellow: trigger).
 
-Los sistemas corren en el orden en que `main.cpp` los agrega, y ese orden es la cadena de
-cada frame: control (teclas → intención) → `PlatformerMotorSystem` (intención → velocidad)
-→ `PhysicsSystem` (velocidad → posición, choques y apoyo) → reglas (vida, daño, frutas,
-checkpoints, reaparición) → reglas del juego y HUD → presentación (animación, cámara,
-fondo).
+Systems run in the order `main.cpp` adds them, and that order is the chain of each frame:
+control (keys → intent) → `PlatformerMotorSystem` (intent → velocity) → mechanisms
+(moving and falling platforms) → `PhysicsSystem` (velocity → position, collisions and
+grounding) → trampolines → rules (health, damage, collectibles, checkpoints, respawn) →
+game rules and HUD → presentation (animation, sound, camera, background).
+
+### Mechanisms
+
+Stage pieces that move. Moving platforms are **kinematic** (no `RigidBody2D`): they move
+whoever is standing on them.
+
+- **`PathMover`**: follows a list of points (relative to its starting position) at a given
+  speed, with a pause at each point; as a loop or back and forth. The path is drawn in the
+  Scene view.
+- **`FallingPlatform`**: falls a moment after being stepped on and comes back after a while,
+  fading in.
+- **`Bouncer`**: a trampoline: launches whoever lands on it from above to a height in
+  pixels.
 
 ### Prefabs
 
-Un **prefab** es una entidad molde guardada en su propio archivo (`assets/prefabs/*.prefab.json`):
-el jugador, una fruta, unos pinchos. Ocupan el lugar que en un motor "a código" tendría una
-función que arma cada objeto.
+A **prefab** is a template entity saved in its own file (`assets/prefabs/*.prefab.json`):
+the player, a fruit, some spikes. They take the place that, in a "code-first" engine, a
+function that builds each object would have.
 
-- **Colocar**: doble clic en el panel Prefabs (aparece en el centro de la vista) o
-  arrastrarlo a la vista.
-- Una **instancia** queda **enlazada** a su prefab: en la escena solo se guarda en qué
-  difiere de él (la posición, el nombre, la textura de *otra* fruta...). Cambiar el prefab
-  cambia todas sus instancias, salvo en lo que cada una sobrescribió. En el Inspector, los
-  campos sobrescritos se ven en **naranja**.
-- **Crear prefab...** (Inspector de una entidad suelta): la guarda como prefab y la enlaza.
-- **Aplicar**: los cambios de la instancia pasan al prefab (y a todas sus instancias), salvo
-  la posición y el nombre. El archivo del prefab se guarda en el acto: Deshacer vuelve atrás
-  la escena, no el prefab.
-- **Revertir**: la instancia vuelve a ser igual al prefab (conserva posición y nombre).
-- **Desvincular**: deja de ser instancia; conserva sus componentes.
-- **Actualizar** (panel Prefabs) vuelve a leer los prefabs del disco, si se editaron a mano.
+- **Place**: double-click it in the Prefabs panel (it appears at the center of the view) or
+  drag it into the view.
+- An **instance** stays **linked** to its prefab: the scene only stores how it differs
+  from it (the position, the name, the texture of a *different* fruit...). Changing the
+  prefab changes all its instances, except for what each one overrode. In the Inspector,
+  overridden fields are shown in **orange**.
+- **Create prefab...** (Inspector of a standalone entity): saves it as a prefab and links
+  it.
+- **Apply**: the instance's changes go into the prefab (and so to all its instances),
+  except position and name. The prefab file is saved right away: Undo reverts the scene,
+  not the prefab.
+- **Revert**: the instance matches the prefab again (keeping its position and name).
+- **Unlink**: it stops being an instance; it keeps its components.
+- **Refresh** (Prefabs panel) reloads the prefabs from disk, in case they were edited by
+  hand.
 
-En el archivo de escena, una instancia se ve así:
+In a scene file, an instance looks like this:
 
 ```json
 { "id": 4, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
@@ -170,179 +194,183 @@ En el archivo de escena, una instancia se ve así:
 }}
 ```
 
-### Reglas de juego
+### Gameplay rules
 
-Componentes de datos y sistemas del motor que funcionan por **contacto entre cajas**
-(`BoxCollider`, normalmente trigger) y deciden a quién afectan por la **etiqueta** (`tag`):
+Data components and engine systems that work through **box contact** (`BoxCollider`,
+usually a trigger) and decide whom they affect by **tag**:
 
-- **`Health`**: vida, invulnerabilidad tras un golpe (el sprite parpadea) y muerte.
-- **`Hazard`**: quita vida al que lo toca y lo empuja (pinchos, sierras).
-- **`KillZone`**: mata en el acto, aunque sea invulnerable (la franja bajo el nivel).
-- **`Collectible`**: se recoge al tocarlo (frutas, monedas); desaparece en el acto o, como
-  las frutas del ejemplo, al terminar su animación de recogida.
-- **`Checkpoint`**: fija el punto de reaparición de quien lo toca (su bandera se anima con
-  una regla `activated`).
-- **`Respawn`**: en el jugador; al morir espera un momento y reaparece en el último
-  checkpoint con la vida llena.
+- **`Health`**: health, invulnerability after a hit (the sprite blinks) and death.
+- **`Hazard`**: takes health from whoever touches it and knocks them back (spikes, saws).
+- **`KillZone`**: kills instantly, even when invulnerable (the strip below the level).
+- **`Collectible`**: collected on touch (fruits, coins); it disappears at once or, like the
+  sample's fruits, when its collect animation ends.
+- **`Checkpoint`**: sets the respawn point of whoever touches it (its flag animates with an
+  `activated` rule).
+- **`Respawn`**: on the player; on death it waits a moment and respawns at the last
+  checkpoint with full health.
 
-No hay *callbacks*: lo que pasa en un frame queda como un aviso de un frame en el componente
-(`justDamaged`, `justDied`, `justCollected`...). Las reglas propias de **un** juego van en
-`game/`: en el ejemplo, `PlatformerRules` cuenta las frutas recogidas, registra el
-componente `LevelGoal` (la meta) y escribe el HUD.
+There are no *callbacks*: whatever happens in a frame is left as a one-frame flag on the
+component (`justDamaged`, `justDied`, `justCollected`...). Rules specific to **one** game go
+in `game/`: in the sample, `PlatformerRules` counts the collected fruits, registers the
+`LevelGoal` component (the goal) and writes the HUD.
 
-### Presentación
+### Presentation
 
-- **`SpriteAnimator`**: una lista de **clips**, cada uno una secuencia de cuadros de una
-  imagen en grilla (una tira por archivo, una fila o columna de una hoja, o celdas sueltas).
-  Por clip: `fps`, `loop` y, si no repite, qué pasa al terminar: seguir con otro clip
-  (`next`) o destruir la entidad (`destroyOnEnd`, para efectos). No dibuja: escribe la
-  imagen y el recorte del `Sprite`. Un clip sin `texture` usa la imagen que tenía el
-  `Sprite`: así la fruta de cada instancia sigue siendo un *override* del `Sprite`.
-- **`AnimatorStateMachine`**: elige el clip con **reglas** "clip si condición", en orden; gana
-  la primera que se cumpla y, si ninguna, suena `defaultClip`. Las condiciones son funciones
-  de C++ con nombre (ver más abajo).
-- **`FollowCamera`** (en la entidad de la `Camera`): sigue a la entidad con `targetTag` con
-  zona muerta, suavizado, adelanto hacia donde corre (`lookAhead`) y sin salirse de los
-  tilemaps. Elegida, la vista Escena muestra su zona muerta.
-- **`ParallaxBackground`**: imagen en mosaico que llena la vista y acompaña a la cámara solo
-  en parte (`factor`), con desplazamiento propio opcional (`scroll`).
-- **`Text`**: una línea de texto con una fuente TTF, en el mundo o, con `screenSpace`, en la
-  pantalla del juego (el **HUD**). En la vista Escena el HUD se ve sobre el recuadro de la
-  cámara y se arrastra como cualquier entidad. El juego solo cambia el contenido; dónde va,
-  la fuente y el color se eligen en el editor.
-- **Pixel art nítido a cualquier tamaño**: el juego se dibuja a su resolución y se muestra
-  agrandado con vecino más cercano al entero de arriba y después ajustado con suavizado
-  (`GameCanvas`). Escalar directo a un factor no entero deforma los píxeles (unos de 3 px,
-  otros de 4) y las animaciones parecen saltar.
+- **`SpriteAnimator`**: a list of **clips**, each a sequence of frames from a grid image (one
+  strip per file, a row or column of a sheet, or individual cells). Per clip: `fps`, `loop`
+  and, if it does not loop, what happens when it ends: continue with another clip (`next`)
+  or destroy the entity (`destroyOnEnd`, for effects). It does not draw: it writes the image
+  and the crop of the `Sprite`. A clip without a `texture` uses the image the `Sprite` had:
+  that way each fruit instance is still a `Sprite` *override*.
+- **`AnimatorStateMachine`**: picks the clip with **rules** "clip if condition", in order;
+  the first one that holds wins and, if none does, `defaultClip` plays. Conditions are named
+  C++ functions (see below).
+- **`FollowCamera`** (on the `Camera` entity): follows the entity with `targetTag`, with a
+  dead zone, smoothing, look-ahead toward where it runs (`lookAhead`) and without leaving
+  the tilemaps. When selected, the Scene view shows its dead zone.
+- **`ParallaxBackground`**: a tiled image that fills the view and only partly follows the
+  camera (`factor`), with optional scrolling of its own (`scroll`).
+- **`Text`**: a line of text with a TTF font, in the world or, with `screenSpace`, on the
+  game screen (the **HUD**). In the Scene view the HUD is shown over the camera frame and
+  can be dragged like any entity. The game only changes the content; position, font and
+  color are chosen in the editor.
+- **Crisp pixel art at any size**: with the **Pixel perfect** scale (the default in the
+  Game tab and in `--play`), one art pixel (`Camera.pixelSize`) always measures a whole
+  number of screen pixels; a bit more or less of the world is visible. With **Fit**, the
+  game is drawn at its resolution and enlarged with nearest-neighbor to the next integer,
+  then smoothly fitted (`GameCanvas`). Scaling directly by a non-integer factor distorts
+  pixels (some 3 px wide, others 4) and makes animations look jumpy.
 
 ### Audio
 
-- **`SoundEffects`**: una lista de reglas "suena *este archivo* cuando *esta condición*
-  empieza a cumplirse", con su volumen. Vale igual para un suceso (`jumped`, `damaged`) que
-  para un estado (`dead`, `collected`): suena una vez, al empezar.
-- **`Music`**: la música de fondo de la escena (archivo, volumen, loop).
-- Al detener el juego se corta el sonido; en pausa se congela. En el Inspector, el botón
-  **`>`** junto a un archivo de audio lo hace sonar.
-- Formatos: WAV, OGG Vorbis y Opus (SDL3_mixer). Los sonidos y la música del ejemplo
-  (`assets/audio/`) se generaron por síntesis para el proyecto.
+- **`SoundEffects`**: a list of rules "play *this file* when *this condition* starts to
+  hold", with a volume. It works the same for an event (`jumped`, `damaged`) as for a state
+  (`dead`, `collected`): it plays once, when it starts.
+- **`Music`**: the scene's background music (file, volume, loop).
+- Stopping the game cuts the sound; pausing freezes it. In the Inspector, the **`>`** button
+  next to an audio file plays it.
+- Formats: WAV, OGG Vorbis and Opus (SDL3_mixer). The sample's sounds and music
+  (`assets/audio/`) were generated by synthesis for this project.
 
-### Condiciones
+### Conditions
 
-Las reglas de animación y de sonido eligen su condición por **nombre** en el Inspector; cada
-condición es una función de C++. El motor trae estados (`grounded`, `airborne`, `rising`,
-`falling`, `moving`, `dead`, `hurt`, `collected`, `activated`) y sucesos de un frame
-(`jumped`, `landed`, `damaged`, `respawned`), y el juego suma las suyas (el ejemplo agrega
-`goalReached`):
+Animation and sound rules pick their condition by **name** in the Inspector; each condition
+is a C++ function. The engine provides states (`grounded`, `airborne`, `rising`, `falling`,
+`moving`, `dead`, `hurt`, `collected`, `activated`, `crumbling`) and one-frame events
+(`jumped`, `landed`, `dropped`, `damaged`, `respawned`, `bounced`), and a game adds its own
+(the sample adds `goalReached`):
 
 ```cpp
 app.conditions().add("attacking", [](World& w, Entity e) { /* ... */ });
 ```
 
-### Escenas de ejemplo
+### Sample scenes
 
-**Abrir...** (barra superior) lista las escenas de `assets/`:
+**Open...** (toolbar) lists the scenes in `assets/`:
 
-- `platformer.scene.json`: plataformas de Pixel Adventure, armado con prefabs: jugador,
-  frutas, checkpoint, sierra, pinchos, meta y una zona de muerte bajo el pozo; fondo con
-  parallax, cámara que sigue (con zoom 1,5), HUD de vida y frutas, efectos de sonido y música.
-- `topdown.scene.json`: un piso de Ninja Adventure, para un juego cenital.
-- `shmup.scene.json`: un fondo largo de Pixel Shmup, que se recorre hacia arriba.
+- `platformer.scene.json`: a complete platformer level with Pixel Adventure, built from
+  prefabs: player, fruits, checkpoints, spikes, saws (fixed and moving), one-way, moving
+  and falling platforms, a trampoline, a goal and a kill zone below the pits; parallax
+  background, follow camera (zoom 1.5), health and fruit HUD, sound effects and music.
+- `topdown.scene.json`: a Ninja Adventure floor, for a top-down game.
+- `shmup.scene.json`: a long Pixel Shmup background, scrolled upward.
 
-| Acción | Control |
+| Action | Control |
 |---|---|
-| Elegir / arrastrar una entidad | Clic izquierdo (con `Alt`, sin ajustar a la grilla) |
-| Mover la vista | Clic derecho o medio arrastrando |
-| Zoom hacia el cursor | Rueda del ratón |
-| Centrar en la seleccionada | `F` (o doble clic en la Jerarquía) |
-| Anidar / reordenar entidades | Arrastrar en la Jerarquía (al medio: hija; al borde: antes o después) |
-| Jugar / detener | `Ctrl+P` |
-| Guardar | `Ctrl+S` |
-| Deshacer / rehacer | `Ctrl+Z` / `Ctrl+Y` o `Ctrl+Shift+Z` |
-| Duplicar / borrar | `Ctrl+D` / `Supr` |
-| Tilemap: mover / pincel / goma / relleno | `V` / `B` / `E` / `G` |
-| Tilemap: tomar el tile de una celda | `Alt+clic` |
-| Captura de pantalla (a `screenshots/`) | `F9` |
+| Select / drag an entity | Left click (with `Alt`, no grid snapping) |
+| Pan the view | Right or middle click and drag |
+| Zoom toward the cursor | Mouse wheel |
+| Focus on the selection | `F` (or double-click in the Hierarchy) |
+| Nest / reorder entities | Drag in the Hierarchy (middle: child; edge: before or after) |
+| Play / stop | `Ctrl+P` |
+| Save | `Ctrl+S` |
+| Undo / redo | `Ctrl+Z` / `Ctrl+Y` or `Ctrl+Shift+Z` |
+| Duplicate / delete | `Ctrl+D` / `Del` |
+| Tilemap: move / brush / eraser / fill | `V` / `B` / `E` / `G` |
+| Tilemap: pick a cell's tile | `Alt+click` |
+| Screenshot (to `screenshots/`) | `F9` |
 
-Con el argumento `--play`, el ejecutable abre la escena y la juega directamente, sin editor.
+With the `--play` argument, the executable opens the scene and plays it directly, without
+the editor (`--scale=pixel|fit|100` picks the scaling).
 
-## Estructura
+## Layout
 
 ```
 engine/
   core/        Entity, World (ECS), Reflection, SceneSerializer, Prefabs, Hierarchy
-  components/  componentes del motor (EntityInfo, Transform, Sprite, Tilemap, Camera,
+  components/  engine components (EntityInfo, Transform, Sprite, Tilemap, Camera,
                RigidBody2D, BoxCollider, PlatformerMotor, Health, Hazard, KillZone,
-               Collectible, Checkpoint, Respawn, SpriteAnimator, AnimatorStateMachine,
-               FollowCamera, ParallaxBackground, Text, SoundEffects, Music)
-  systems/     interfaz System, RenderSystem, PhysicsSystem, PlatformerMotorSystem,
-               sistemas de reglas (Rules), de animación (Animation), FollowCamera y
-               Parallax (Presentation), sonido y música (AudioSystems), condiciones
-               con nombre (Conditions) y consultas de Tilemaps
+               Collectible, Checkpoint, Respawn, PathMover, FallingPlatform, Bouncer,
+               SpriteAnimator, AnimatorStateMachine, FollowCamera, ParallaxBackground,
+               Text, SoundEffects, Music)
+  systems/     System interface, RenderSystem, PhysicsSystem, PlatformerMotorSystem,
+               mechanisms (Motion), rule systems (Rules), animation (Animation),
+               FollowCamera and Parallax (Presentation), sound and music (AudioSystems),
+               named conditions (Conditions) and Tilemaps queries
   platform/    Input, AssetManager, Screenshot, Audio (SDL3_mixer), GameCanvas
-  app/         Application: ventana, bucle, modos Edit / Play / Pausa
-  editor/      el editor (Dear ImGui)
-  third_party/ nlohmann/json y Dear ImGui (vendorizadas)
-game/          código del juego de ejemplo (PlatformerControl: teclas -> intención;
-               PlatformerRules: frutas, meta, HUD y la condición goalReached)
-assets/        sprites, tilesets, prefabs (assets/prefabs/) y escenas (assets/scenes/)
-docs/          GUIA_CODIGO_PROPIO.md: cómo sumar componentes y sistemas propios
-main.cpp       registra los sistemas en orden y abre la escena
+  app/         Application: window, loop, Edit / Play / Paused modes; GameScreen (scaling)
+  editor/      the editor (Dear ImGui)
+  third_party/ nlohmann/json and Dear ImGui (vendored)
+game/          the sample game's code (PlatformerControl: keys -> intent;
+               PlatformerRules: fruits, goal, HUD and the goalReached condition)
+assets/        sprites, tilesets, audio, prefabs (assets/prefabs/) and scenes (assets/scenes/)
+docs/          GUIA_CODIGO_PROPIO.md: how to add your own components and systems
+main.cpp       registers the systems in order and opens the scene
 ```
 
-## Cómo compilar y ejecutar
+## Building and running
 
-Un único proyecto de **Visual Studio 2026** (`sdl-game-editor.vcxproj`, sin `.sln`).
+A single **Visual Studio 2026** project (`sdl-game-editor.vcxproj`, no `.sln`).
 
-### Requisitos
+### Requirements
 
-- **Visual Studio 2026** con el toolset de C++ (`v145`), C++17, plataforma **x64**.
-- La familia **SDL3 instalada a mano** (no viene de vcpkg), en estas versiones y rutas:
+- **Visual Studio 2026** with the C++ toolset (`v145`), C++17, **x64** platform.
+- The **SDL3 family installed by hand** (not from vcpkg), in these versions and paths:
 
-  | Librería | Versión | Ruta esperada | Para qué |
+  | Library | Version | Expected path | Used for |
   |---|---|---|---|
-  | **SDL3** | **3.4.14** | `D:\SDL3` | ventana, renderer, input, tiempo |
-  | **SDL3_image** | **3.4.4** | `D:\SDL3_image` | cargar PNG |
-  | **SDL3_ttf** | **3.2.2** | `D:\SDL3_ttf` | texto |
+  | **SDL3** | **3.4.14** | `D:\SDL3` | window, renderer, input, time |
+  | **SDL3_image** | **3.4.4** | `D:\SDL3_image` | loading PNG |
+  | **SDL3_ttf** | **3.2.2** | `D:\SDL3_ttf` | text |
   | **SDL3_mixer** | **3.2.4** | `D:\SDL3_mixer` | audio |
 
-  Cada una se descomprime (paquete de desarrollo para VC) en su carpeta de `D:\`, de modo que
-  queden `<carpeta>\include` y `<carpeta>\lib\x64`. Si usas otras rutas, ajusta
-  `AdditionalIncludeDirectories`, `AdditionalLibraryDirectories` y el `PostBuildEvent` del
-  `.vcxproj`.
-- **nlohmann/json** y **Dear ImGui** ya vienen en `engine/third_party/`: no hay nada que
-  instalar.
+  Unzip each one (the VC development package) into its folder in `D:\`, so that
+  `<folder>\include` and `<folder>\lib\x64` exist. If you use other paths, adjust
+  `AdditionalIncludeDirectories`, `AdditionalLibraryDirectories` and the `PostBuildEvent`
+  in the `.vcxproj`.
+- **nlohmann/json** and **Dear ImGui** are already in `engine/third_party/`: nothing to
+  install.
 
-### Pasos
+### Steps
 
-1. Abre `sdl-game-editor.vcxproj` en Visual Studio 2026.
-2. Elige **x64** (sirven **Debug** y **Release**; Win32 no está soportado).
-3. Compila y ejecuta (F5). El post-build copia las DLLs de SDL3 y la carpeta `assets/`
-   junto al ejecutable.
+1. Open `sdl-game-editor.vcxproj` in Visual Studio 2026.
+2. Choose **x64** (**Debug** and **Release** both work; Win32 is not supported).
+3. Build and run (F5). The post-build step copies the SDL3 DLLs and the `assets/` folder
+   next to the executable.
 
-Desde Visual Studio el directorio de trabajo es la carpeta del proyecto, así que **Guardar**
-escribe en los `assets/` del repo. Si ejecutas el `.exe` desde otra carpeta, guarda en la
-copia de `assets/` que está a su lado.
+From Visual Studio the working directory is the project folder, so **Save** writes to the
+repo's `assets/`. If you run the `.exe` from another folder, it saves to the copy of
+`assets/` next to it.
 
-## Créditos y licencias de terceros
+## Credits and third-party licenses
 
-### Librerías
+### Libraries
 
-- **[nlohmann/json](https://github.com/nlohmann/json)** de **Niels Lohmann** — JSON para
-  escenas y prefabs. Licencia **MIT**, vendorizada en `engine/third_party/nlohmann/json.hpp`.
-- **[Dear ImGui](https://github.com/ocornut/imgui)** de **Omar Cornut** y colaboradores —
-  interfaz del editor. Licencia **MIT**, vendorizada (v1.92.9b) en
-  `engine/third_party/imgui/`, con su `LICENSE.txt` y un `VENDORED.txt` con el origen.
+- **[nlohmann/json](https://github.com/nlohmann/json)** by **Niels Lohmann** — JSON for scenes
+  and prefabs. **MIT** license, vendored in `engine/third_party/nlohmann/json.hpp`.
+- **[Dear ImGui](https://github.com/ocornut/imgui)** by **Omar Cornut** and contributors — the
+  editor UI. **MIT** license, vendored (v1.92.9b) in `engine/third_party/imgui/`, with its
+  `LICENSE.txt` and a `VENDORED.txt` describing its origin.
 
 ### Assets
 
-- **[Pixel Adventure](https://pixelfrog-assets.itch.io/pixel-adventure-1)** de **Pixel Frog**
-  (itch.io). Respeta su licencia si reutilizas o redistribuyes los assets.
-- **[Ninja Adventure Asset Pack](https://pixel-boy.itch.io/ninja-adventure-asset-pack)** de
-  **Pixel-boy y AAA**. **CC0** (dominio público; atribución no obligatoria pero apreciada).
-- **[Pixel Shmup](https://kenney.nl/assets/pixel-shmup)** de **Kenney**. **CC0**. Ver
+- **[Pixel Adventure](https://pixelfrog-assets.itch.io/pixel-adventure-1)** by **Pixel Frog**
+  (itch.io). Respect its license if you reuse or redistribute the assets.
+- **[Ninja Adventure Asset Pack](https://pixel-boy.itch.io/ninja-adventure-asset-pack)** by
+  **Pixel-boy and AAA**. **CC0** (public domain; attribution not required but appreciated).
+- **[Pixel Shmup](https://kenney.nl/assets/pixel-shmup)** by **Kenney**. **CC0**. See
   `assets/kenney_pixelshmup/License.txt`.
+- **Audio** (`assets/audio/`): sound effects and music generated by synthesis for this
+  project, with no third-party license.
 
-- **Audio** (`assets/audio/`): efectos y música generados por síntesis para este proyecto,
-  sin licencia de terceros.
-
-Se usan con fines educativos.
+Used for educational purposes.

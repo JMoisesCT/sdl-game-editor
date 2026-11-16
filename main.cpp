@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
         if (SDL_strcmp(argv[i], "--play") == 0) config.editor = false;
         // --scale=pixel | fit | 100: como se muestra el juego (ver app/GameScreen.h).
         else if (SDL_strncmp(argv[i], "--scale=", 8) == 0 && !parseGameScale(argv[i] + 8, config.scale))
-            SDL_Log("Escala desconocida '%s' (pixel, fit o 100)", argv[i] + 8);
+            SDL_Log("Unknown scale '%s' (pixel, fit or 100)", argv[i] + 8);
     }
 
     Application app;

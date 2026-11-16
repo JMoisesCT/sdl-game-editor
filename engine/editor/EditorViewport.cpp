@@ -39,7 +39,7 @@ SDL_Texture* Editor::ensureTarget(SDL_Texture*& tex, int& curW, int& curH, int w
     if (tex) SDL_DestroyTexture(tex);
     tex = SDL_CreateTexture(app.renderer(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
     if (!tex) {
-        SDL_Log("Editor: no se pudo crear la textura de la vista: %s", SDL_GetError());
+        SDL_Log("Editor: could not create the view texture: %s", SDL_GetError());
         curW = curH = 0;
         return nullptr;
     }
@@ -59,13 +59,13 @@ void Editor::drawViewport() {
     wantSceneTab = wantGameTab = false;
 
     mouseInScene = false;
-    if (ImGui::BeginTabItem("Escena", nullptr, sceneFlags)) {
+    if (ImGui::BeginTabItem("Scene", nullptr, sceneFlags)) {
         ImVec2 pos = ImGui::GetCursorScreenPos();
         ImVec2 size = ImGui::GetContentRegionAvail();
         drawSceneView({ pos.x, pos.y }, { size.x, size.y });
         ImGui::EndTabItem();
     }
-    if (ImGui::BeginTabItem("Juego", nullptr, gameFlags)) {
+    if (ImGui::BeginTabItem("Game", nullptr, gameFlags)) {
         ImVec2 pos = ImGui::GetCursorScreenPos();
         ImVec2 size = ImGui::GetContentRegionAvail();
         drawGameView({ pos.x, pos.y }, { size.x, size.y });
@@ -127,18 +127,18 @@ void Editor::drawSceneView(Vec2 pos, Vec2 size) {
     if (mouseInScene)
         len += SDL_snprintf(info + len, sizeof(info) - len, "   x %.0f  y %.0f", mouseWorld.x, mouseWorld.y);
     if (mouseInScene && hoverCell)
-        SDL_snprintf(info + len, sizeof(info) - len, "   celda %d, %d", hoverCol, hoverRow);
+        SDL_snprintf(info + len, sizeof(info) - len, "   cell %d, %d", hoverCol, hoverRow);
     ImVec2 tp(p0.x + 8.0f * uiScale, p0.y + 6.0f * uiScale);
     dl->AddText(ImVec2(tp.x + 1, tp.y + 1), IM_COL32(0, 0, 0, 200), info);
     dl->AddText(tp, IM_COL32(230, 230, 230, 255), info);
 
-    const char* help = "Clic: elegir / arrastrar   Clic derecho o medio: mover vista   Rueda: zoom   F: centrar";
+    const char* help = "Click: select / drag   Right or middle click: pan   Wheel: zoom   F: focus";
     if (tileTool == TileTool::Brush)
-        help = "Clic: pintar   Alt+clic: tomar el tile   Clic derecho o medio: mover vista   V: volver a mover";
+        help = "Click: paint   Alt+click: pick tile   Right or middle click: pan   V: back to Move";
     else if (tileTool == TileTool::Erase)
-        help = "Clic: vaciar celdas   Alt+clic: tomar el tile   Clic derecho o medio: mover vista   V: volver a mover";
+        help = "Click: erase cells   Alt+click: pick tile   Right or middle click: pan   V: back to Move";
     else if (tileTool == TileTool::Fill)
-        help = "Clic: rellenar la zona   Alt+clic: tomar el tile   Clic derecho o medio: mover vista   V: volver a mover";
+        help = "Click: fill area   Alt+click: pick tile   Right or middle click: pan   V: back to Move";
     ImVec2 hs = ImGui::CalcTextSize(help);
     ImVec2 hp(p0.x + 8.0f * uiScale, p1.y - hs.y - 6.0f * uiScale);
     dl->AddText(ImVec2(hp.x + 1, hp.y + 1), IM_COL32(0, 0, 0, 200), help);
@@ -461,11 +461,11 @@ void Editor::drawGameView(Vec2 pos, Vec2 size) {
     char info[128];
     int percent = (int)std::lround(screen.scale * 100.0f);
     if (cfg.scale == GameScale::PixelPerfect && screen.hasCamera)
-        SDL_snprintf(info, sizeof(info), "%dx%d  (%d%%, pixel del dibujo = %g px)", cfg.gameWidth, cfg.gameHeight,
+        SDL_snprintf(info, sizeof(info), "%dx%d  (%d%%, art pixel = %g px)", cfg.gameWidth, cfg.gameHeight,
                      percent, screen.pixel);
     else
         SDL_snprintf(info, sizeof(info), "%dx%d  (%d%%)%s", cfg.gameWidth, cfg.gameHeight, percent,
-                     screen.hasCamera ? "" : "   sin Camera en la escena");
+                     screen.hasCamera ? "" : "   no Camera in the scene");
     ImVec2 tp(std::fmax(p0.x, origin.x) + 8.0f * uiScale, std::fmax(p0.y, origin.y) + 6.0f * uiScale);
     dl->AddText(ImVec2(tp.x + 1, tp.y + 1), IM_COL32(0, 0, 0, 200), info);
     dl->AddText(tp, IM_COL32(230, 230, 230, 255), info);
@@ -479,9 +479,9 @@ void Editor::drawGameView(Vec2 pos, Vec2 size) {
         }
         ImGui::EndCombo();
     }
-    ImGui::SetItemTooltip("Como se muestra el juego si la pestana no mide lo mismo que su resolucion:\n"
-                          "Pixel perfecto: cada pixel del dibujo mide un entero de px (Camera.pixelSize);\n"
-                          "  se ve un poco mas o menos de mundo.\n"
-                          "Ajustar: la imagen entera escalada (achicando se ve borrosa).\n"
-                          "100%%: tamano real, recortado si no cabe.");
+    ImGui::SetItemTooltip("How the game is shown when the tab is not the size of its resolution:\n"
+                          "Pixel perfect: each art pixel is a whole number of px (Camera.pixelSize);\n"
+                          "  a bit more or less of the world is visible.\n"
+                          "Fit: the whole image scaled (blurry when shrunk).\n"
+                          "100%%: actual size, cropped if it does not fit.");
 }

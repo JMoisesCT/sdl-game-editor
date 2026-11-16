@@ -34,12 +34,12 @@ bool Application::init(const AppConfig& config) {
     appConfig = config;
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
-        SDL_Log("Error al inicializar SDL: %s", SDL_GetError());
+        SDL_Log("Could not initialize SDL: %s", SDL_GetError());
         return false;
     }
     // SDL3_ttf necesita inicializarse una vez (SDL3_image no lo requiere).
     if (!TTF_Init()) {
-        SDL_Log("Error al inicializar SDL_ttf: %s", SDL_GetError());
+        SDL_Log("Could not initialize SDL_ttf: %s", SDL_GetError());
         shutdown();
         return false;
     }
@@ -53,13 +53,13 @@ bool Application::init(const AppConfig& config) {
     int h = config.editor ? 900 : config.gameHeight;
     sdlWindow = SDL_CreateWindow(config.title.c_str(), w, h, flags);
     if (!sdlWindow) {
-        SDL_Log("Error al crear la ventana: %s", SDL_GetError());
+        SDL_Log("Could not create the window: %s", SDL_GetError());
         shutdown();
         return false;
     }
     sdlRenderer = SDL_CreateRenderer(sdlWindow, nullptr);
     if (!sdlRenderer) {
-        SDL_Log("Error al crear el renderer: %s", SDL_GetError());
+        SDL_Log("Could not create the renderer: %s", SDL_GetError());
         shutdown();
         return false;
     }
@@ -102,12 +102,12 @@ bool Application::openScene(const std::string& path) {
 
     bool ok = true;
     if (!SDL_GetPathInfo(path.c_str(), nullptr)) {
-        SDL_Log("Escena '%s' no existe: se empieza vacia (Guardar la crea).", path.c_str());
+        SDL_Log("Scene '%s' does not exist: starting empty (Save creates it).", path.c_str());
     } else {
         Json scene;
         std::string error;
         if (!loadSceneFile(path, scene, error) || !restore(scene, error)) {
-            SDL_Log("No se pudo cargar la escena '%s': %s", path.c_str(), error.c_str());
+            SDL_Log("Could not load the scene '%s': %s", path.c_str(), error.c_str());
             ok = false;
         }
     }
@@ -143,7 +143,7 @@ void Application::stop() {
     if (playMode == PlayMode::Edit) return;
     std::string error;
     if (!restore(playSnapshot, error))
-        SDL_Log("Stop: no se pudo restaurar la escena: %s", error.c_str());
+        SDL_Log("Stop: could not restore the scene: %s", error.c_str());
     playSnapshot = Json();
     playMode = PlayMode::Edit;
     // Lo que sonaba era del juego: al detener se corta (y se sale de una pausa).
@@ -174,7 +174,7 @@ int Application::run() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             // Cerrar con cambios sin guardar: primero se pregunta.
-            if (event.type == SDL_EVENT_QUIT && (!editor || editor->confirmDiscard("salir")))
+            if (event.type == SDL_EVENT_QUIT && (!editor || editor->confirmDiscard("quitting")))
                 running = false;
             Input::processEvent(event); // la rueda del raton solo llega como evento
             if (editor) editor->processEvent(event);

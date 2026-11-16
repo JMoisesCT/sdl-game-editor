@@ -126,7 +126,7 @@ static void readField(const FieldInfo& f, void* p, const Json& j) {
                 try {
                     readField(ef, ef.in(item), *v);
                 } catch (const Json::exception&) {
-                    SDL_Log("Escena: %s[%u].%s tiene un valor invalido (se ignora)",
+                    SDL_Log("Scene: %s[%u].%s has an invalid value (ignored)",
                             f.name.c_str(), (unsigned)i, ef.name.c_str());
                 }
             }
@@ -224,7 +224,7 @@ void deserializeComponents(World& world, const ComponentRegistry& registry, Enti
         const ComponentInfo* info = registry.find(it.key());
         if (!info) {
             if (warned.insert(it.key()).second)
-                SDL_Log("Escena: componente desconocido '%s' (se ignora)", it.key().c_str());
+                SDL_Log("Scene: unknown component '%s' (ignored)", it.key().c_str());
             continue;
         }
         // Si ya lo tiene (viene del prefab), se escribe encima; si no, nace con sus
@@ -238,7 +238,7 @@ void deserializeComponents(World& world, const ComponentRegistry& registry, Enti
             try {
                 readField(f, f.in(c), *fj);
             } catch (const Json::exception&) {
-                SDL_Log("Escena: %s.%s de la entidad %u tiene un valor invalido (se ignora)",
+                SDL_Log("Scene: %s.%s of entity %u has an invalid value (ignored)",
                         info->name.c_str(), f.name.c_str(), e);
             }
         }
@@ -261,16 +261,16 @@ bool deserializeWorld(World& world, const ComponentRegistry& registry, PrefabLib
                       const Json& scene, std::string& error) {
     world.clear();
     if (!scene.is_object() || scene.value("format", "") != SCENE_FORMAT) {
-        error = "no es un archivo de escena (falta \"format\": \"sdl_engine_scene\")";
+        error = "not a scene file (missing \"format\": \"sdl_engine_scene\")";
         return false;
     }
     if (scene.value("version", 0) > SCENE_VERSION) {
-        error = "la escena es de una version mas nueva del motor";
+        error = "the scene comes from a newer version of the engine";
         return false;
     }
     auto list = scene.find("entities");
     if (list == scene.end() || !list->is_array()) {
-        error = "falta la lista \"entities\"";
+        error = "missing the \"entities\" list";
         return false;
     }
     for (const Json& ej : *list) {
@@ -279,7 +279,7 @@ bool deserializeWorld(World& world, const ComponentRegistry& registry, PrefabLib
         // Sin id valido (o repetido) se le da uno nuevo: mejor cargarla que perderla.
         if (!world.createWithId(id)) {
             Entity fresh = world.create();
-            SDL_Log("Escena: entidad con id %u invalido o repetido; pasa a ser la %u", id, fresh);
+            SDL_Log("Scene: entity with an invalid or repeated id %u; it becomes %u", id, fresh);
             id = fresh;
         }
         deserializeEntity(world, registry, prefabs, id, ej);
@@ -381,17 +381,17 @@ static bool writeTextFile(const std::string& path, const std::string& text) {
     {
         std::ofstream file(tmpPath, std::ios::binary);
         if (!file) {
-            SDL_Log("No se pudo crear '%s'", tmpPath.c_str());
+            SDL_Log("Could not create '%s'", tmpPath.c_str());
             return false;
         }
         file << text;
         if (!file) {
-            SDL_Log("Fallo la escritura de '%s'", tmpPath.c_str());
+            SDL_Log("Failed to write '%s'", tmpPath.c_str());
             return false;
         }
     }
     if (!SDL_RenamePath(tmpPath.c_str(), path.c_str())) {
-        SDL_Log("No se pudo reemplazar '%s': %s", path.c_str(), SDL_GetError());
+        SDL_Log("Could not replace '%s': %s", path.c_str(), SDL_GetError());
         SDL_RemovePath(tmpPath.c_str());
         return false;
     }
@@ -401,13 +401,13 @@ static bool writeTextFile(const std::string& path, const std::string& text) {
 static bool readJsonFile(const std::string& path, Json& out, std::string& error) {
     std::ifstream file(path, std::ios::binary);
     if (!file) {
-        error = "no se pudo abrir '" + path + "'";
+        error = "could not open '" + path + "'";
         return false;
     }
     try {
         out = Json::parse(file);
     } catch (const Json::exception& ex) {
-        error = std::string("JSON invalido: ") + ex.what();
+        error = std::string("invalid JSON: ") + ex.what();
         return false;
     }
     return true;
@@ -457,16 +457,16 @@ bool loadPrefabFile(const std::string& path, Json& components, std::string& erro
     Json file;
     if (!readJsonFile(path, file, error)) return false;
     if (!file.is_object() || file.value("format", "") != PREFAB_FORMAT) {
-        error = "no es un prefab (falta \"format\": \"sdl_engine_prefab\")";
+        error = "not a prefab (missing \"format\": \"sdl_engine_prefab\")";
         return false;
     }
     if (file.value("version", 0) > PREFAB_VERSION) {
-        error = "el prefab es de una version mas nueva del motor";
+        error = "the prefab comes from a newer version of the engine";
         return false;
     }
     auto comps = file.find("components");
     if (comps == file.end() || !comps->is_object()) {
-        error = "falta el objeto \"components\"";
+        error = "missing the \"components\" object";
         return false;
     }
     components = *comps;

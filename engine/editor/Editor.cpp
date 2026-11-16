@@ -43,12 +43,12 @@ bool Editor::init() {
     style.WindowRounding = 0.0f;
 
     if (!ImGui_ImplSDL3_InitForSDLRenderer(app.window(), app.renderer())) {
-        SDL_Log("Editor: no se pudo iniciar ImGui (SDL3).");
+        SDL_Log("Editor: could not start ImGui (SDL3).");
         ImGui::DestroyContext();
         return false;
     }
     if (!ImGui_ImplSDLRenderer3_Init(app.renderer())) {
-        SDL_Log("Editor: no se pudo iniciar ImGui (renderer).");
+        SDL_Log("Editor: could not start ImGui (renderer).");
         ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
         return false;
@@ -146,7 +146,7 @@ void Editor::layoutAndDraw() {
     float hierarchyH = std::round(bodyH * 0.62f);
     ImGui::SetNextWindowPos(ImVec2(origin.x, origin.y + toolbarH));
     ImGui::SetNextWindowSize(ImVec2(leftW, hierarchyH));
-    if (ImGui::Begin("Jerarquia", nullptr, fixed)) drawHierarchy();
+    if (ImGui::Begin("Hierarchy", nullptr, fixed)) drawHierarchy();
     ImGui::End();
 
     ImGui::SetNextWindowPos(ImVec2(origin.x, origin.y + toolbarH + hierarchyH));
@@ -162,7 +162,7 @@ void Editor::layoutAndDraw() {
     ImGui::SetNextWindowPos(ImVec2(origin.x + leftW, origin.y + toolbarH));
     ImGui::SetNextWindowSize(ImVec2(centerW, bodyH));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-    bool open = ImGui::Begin("Vista", nullptr, fixed | ImGuiWindowFlags_NoTitleBar |
+    bool open = ImGui::Begin("View", nullptr, fixed | ImGuiWindowFlags_NoTitleBar |
                                                    ImGuiWindowFlags_NoScrollbar |
                                                    ImGuiWindowFlags_NoScrollWithMouse);
     ImGui::PopStyleVar();
@@ -176,35 +176,35 @@ void Editor::drawToolbar() {
 
     // El texto del boton cambia: el id va fijo con ### (si no, ImGui lo trata como otro).
     if (!editing) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.55f, 0.25f, 1.0f));
-    if (ImGui::Button(editing ? "Jugar###play" : "Detener###play")) togglePlay();
+    if (ImGui::Button(editing ? "Play###play" : "Stop###play")) togglePlay();
     if (!editing) ImGui::PopStyleColor();
     ImGui::SetItemTooltip("Ctrl+P");
 
     ImGui::SameLine();
     ImGui::BeginDisabled(editing);
-    if (ImGui::Button(paused ? "Seguir###pause" : "Pausa###pause")) app.setPaused(!paused);
+    if (ImGui::Button(paused ? "Resume###pause" : "Pause###pause")) app.setPaused(!paused);
     ImGui::EndDisabled();
 
     ImGui::SameLine();
     ImGui::TextDisabled("|");
     ImGui::SameLine();
     ImGui::BeginDisabled(!editing);
-    if (ImGui::Button("Abrir...")) {
+    if (ImGui::Button("Open...")) {
         scanSceneFiles();
         ImGui::OpenPopup("##open");
     }
-    ImGui::SetItemTooltip("Abre otra escena de assets/");
+    ImGui::SetItemTooltip("Open another scene from assets/");
     ImGui::SameLine();
-    if (ImGui::Button("Guardar")) save();
+    if (ImGui::Button("Save")) save();
     ImGui::SetItemTooltip("Ctrl+S");
     ImGui::SameLine();
     ImGui::BeginDisabled(undoStack.empty() && !changePending);
-    if (ImGui::Button("Deshacer")) undo();
+    if (ImGui::Button("Undo")) undo();
     ImGui::SetItemTooltip("Ctrl+Z");
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::BeginDisabled(redoStack.empty());
-    if (ImGui::Button("Rehacer")) redo();
+    if (ImGui::Button("Redo")) redo();
     ImGui::SetItemTooltip("Ctrl+Y / Ctrl+Shift+Z");
     ImGui::EndDisabled();
     ImGui::EndDisabled();
@@ -213,10 +213,10 @@ void Editor::drawToolbar() {
     ImGui::SameLine();
     ImGui::TextDisabled("|");
     ImGui::SameLine();
-    ImGui::Checkbox("Grilla", &showGrid);
+    ImGui::Checkbox("Grid", &showGrid);
     ImGui::SameLine();
-    ImGui::Checkbox("Ajustar", &snapToGrid);
-    ImGui::SetItemTooltip("Al arrastrar, la posicion cae en la grilla");
+    ImGui::Checkbox("Snap", &snapToGrid);
+    ImGui::SetItemTooltip("While dragging, the position snaps to the grid");
     ImGui::SameLine();
     ImGui::SetNextItemWidth(90.0f * uiScale);
     if (ImGui::InputInt("px##grid", &gridSize)) {
@@ -224,21 +224,21 @@ void Editor::drawToolbar() {
         if (gridSize > 512) gridSize = 512;
     }
     ImGui::SameLine();
-    ImGui::Checkbox("Colisiones", &showColliders);
-    ImGui::SetItemTooltip("Dibuja las cajas de BoxCollider en la vista de escena (verde: solida, amarilla: trigger)");
+    ImGui::Checkbox("Colliders", &showColliders);
+    ImGui::SetItemTooltip("Draws the BoxCollider boxes in the Scene view (green: solid, yellow: trigger)");
 
     ImGui::SameLine();
     ImGui::TextDisabled("|");
     ImGui::SameLine();
-    ImGui::TextUnformatted(app.scenePath().empty() ? "(sin escena)" : app.scenePath().c_str());
+    ImGui::TextUnformatted(app.scenePath().empty() ? "(no scene)" : app.scenePath().c_str());
     if (isDirty()) {
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f), "SIN GUARDAR");
+        ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f), "UNSAVED");
     }
     if (!editing) {
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.5f, 1.0f),
-                           "Jugando: lo que cambie se pierde al detener");
+                           "Playing: changes are lost on Stop");
     }
     if (statusTime > 0.0f) {
         ImGui::SameLine();
@@ -283,9 +283,9 @@ void Editor::handleShortcuts() {
 
 void Editor::updateWindowTitle() {
     std::string title = app.config().title + " - " +
-                        (app.scenePath().empty() ? std::string("(sin escena)") : app.scenePath());
+                        (app.scenePath().empty() ? std::string("(no scene)") : app.scenePath());
     if (isDirty()) title += " *";
-    if (!app.isEditing()) title += "  [jugando]";
+    if (!app.isEditing()) title += "  [playing]";
     if (title != windowTitle) {
         windowTitle = title;
         SDL_SetWindowTitle(app.window(), title.c_str());
@@ -300,15 +300,15 @@ void Editor::setStatus(const std::string& text) {
 
 void Editor::save() {
     if (!app.isEditing()) {
-        setStatus("Deten el juego para guardar");
+        setStatus("Stop the game to save");
         return;
     }
     commitChange();
     if (app.saveScene()) {
         savedVersion = version;
-        setStatus("Guardado: " + app.scenePath());
+        setStatus("Saved: " + app.scenePath());
     } else {
-        setStatus("No se pudo guardar (ver el log)");
+        setStatus("Could not save (see the log)");
     }
 }
 
@@ -334,16 +334,16 @@ void Editor::scanSceneFiles() {
 void Editor::drawOpenPopup() {
     if (!ImGui::BeginPopup("##open")) return;
     std::string chosen;
-    if (sceneFiles.empty()) ImGui::TextDisabled("No hay escenas (.scene.json) en assets/");
+    if (sceneFiles.empty()) ImGui::TextDisabled("No scenes (.scene.json) in assets/");
     for (const std::string& file : sceneFiles)
         if (ImGui::Selectable(file.c_str(), file == app.scenePath())) chosen = file;
     if (!chosen.empty()) ImGui::CloseCurrentPopup();
     ImGui::EndPopup();
 
     // Ya fuera del popup: confirmDiscard puede abrir un cuadro nativo que bloquea.
-    if (!chosen.empty() && confirmDiscard("abrir otra escena")) {
-        if (app.openScene(chosen)) setStatus("Abierta: " + chosen);
-        else setStatus("No se pudo abrir " + chosen + " (ver el log)");
+    if (!chosen.empty() && confirmDiscard("opening another scene")) {
+        if (app.openScene(chosen)) setStatus("Opened: " + chosen);
+        else setStatus("Could not open " + chosen + " (see the log)");
     }
 }
 
@@ -399,7 +399,7 @@ void Editor::undo() {
     undoStack.pop_back();
     restore(s.scene);
     version = s.version;
-    setStatus("Deshacer");
+    setStatus("Undo");
 }
 
 void Editor::redo() {
@@ -410,13 +410,13 @@ void Editor::redo() {
     redoStack.pop_back();
     restore(s.scene);
     version = s.version;
-    setStatus("Rehacer");
+    setStatus("Redo");
 }
 
 void Editor::restore(const Json& scene) {
     std::string error;
     if (!app.restore(scene, error))
-        SDL_Log("Editor: no se pudo restaurar la escena: %s", error.c_str());
+        SDL_Log("Editor: could not restore the scene: %s", error.c_str());
     if (!app.world().isAlive(selected)) selected = NullEntity;
     dragging = pressOnEntity = painting = false;
 }
@@ -428,23 +428,23 @@ bool Editor::confirmDiscard(const char* action) {
 
     // Cuadro de dialogo nativo: bloquea hasta que se responde y no depende de ImGui.
     const SDL_MessageBoxButtonData buttons[] = {
-        { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Guardar" },
-        { 0,                                       2, "Descartar" },
-        { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "Cancelar" },
+        { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Save" },
+        { 0,                                       2, "Discard" },
+        { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "Cancel" },
     };
-    std::string question = "La escena tiene cambios sin guardar:\n" + app.scenePath() +
-                           "\n\nGuardarlos antes de " + action + "?";
+    std::string question = "The scene has unsaved changes:\n" + app.scenePath() +
+                           "\n\nSave them before " + action + "?";
     SDL_MessageBoxData box{};
     box.flags = SDL_MESSAGEBOX_WARNING | SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT;
     box.window = app.window();
-    box.title = "Cambios sin guardar";
+    box.title = "Unsaved changes";
     box.message = question.c_str();
     box.numbuttons = 3;
     box.buttons = buttons;
 
     int choice = 0;
     if (!SDL_ShowMessageBox(&box, &choice)) {
-        SDL_Log("Editor: no se pudo preguntar (%s); se descartan los cambios.", SDL_GetError());
+        SDL_Log("Editor: could not ask (%s); the changes are discarded.", SDL_GetError());
         return true;
     }
     if (choice == 1) {

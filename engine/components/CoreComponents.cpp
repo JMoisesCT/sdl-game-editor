@@ -6,38 +6,38 @@ void registerCoreComponents(ComponentRegistry& registry) {
     registry.add<EntityInfo>("EntityInfo")
         .notRemovable()
         .field("name", &EntityInfo::name)
-        .field("tag", &EntityInfo::tag).tooltip("Clasifica a la entidad para el codigo (Player, Enemy...)");
+        .field("tag", &EntityInfo::tag).tooltip("Classifies the entity for code (Player, Enemy...)");
 
     registry.add<Transform>("Transform")
-        .field("position", &Transform::position).speed(1.0f).tooltip("Centro de la entidad en el mundo (px)")
+        .field("position", &Transform::position).speed(1.0f).tooltip("Center of the entity in the world (px)")
         .field("rotation", &Transform::rotation).range(-360.0f, 360.0f).speed(1.0f)
         .field("scale", &Transform::scale).speed(0.05f);
 
     registry.add<Sprite>("Sprite")
         .field("texture", &Sprite::texture).texture()
-        .field("source", &Sprite::source).tooltip("Recorte x, y, ancho, alto (0 = imagen completa)")
+        .field("source", &Sprite::source).tooltip("Crop x, y, width, height (0 = whole image)")
         .field("tint", &Sprite::tint)
         .field("flipX", &Sprite::flipX)
         .field("flipY", &Sprite::flipY)
         .field("visible", &Sprite::visible)
-        .field("order", &Sprite::order).tooltip("Capa de dibujo: menor = mas al fondo");
+        .field("order", &Sprite::order).tooltip("Draw layer: lower = further back");
 
     // cells va al final: en el archivo ocupa una linea por fila.
     registry.add<Tilemap>("Tilemap")
         .field("tileset", &Tilemap::tileset).texture()
-        .field("tileWidth", &Tilemap::tileWidth).range(1.0f, 512.0f).tooltip("Ancho de un tile en la imagen (px)")
-        .field("tileHeight", &Tilemap::tileHeight).range(1.0f, 512.0f).tooltip("Alto de un tile en la imagen (px)")
-        .field("solidTiles", &Tilemap::solidTiles).tooltip("Tiles que frenan, separados por coma (o marcalos en la paleta)")
-        .field("collision", &Tilemap::collision).tooltip("Sin marcar: capa decorativa, nunca frena")
+        .field("tileWidth", &Tilemap::tileWidth).range(1.0f, 512.0f).tooltip("Width of a tile in the image (px)")
+        .field("tileHeight", &Tilemap::tileHeight).range(1.0f, 512.0f).tooltip("Height of a tile in the image (px)")
+        .field("solidTiles", &Tilemap::solidTiles).tooltip("Blocking tiles, comma separated (or mark them in the palette)")
+        .field("collision", &Tilemap::collision).tooltip("Unchecked: decorative layer, never blocks")
         .field("visible", &Tilemap::visible)
-        .field("tint", &Tilemap::tint).tooltip("El alfa es la opacidad de la capa")
-        .field("order", &Tilemap::order).tooltip("Capa de dibujo: menor = mas al fondo (comun con los Sprite)")
-        .field("cells", &Tilemap::cells).tooltip("Tamano del mapa en celdas (ancho, alto). Achicar borra lo que queda fuera");
+        .field("tint", &Tilemap::tint).tooltip("The alpha is the layer's opacity")
+        .field("order", &Tilemap::order).tooltip("Draw layer: lower = further back (shared with Sprites)")
+        .field("cells", &Tilemap::cells).tooltip("Map size in cells (width, height). Shrinking erases what falls outside");
 
     registry.add<Camera>("Camera")
         .field("zoom", &Camera::zoom).range(0.1f, 10.0f).speed(0.01f)
         .field("background", &Camera::background)
         .field("pixelSize", &Camera::pixelSize).range(0.1f, 64.0f).speed(0.05f)
-            .tooltip("px del mundo que mide un pixel del dibujo (la escala de los sprites, p. ej. 2). "
-                     "Con la escala 'Pixel perfecto', cada pixel del dibujo mide un numero entero de px de pantalla");
+            .tooltip("World px covered by one art pixel (the sprite scale, e.g. 2). "
+                     "With the 'Pixel perfect' scale, each art pixel is a whole number of screen px");
 }

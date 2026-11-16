@@ -3,7 +3,7 @@
   "version": 1,
   "entities": [
     { "id": 1, "components": {
-        "EntityInfo": {"name":"Camara","tag":"MainCamera"},
+        "EntityInfo": {"name":"Camera","tag":"MainCamera"},
         "Transform": {"position":[640.0,360.0],"rotation":0.0,"scale":[1.0,1.0]},
         "Camera": {"zoom":1.5,"background":[33,31,48,255],"pixelSize":2.0},
         "FollowCamera": {"targetTag":"Player","deadZone":[120.0,100.0],"smoothing":6.0,"lookAhead":60.0,"lookAheadSpeed":3.0,"clampToTilemaps":true}
@@ -12,7 +12,7 @@
         "Transform": {"position":[160.0,480.0]}
     }},
     { "id": 3, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
-        "EntityInfo": {"name":"Manzana"},
+        "EntityInfo": {"name":"Apple"},
         "Transform": {"position":[304.0,416.0]}
     }},
     { "id": 4, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
@@ -21,7 +21,7 @@
         "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Bananas.png"}
     }},
     { "id": 5, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
-        "EntityInfo": {"name":"Cereza"},
+        "EntityInfo": {"name":"Cherry"},
         "Transform": {"position":[1616.0,312.0]},
         "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Cherries.png"}
     }},
@@ -30,7 +30,7 @@
         "Transform": {"position":[1760.0,448.0]}
     }},
     { "id": 7, "components": {
-        "EntityInfo": {"name":"Terreno","tag":""},
+        "EntityInfo": {"name":"Terrain","tag":""},
         "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[2.0,2.0]},
         "Tilemap": {"tileset":"assets/pixel_adventure/Terrain/Terrain (16x16).png","tileWidth":16,"tileHeight":16,"solidTiles":[6,7,8,28,29,30,50,51,52,94,95,96,116,117,118,138,139,140],"collision":true,"visible":true,"tint":[255,255,255,255],"order":-10,"cells":[
           [ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
@@ -76,27 +76,27 @@
         "BoxCollider": {"size":[5200.0,200.0]}
     }},
     { "id": 13, "components": {
-        "EntityInfo": {"name":"Fondo","tag":""},
+        "EntityInfo": {"name":"Background","tag":""},
         "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[1.0,1.0]},
         "ParallaxBackground": {"texture":"assets/pixel_adventure/Background/Blue.png","factor":[0.3,0.3],"scale":2.0,"scroll":[0.0,-12.0],"tint":[255,255,255,255],"visible":true,"order":-100}
     }},
     { "id": 14, "components": {
-        "EntityInfo": {"name":"HUD Vida","tag":"HudLives"},
+        "EntityInfo": {"name":"HUD Health","tag":"HudLives"},
         "Transform": {"position":[24.0,32.0],"rotation":0.0,"scale":[1.0,1.0]},
-        "Text": {"text":"VIDA:  3/3","font":"assets/ninja_adventure/Ui/Font/NormalFont.ttf","size":32,"color":[255,255,255,255],"align":"left","screenSpace":true,"visible":true,"order":100}
+        "Text": {"text":"HP:  3/3","font":"assets/ninja_adventure/Ui/Font/NormalFont.ttf","size":32,"color":[255,255,255,255],"align":"left","screenSpace":true,"visible":true,"order":100}
     }},
     { "id": 15, "components": {
-        "EntityInfo": {"name":"HUD Frutas","tag":"HudFruits"},
+        "EntityInfo": {"name":"HUD Fruits","tag":"HudFruits"},
         "Transform": {"position":[24.0,76.0],"rotation":0.0,"scale":[1.0,1.0]},
-        "Text": {"text":"FRUTAS:  0/8","font":"assets/ninja_adventure/Ui/Font/NormalFont.ttf","size":32,"color":[255,255,255,255],"align":"left","screenSpace":true,"visible":true,"order":100}
+        "Text": {"text":"FRUITS:  0/8","font":"assets/ninja_adventure/Ui/Font/NormalFont.ttf","size":32,"color":[255,255,255,255],"align":"left","screenSpace":true,"visible":true,"order":100}
     }},
     { "id": 16, "components": {
-        "EntityInfo": {"name":"HUD Meta","tag":"HudBanner"},
+        "EntityInfo": {"name":"HUD Goal","tag":"HudBanner"},
         "Transform": {"position":[640.0,140.0],"rotation":0.0,"scale":[1.0,1.0]},
-        "Text": {"text":"NIVEL   COMPLETADO","font":"assets/ninja_adventure/Ui/Font/NormalFont.ttf","size":48,"color":[255,232,96,255],"align":"center","screenSpace":true,"visible":true,"order":100}
+        "Text": {"text":"LEVEL   COMPLETE","font":"assets/ninja_adventure/Ui/Font/NormalFont.ttf","size":48,"color":[255,232,96,255],"align":"center","screenSpace":true,"visible":true,"order":100}
     }},
     { "id": 17, "components": {
-        "EntityInfo": {"name":"Musica","tag":""},
+        "EntityInfo": {"name":"Music","tag":""},
         "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[1.0,1.0]},
         "Music": {"music":"assets/audio/music/platformer_theme.wav","volume":0.35,"loop":true}
     }},
@@ -139,7 +139,7 @@
         "Transform": {"position":[2112.0,522.0]}
     }},
     { "id": 30, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
-        "EntityInfo": {"name":"Naranja"},
+        "EntityInfo": {"name":"Orange"},
         "Transform": {"position":[2000.0,432.0]},
         "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Orange.png"}
     }},
@@ -147,12 +147,12 @@
         "Transform": {"position":[2336.0,484.0]}
     }},
     { "id": 32, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
-        "EntityInfo": {"name":"Fresa"},
+        "EntityInfo": {"name":"Strawberry"},
         "Transform": {"position":[2352.0,300.0]},
         "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Strawberry.png"}
     }},
     { "id": 33, "prefab": "assets/prefabs/saw.prefab.json", "components": {
-        "EntityInfo": {"name":"Sierra movil"},
+        "EntityInfo": {"name":"Moving Saw"},
         "Transform": {"position":[2496.0,232.0]},
         "PathMover": {"speed":90.0,"waitTime":0.3,"loop":false,"points":[
           {"offset":[192.0,0.0]}
@@ -167,7 +167,7 @@
         "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Melon.png"}
     }},
     { "id": 36, "prefab": "assets/prefabs/saw.prefab.json", "components": {
-        "EntityInfo": {"name":"Sierra que sube"},
+        "EntityInfo": {"name":"Rising Saw"},
         "Transform": {"position":[3232.0,488.0]},
         "PathMover": {"speed":100.0,"waitTime":0.4,"loop":false,"points":[
           {"offset":[0.0,-128.0]}
@@ -178,7 +178,7 @@
         "Transform": {"position":[3328.0,448.0]}
     }},
     { "id": 38, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
-        "EntityInfo": {"name":"Pina"},
+        "EntityInfo": {"name":"Pineapple"},
         "Transform": {"position":[3632.0,368.0]},
         "Sprite": {"texture":"assets/pixel_adventure/Items/Fruits/Pineapple.png"}
     }},

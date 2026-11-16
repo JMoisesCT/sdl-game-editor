@@ -20,7 +20,7 @@ static const char* TAG_HUD_BANNER = "HudBanner";
 
 void registerPlatformerComponents(ComponentRegistry& registry) {
     registry.add<LevelGoal>("LevelGoal")
-        .field("targetTag", &LevelGoal::targetTag).tooltip("Etiqueta de quien completa el nivel al tocarla");
+        .field("targetTag", &LevelGoal::targetTag).tooltip("Tag of whoever completes the level by touching it");
 }
 
 void registerPlatformerConditions(ConditionRegistry& conditions) {
@@ -45,7 +45,7 @@ void PlatformerRulesSystem::update(World& world, float) {
     world.each<Collectible, EntityInfo>([&](Entity, Collectible& c, EntityInfo& info) {
         if (!c.justCollected || info.tag != TAG_PICKUP) return;
         ++collected;
-        SDL_Log("Frutas: %d/%d", collected, total);
+        SDL_Log("Fruits: %d/%d", collected, total);
     });
 
     // Meta: la toca alguien vivo con la etiqueta pedida.
@@ -55,7 +55,7 @@ void PlatformerRulesSystem::update(World& world, float) {
             if (goal.reached || info.tag != goal.targetTag || isDead(world, other)) return;
             if (!collidersOverlap(world, self, other, RULE_CONTACT_MARGIN)) return;
             goal.reached = true;
-            if (!done) SDL_Log("NIVEL COMPLETADO (frutas: %d/%d)", collected, total);
+            if (!done) SDL_Log("LEVEL COMPLETE (fruits: %d/%d)", collected, total);
             done = true;
         });
     });
@@ -76,9 +76,9 @@ void PlatformerRulesSystem::updateHud(World& world) {
     // espacio es muy angosto (4 px a 32 pt).
     world.each<Text, EntityInfo>([&](Entity, Text& text, EntityInfo& info) {
         if (info.tag == TAG_HUD_LIVES && hp)
-            text.text = "VIDA:  " + std::to_string(hp->hp) + "/" + std::to_string(hp->maxHP);
+            text.text = "HP:  " + std::to_string(hp->hp) + "/" + std::to_string(hp->maxHP);
         else if (info.tag == TAG_HUD_FRUITS)
-            text.text = "FRUTAS:  " + std::to_string(collected) + "/" + std::to_string(total);
+            text.text = "FRUITS:  " + std::to_string(collected) + "/" + std::to_string(total);
         else if (info.tag == TAG_HUD_BANNER)
             text.visible = done;
     });

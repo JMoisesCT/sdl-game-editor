@@ -112,7 +112,7 @@ constexpr FieldType fieldTypeOf() {
     else if constexpr (std::is_same_v<M, IntGrid>) return FieldType::IntGrid;
     // Entity es un std::uint32_t: cualquier miembro de ese tipo es una referencia.
     else if constexpr (std::is_same_v<M, Entity>) return FieldType::Entity;
-    else static_assert(sizeof(M) == 0, "Tipo de campo no soportado (una lista de structs va con list())");
+    else static_assert(sizeof(M) == 0, "Unsupported field type (a list of structs goes with list())");
 }
 
 // Ayudante del registro: declara los campos de un struct T (un componente o el
@@ -136,7 +136,7 @@ public:
     // Lista de structs E. 'describe' recibe un FieldsBuilder<E> para declarar sus campos.
     template <class E, class Describe>
     FieldsBuilder& list(const char* name, std::vector<E> T::*member, Describe describe) {
-        static_assert(std::is_default_constructible_v<E>, "Un elemento de lista necesita constructor por defecto");
+        static_assert(std::is_default_constructible_v<E>, "A list element needs a default constructor");
         using V = std::vector<E>;
         FieldInfo f;
         f.name = name;
@@ -206,7 +206,7 @@ public:
     template <class T>
     ComponentBuilder<T> add(const std::string& name) {
         static_assert(std::is_default_constructible_v<T>,
-                      "Un componente necesita constructor por defecto (se crea al cargar)");
+                      "A component needs a default constructor (it is created on load)");
         auto info = std::make_unique<ComponentInfo>();
         info->name = name;
         info->typeId = componentTypeId<T>();

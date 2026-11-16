@@ -36,7 +36,7 @@ SDL_Texture* AssetManager::loadTexture(const std::string& path) {
     // Primera vez: cargar desde disco.
     SDL_Surface* surface = IMG_Load(path.c_str());
     if (!surface) {
-        SDL_Log("No se pudo cargar la imagen '%s': %s", path.c_str(), SDL_GetError());
+        SDL_Log("Could not load the image '%s': %s", path.c_str(), SDL_GetError());
         failedTextures.insert(path);
         return nullptr;
     }
@@ -45,7 +45,7 @@ SDL_Texture* AssetManager::loadTexture(const std::string& path) {
     SDL_DestroySurface(surface);
 
     if (!texture) {
-        SDL_Log("No se pudo crear la textura '%s': %s", path.c_str(), SDL_GetError());
+        SDL_Log("Could not create the texture '%s': %s", path.c_str(), SDL_GetError());
         failedTextures.insert(path);
         return nullptr;
     }
@@ -76,7 +76,7 @@ TTF_Font* AssetManager::loadFont(const std::string& path, int size) {
     // Primera vez: abrir desde disco. En SDL3_ttf el tamanio en puntos es float.
     TTF_Font* font = TTF_OpenFont(path.c_str(), (float)size);
     if (!font) {
-        SDL_Log("No se pudo abrir la fuente '%s' a %d pt: %s", path.c_str(), size, SDL_GetError());
+        SDL_Log("Could not open the font '%s' at %d pt: %s", path.c_str(), size, SDL_GetError());
         failedFonts.insert(key);
         return nullptr;
     }
@@ -99,13 +99,13 @@ SDL_Texture* AssetManager::textTexture(const std::string& fontPath, int size, co
     // largo 0 significa "hasta el fin de la cadena".
     SDL_Surface* surface = TTF_RenderText_Solid(font, text.c_str(), 0, SDL_Color{ 255, 255, 255, 255 });
     if (!surface) {
-        SDL_Log("No se pudo dibujar el texto '%s': %s", text.c_str(), SDL_GetError());
+        SDL_Log("Could not render the text '%s': %s", text.c_str(), SDL_GetError());
         return nullptr;
     }
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
     SDL_DestroySurface(surface);
     if (!texture) {
-        SDL_Log("No se pudo crear la textura del texto '%s': %s", text.c_str(), SDL_GetError());
+        SDL_Log("Could not create the texture for the text '%s': %s", text.c_str(), SDL_GetError());
         return nullptr;
     }
     SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);

@@ -11,8 +11,8 @@
 
 const char* gameScaleLabel(GameScale scale) {
     switch (scale) {
-    case GameScale::Fit: return "Ajustar";
-    case GameScale::PixelPerfect: return "Pixel perfecto";
+    case GameScale::Fit: return "Fit";
+    case GameScale::PixelPerfect: return "Pixel perfect";
     case GameScale::Actual: return "100%";
     }
     return "?";

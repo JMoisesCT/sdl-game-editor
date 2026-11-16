@@ -24,7 +24,7 @@ void SoundSystem::update(World& world, float) {
             const Condition* condition = conditions.find(rule.condition);
             if (!condition) {
                 if (!rule.condition.empty() && warned.insert(rule.condition).second)
-                    SDL_Log("SoundEffects: no existe la condicion '%s' (no suena nunca)", rule.condition.c_str());
+                    SDL_Log("SoundEffects: condition '%s' does not exist (it never plays)", rule.condition.c_str());
                 continue;
             }
             const bool now = (*condition)(world, e);

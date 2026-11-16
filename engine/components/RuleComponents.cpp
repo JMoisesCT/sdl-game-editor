@@ -4,30 +4,30 @@
 
 void registerRuleComponents(ComponentRegistry& registry) {
     registry.add<Health>("Health")
-        .field("maxHP", &Health::maxHP).range(1.0f, 9999.0f).tooltip("Vida al empezar y al reaparecer")
+        .field("maxHP", &Health::maxHP).range(1.0f, 9999.0f).tooltip("Health at start and on respawn")
         .field("invulnerabilityTime", &Health::invulnerabilityTime).range(0.0f, 10.0f).speed(0.01f)
-            .tooltip("Seg sin recibir dano tras un golpe (el sprite parpadea)")
-        .field("blinkInterval", &Health::blinkInterval).range(0.01f, 1.0f).speed(0.01f).tooltip("Seg entre parpadeos")
-        .field("destroyOnDeath", &Health::destroyOnDeath).tooltip("Al morir se destruye (enemigos). No usar con Respawn");
+            .tooltip("Seconds without taking damage after a hit (the sprite blinks)")
+        .field("blinkInterval", &Health::blinkInterval).range(0.01f, 1.0f).speed(0.01f).tooltip("Seconds between blinks")
+        .field("destroyOnDeath", &Health::destroyOnDeath).tooltip("Destroyed on death (enemies). Do not use with Respawn");
 
     registry.add<Hazard>("Hazard")
-        .field("damage", &Hazard::damage).range(0.0f, 9999.0f).tooltip("Vida que quita cada golpe")
-        .field("targetTag", &Hazard::targetTag).tooltip("Etiqueta de a quien dana")
-        .field("knockback", &Hazard::knockback).speed(1.0f).tooltip("Empujon (px/seg): x alejandose, y hacia arriba")
-        .field("repeat", &Hazard::repeat).tooltip("Sin marcar: dana una sola vez");
+        .field("damage", &Hazard::damage).range(0.0f, 9999.0f).tooltip("Health each hit takes away")
+        .field("targetTag", &Hazard::targetTag).tooltip("Tag of whom it damages")
+        .field("knockback", &Hazard::knockback).speed(1.0f).tooltip("Knockback (px/s): x away from it, y upward")
+        .field("repeat", &Hazard::repeat).tooltip("Unchecked: damages only once");
 
     registry.add<KillZone>("KillZone")
-        .field("targetTag", &KillZone::targetTag).tooltip("Etiqueta de a quien mata (ignora la invulnerabilidad)");
+        .field("targetTag", &KillZone::targetTag).tooltip("Tag of whom it kills (ignores invulnerability)");
 
     registry.add<Collectible>("Collectible")
-        .field("collectorTag", &Collectible::collectorTag).tooltip("Etiqueta de quien lo puede recoger")
-        .field("destroyOnCollect", &Collectible::destroyOnCollect).tooltip("Desaparece al recogerlo");
+        .field("collectorTag", &Collectible::collectorTag).tooltip("Tag of who can collect it")
+        .field("destroyOnCollect", &Collectible::destroyOnCollect).tooltip("Disappears when collected");
 
     registry.add<Checkpoint>("Checkpoint")
-        .field("targetTag", &Checkpoint::targetTag).tooltip("Etiqueta de quien lo activa (necesita Respawn)")
-        .field("offset", &Checkpoint::offset).speed(0.5f).tooltip("Punto de reaparicion respecto al centro (px de la imagen)")
-        .field("activeTexture", &Checkpoint::activeTexture).texture().tooltip("Imagen del Sprite una vez activado (vacio = no cambia)");
+        .field("targetTag", &Checkpoint::targetTag).tooltip("Tag of who activates it (needs Respawn)")
+        .field("offset", &Checkpoint::offset).speed(0.5f).tooltip("Respawn point relative to the center (image px)")
+        .field("activeTexture", &Checkpoint::activeTexture).texture().tooltip("Sprite image once activated (empty = unchanged)");
 
     registry.add<Respawn>("Respawn")
-        .field("delay", &Respawn::delay).range(0.0f, 10.0f).speed(0.01f).tooltip("Seg entre la muerte y la reaparicion");
+        .field("delay", &Respawn::delay).range(0.0f, 10.0f).speed(0.01f).tooltip("Seconds between death and respawn");
 }

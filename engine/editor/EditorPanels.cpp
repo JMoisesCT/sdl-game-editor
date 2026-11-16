@@ -37,7 +37,7 @@ static const char* ENTITY_PAYLOAD = "ENTITY";
 std::string Editor::entityLabel(Entity e) {
     const EntityInfo* info = app.world().get<EntityInfo>(e);
     if (info && !info->name.empty()) return info->name;
-    return "Entidad " + std::to_string(e);
+    return "Entity " + std::to_string(e);
 }
 
 // El hermano que sigue a e (saltando 'skip'), o NullEntity si es el ultimo.
@@ -53,21 +53,21 @@ static Entity nextSibling(const World& world, Entity e, Entity skip) {
 void Editor::drawHierarchy() {
     World& world = app.world();
 
-    if (ImGui::Button("+ Nueva")) createEntity();
+    if (ImGui::Button("+ New")) createEntity();
     ImGui::SameLine();
     ImGui::BeginDisabled(!world.isAlive(selected));
-    if (ImGui::Button("Duplicar")) duplicateSelected();
-    ImGui::SetItemTooltip("Ctrl+D (con toda su rama)");
+    if (ImGui::Button("Duplicate")) duplicateSelected();
+    ImGui::SetItemTooltip("Ctrl+D (with its whole branch)");
     ImGui::SameLine();
-    if (ImGui::Button("Borrar")) deleteSelected();
-    ImGui::SetItemTooltip("Supr (con toda su rama)");
+    if (ImGui::Button("Delete")) deleteSelected();
+    ImGui::SetItemTooltip("Del (with its whole branch)");
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::TextDisabled("(?)");
-    ImGui::SetItemTooltip("Arrastrar una entidad sobre otra: la hace su hija.\n"
-                          "Sobre el borde de arriba o de abajo: la pone antes o despues.\n"
-                          "Al hueco de abajo: la saca de su grupo.\n"
-                          "Mover al padre mueve tambien a sus hijos (solo editando).");
+    ImGui::SetItemTooltip("Drag an entity onto another: it becomes its child.\n"
+                          "Onto the top or bottom edge: places it before or after.\n"
+                          "Into the empty space below: takes it out of its group.\n"
+                          "Moving a parent also moves its children (only while editing).");
     ImGui::Separator();
 
     // Las acciones se aplican despues de dibujar el arbol: borrar, duplicar o mover
@@ -153,10 +153,10 @@ void Editor::drawHierarchy() {
 
         if (ImGui::BeginPopupContextItem()) {
             selected = e;
-            if (ImGui::MenuItem("Crear hija")) act = { Action::CreateChild, e };
-            if (ImGui::MenuItem("Duplicar", "Ctrl+D")) act = { Action::Duplicate, e };
-            if (ImGui::MenuItem("Borrar", "Supr")) act = { Action::Delete, e };
-            if (parentOf(world, e) != NullEntity && ImGui::MenuItem("Sacar del grupo"))
+            if (ImGui::MenuItem("Create child")) act = { Action::CreateChild, e };
+            if (ImGui::MenuItem("Duplicate", "Ctrl+D")) act = { Action::Duplicate, e };
+            if (ImGui::MenuItem("Delete", "Del")) act = { Action::Delete, e };
+            if (parentOf(world, e) != NullEntity && ImGui::MenuItem("Remove from group"))
                 act = { Action::Move, e, parentOf(world, parentOf(world, e)), nextSibling(world, parentOf(world, e), e) };
             ImGui::EndPopup();
         }
@@ -218,7 +218,7 @@ Entity Editor::createEntity(Entity parent) {
     World& world = app.world();
     beginChange();
     Entity e = world.create();
-    world.add<EntityInfo>(e).name = "Entidad " + std::to_string(e);
+    world.add<EntityInfo>(e).name = "Entity " + std::to_string(e);
     Transform t;
     const Transform* pt = world.get<Transform>(parent);
     if (pt) {
@@ -269,7 +269,7 @@ void Editor::duplicateSelected() {
         }
     }
     Entity root = copyOf[selected];
-    if (EntityInfo* info = world.get<EntityInfo>(root)) info->name += " (copia)";
+    if (EntityInfo* info = world.get<EntityInfo>(root)) info->name += " (copy)";
     // Justo despues del original, entre sus hermanos.
     moveInHierarchy(world, root, parentOf(world, selected), nextSibling(world, selected, root));
     selected = root;
@@ -304,16 +304,16 @@ void Editor::drawInspector() {
     const ComponentRegistry& registry = app.registry();
 
     if (!world.isAlive(selected)) {
-        ImGui::TextDisabled("Nada seleccionado.");
-        ImGui::TextDisabled("Clic en una entidad de la vista");
-        ImGui::TextDisabled("o de la Jerarquia.");
+        ImGui::TextDisabled("Nothing selected.");
+        ImGui::TextDisabled("Click an entity in the view");
+        ImGui::TextDisabled("or in the Hierarchy.");
         return;
     }
 
-    ImGui::Text("Entidad %u", selected);
+    ImGui::Text("Entity %u", selected);
     if (Entity parent = parentOf(world, selected)) {
         ImGui::SameLine();
-        ImGui::TextDisabled("(hija de %s)", entityLabel(parent).c_str());
+        ImGui::TextDisabled("(child of %s)", entityLabel(parent).c_str());
     }
     drawPrefabHeader();
     ImGui::Separator();
@@ -347,7 +347,7 @@ void Editor::drawInspector() {
                 drawField(f, f.in(component));
                 if (over) ImGui::PopStyleColor();
             }
-            if (info.fields.empty()) ImGui::TextDisabled("(sin campos)");
+            if (info.fields.empty()) ImGui::TextDisabled("(no fields)");
             if (moved)
                 moveBranch(selected, { moved->position.x - before.x, moved->position.y - before.y });
         }
@@ -365,7 +365,7 @@ void Editor::drawInspector() {
 
     ImGui::Spacing();
     ImGui::Separator();
-    if (ImGui::Button("Agregar componente", ImVec2(-FLT_MIN, 0))) ImGui::OpenPopup("##add");
+    if (ImGui::Button("Add component", ImVec2(-FLT_MIN, 0))) ImGui::OpenPopup("##add");
     if (ImGui::BeginPopup("##add")) {
         bool any = false;
         for (const auto& info : registry.all()) {
@@ -376,7 +376,7 @@ void Editor::drawInspector() {
                 info->add(world, selected);
             }
         }
-        if (!any) ImGui::TextDisabled("Ya tiene todos los componentes");
+        if (!any) ImGui::TextDisabled("It already has every component");
         ImGui::EndPopup();
     }
 }
@@ -543,18 +543,18 @@ bool Editor::drawList(const FieldInfo& f, void* value) {
         ImGui::BeginDisabled(i == 0);
         if (ImGui::Button("^", ImVec2(buttonW, 0))) { action = Action::Up; target = i; }
         ImGui::EndDisabled();
-        ImGui::SetItemTooltip("Subir");
+        ImGui::SetItemTooltip("Move up");
         ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         ImGui::BeginDisabled(i + 1 == count);
         if (ImGui::Button("v", ImVec2(buttonW, 0))) { action = Action::Down; target = i; }
         ImGui::EndDisabled();
-        ImGui::SetItemTooltip("Bajar");
+        ImGui::SetItemTooltip("Move down");
         ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         if (ImGui::Button("+", ImVec2(buttonW, 0))) { action = Action::Duplicate; target = i; }
-        ImGui::SetItemTooltip("Duplicar");
+        ImGui::SetItemTooltip("Duplicate");
         ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
         if (ImGui::Button("x", ImVec2(buttonW, 0))) { action = Action::Remove; target = i; }
-        ImGui::SetItemTooltip("Quitar");
+        ImGui::SetItemTooltip("Remove");
 
         if (itemOpen) {
             for (const FieldInfo& ef : f.elementFields)
@@ -563,7 +563,7 @@ bool Editor::drawList(const FieldInfo& f, void* value) {
         }
         ImGui::PopID();
     }
-    if (ImGui::Button("Agregar")) action = Action::Add;
+    if (ImGui::Button("Add")) action = Action::Add;
     ImGui::TreePop();
 
     if (action != Action::None) {
@@ -581,26 +581,26 @@ bool Editor::drawList(const FieldInfo& f, void* value) {
     return changed;
 }
 
-// Lista desplegable con los valores sugeridos ("" se ve como "(ninguno)"). Un valor
+// Lista desplegable con los valores sugeridos ("" se ve como "(none)"). Un valor
 // que no esta en la lista (escrito a mano en el archivo) se sigue viendo, marcado.
 bool Editor::drawChoice(const char* label, const std::vector<std::string>& options,
                         const std::string& current, std::string& out) {
     out = current;
     bool known = std::find(options.begin(), options.end(), current) != options.end();
-    std::string preview = current.empty() ? "(ninguno)" : current;
+    std::string preview = current.empty() ? "(none)" : current;
     if (!known) preview += "  (?)";
     bool changed = false;
     if (ImGui::BeginCombo(label, preview.c_str())) {
         for (const std::string& option : options) {
-            if (ImGui::Selectable(option.empty() ? "(ninguno)" : option.c_str(), option == current)) {
+            if (ImGui::Selectable(option.empty() ? "(none)" : option.c_str(), option == current)) {
                 out = option;
                 changed = true;
             }
         }
-        if (options.empty()) ImGui::TextDisabled("(no hay opciones)");
+        if (options.empty()) ImGui::TextDisabled("(no options)");
         ImGui::EndCombo();
     }
-    if (!known) ImGui::SetItemTooltip("'%s' no esta en la lista", current.c_str());
+    if (!known) ImGui::SetItemTooltip("'%s' is not in the list", current.c_str());
     return changed;
 }
 
@@ -641,17 +641,17 @@ bool Editor::drawEntityPicker(const char* label, Entity current, Entity& out) {
     bool changed = false;
     auto nameOf = [&](Entity e) { return entityLabel(e) + "  #" + std::to_string(e); };
 
-    std::string preview = current == NullEntity ? "(ninguna)"
+    std::string preview = current == NullEntity ? "(none)"
                         : world.isAlive(current) ? nameOf(current)
-                        : "(no existe: #" + std::to_string(current) + ")";
+                        : "(missing: #" + std::to_string(current) + ")";
     if (ImGui::BeginCombo(label, preview.c_str(), ImGuiComboFlags_HeightLarge)) {
         if (ImGui::IsWindowAppearing()) {
             entityFilter.clear();
             ImGui::SetKeyboardFocusHere();
         }
         ImGui::SetNextItemWidth(-FLT_MIN);
-        ImGui::InputTextWithHint("##filter", "filtrar...", &entityFilter);
-        if (ImGui::Selectable("(ninguna)", current == NullEntity)) { out = NullEntity; changed = true; }
+        ImGui::InputTextWithHint("##filter", "filter...", &entityFilter);
+        if (ImGui::Selectable("(none)", current == NullEntity)) { out = NullEntity; changed = true; }
         // Sangria segun la profundidad en la Jerarquia (el World ya esta en ese orden
         // despues de cualquier cambio de jerarquia).
         const std::string filter = toLower(entityFilter);
@@ -668,7 +668,7 @@ bool Editor::drawEntityPicker(const char* label, Entity current, Entity& out) {
         }
         ImGui::EndCombo();
     }
-    ImGui::SetItemTooltip("Elegir de la lista, o soltar aqui una entidad arrastrada desde la Jerarquia");
+    ImGui::SetItemTooltip("Pick from the list, or drop here an entity dragged from the Hierarchy");
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(ENTITY_PAYLOAD)) {
             out = *static_cast<const Entity*>(payload->Data);
@@ -701,7 +701,7 @@ bool Editor::drawFilePicker(const char* label, const std::string& current, std::
         ImGui::BeginDisabled(current.empty());
         if (ImGui::Button(">", ImVec2(ImGui::GetFrameHeight(), 0))) app.audio().playSound(current);
         ImGui::EndDisabled();
-        ImGui::SetItemTooltip("Escuchar");
+        ImGui::SetItemTooltip("Listen");
     }
     ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
     ImGui::TextUnformatted(label);
@@ -709,14 +709,14 @@ bool Editor::drawFilePicker(const char* label, const std::string& current, std::
     if (ImGui::BeginPopup("##pick")) {
         ImGui::SetNextItemWidth(320.0f * uiScale);
         if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
-        ImGui::InputTextWithHint("##filter", "filtrar...", &fileFilter);
+        ImGui::InputTextWithHint("##filter", "filter...", &fileFilter);
         ImGui::SameLine();
-        if (ImGui::Button("Volver a buscar")) scanAssetFiles();
+        if (ImGui::Button("Rescan")) scanAssetFiles();
 
         std::string filter = toLower(fileFilter);
         const std::vector<std::string>& files = audio ? audioFiles : textureFiles;
         if (ImGui::BeginChild("##files", ImVec2(560.0f * uiScale, 320.0f * uiScale))) {
-            if (files.empty()) ImGui::TextDisabled(audio ? "No hay sonidos en assets/" : "No hay imagenes en assets/");
+            if (files.empty()) ImGui::TextDisabled(audio ? "No sounds in assets/" : "No images in assets/");
             int row = 0;
             for (const std::string& file : files) {
                 if (!filter.empty() && toLower(file).find(filter) == std::string::npos) continue;

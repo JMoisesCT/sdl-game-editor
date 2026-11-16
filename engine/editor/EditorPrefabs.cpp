@@ -60,26 +60,26 @@ void Editor::reloadPrefabs() {
     restore(scene);
     app.assets().forgetFailures(); // una imagen nueva puede ser la que faltaba
     scanPrefabFiles();
-    setStatus("Prefabs vueltos a leer del disco");
+    setStatus("Prefabs reloaded from disk");
 }
 
 void Editor::drawPrefabList() {
     if (!prefabFilesScanned) scanPrefabFiles();
 
     ImGui::BeginDisabled(!app.isEditing());
-    if (ImGui::Button("Actualizar")) reloadPrefabs();
-    ImGui::SetItemTooltip("Vuelve a buscar los prefabs y a leerlos del disco");
+    if (ImGui::Button("Refresh")) reloadPrefabs();
+    ImGui::SetItemTooltip("Rescans the prefabs and reloads them from disk");
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::TextDisabled("(?)");
-    ImGui::SetItemTooltip("Doble clic: colocar en el centro de la vista.\n"
-                          "Arrastrar a la vista: colocar ahi.\n"
-                          "Para crear uno: elegir una entidad y \"Crear prefab\" en el Inspector.");
+    ImGui::SetItemTooltip("Double-click: place it at the center of the view.\n"
+                          "Drag into the view: place it there.\n"
+                          "To create one: select an entity and use \"Create prefab\" in the Inspector.");
     ImGui::Separator();
 
     std::string place; // se coloca despues del bucle
     if (ImGui::BeginChild("##prefabs")) {
-        if (prefabFiles.empty()) ImGui::TextDisabled("No hay prefabs en assets/");
+        if (prefabFiles.empty()) ImGui::TextDisabled("No prefabs in assets/");
         for (const std::string& path : prefabFiles) {
             std::string label = prefabName(path) + "###" + path;
             ImGui::PushStyleColor(ImGuiCol_Text, PREFAB_COLOR);
@@ -100,7 +100,7 @@ void Editor::drawPrefabList() {
                 ImGui::BeginTooltip();
                 ImGui::TextUnformatted(path.c_str());
                 const Json* comps = app.prefabs().find(path);
-                if (!comps) ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "No se pudo leer (ver el log)");
+                if (!comps) ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Could not read it (see the log)");
                 auto sprite = comps ? comps->find("Sprite") : Json::const_iterator();
                 if (comps && sprite != comps->end()) {
                     std::string texture = sprite->value("texture", "");
@@ -135,7 +135,7 @@ void Editor::drawPrefabList() {
 Entity Editor::placePrefab(const std::string& path, Vec2 position) {
     World& world = app.world();
     if (!app.prefabs().find(path)) {
-        setStatus("No se pudo leer el prefab " + path + " (ver el log)");
+        setStatus("Could not read the prefab " + path + " (see the log)");
         return NullEntity;
     }
     beginChange();
@@ -157,56 +157,56 @@ void Editor::drawPrefabHeader() {
     if (!link) {
         ImGui::SameLine();
         ImGui::BeginDisabled(!editing);
-        if (ImGui::SmallButton("Crear prefab...")) {
+        if (ImGui::SmallButton("Create prefab...")) {
             newPrefabName = cleanFileName(entityLabel(selected));
             ImGui::OpenPopup("##newprefab");
         }
         ImGui::EndDisabled();
-        ImGui::SetItemTooltip("Guarda esta entidad como prefab en %s y la enlaza a el", PREFAB_DIR);
+        ImGui::SetItemTooltip("Saves this entity as a prefab in %s and links it to it", PREFAB_DIR);
         if (ImGui::BeginPopup("##newprefab")) {
-            ImGui::TextUnformatted("Nombre del prefab:");
+            ImGui::TextUnformatted("Prefab name:");
             if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
             ImGui::SetNextItemWidth(240.0f * uiScale);
             bool enter = ImGui::InputText("##name", &newPrefabName, ImGuiInputTextFlags_EnterReturnsTrue);
             std::string clean = cleanFileName(newPrefabName);
             ImGui::TextDisabled("%s%s%s", PREFAB_DIR, clean.empty() ? "?" : clean.c_str(), PREFAB_EXT);
             ImGui::BeginDisabled(clean.empty());
-            if (ImGui::Button("Crear") || (enter && !clean.empty())) {
+            if (ImGui::Button("Create") || (enter && !clean.empty())) {
                 createPrefabFromSelected(clean);
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndDisabled();
             ImGui::SameLine();
-            if (ImGui::Button("Cancelar")) ImGui::CloseCurrentPopup();
+            if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
         return;
     }
 
     ImGui::TextColored(PREFAB_COLOR, "Prefab: %s", prefabName(link->path).c_str());
-    ImGui::SetItemTooltip("%s\nEn naranja, los campos en que esta instancia difiere del prefab.",
+    ImGui::SetItemTooltip("%s\nIn orange: the fields where this instance differs from the prefab.",
                           link->path.c_str());
     if (!app.prefabs().find(link->path)) {
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "(no se pudo leer)");
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "(could not read it)");
     }
 
     // Jugando no: se guardaria en el prefab el estado de la partida.
     ImGui::BeginDisabled(!editing || !app.prefabs().find(link->path));
-    if (ImGui::SmallButton("Aplicar")) applyToPrefab();
-    ImGui::SetItemTooltip("Guarda los cambios de esta instancia en el prefab: llegan a todas sus\n"
-                          "instancias (salvo posicion y nombre). El archivo del prefab se guarda\n"
-                          "en el acto y Deshacer no lo vuelve atras.");
+    if (ImGui::SmallButton("Apply")) applyToPrefab();
+    ImGui::SetItemTooltip("Saves this instance's changes into the prefab: they reach all its\n"
+                          "instances (except position and name). The prefab file is saved\n"
+                          "right away, and Undo does not revert it.");
     ImGui::SameLine();
-    if (ImGui::SmallButton("Revertir")) revertToPrefab();
-    ImGui::SetItemTooltip("Descarta lo que esta instancia cambio: vuelve a ser igual al prefab\n"
-                          "(conserva su posicion y su nombre).");
+    if (ImGui::SmallButton("Revert")) revertToPrefab();
+    ImGui::SetItemTooltip("Discards what this instance changed: it matches the prefab again\n"
+                          "(keeping its position and name).");
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::BeginDisabled(!editing);
-    if (ImGui::SmallButton("Desvincular")) unlinkPrefab();
-    ImGui::SetItemTooltip("Deja de ser instancia: conserva sus componentes, pero los cambios del\n"
-                          "prefab ya no le llegan.");
+    if (ImGui::SmallButton("Unlink")) unlinkPrefab();
+    ImGui::SetItemTooltip("It stops being an instance: it keeps its components, but changes to the\n"
+                          "prefab no longer reach it.");
     ImGui::EndDisabled();
 }
 
@@ -224,7 +224,7 @@ void Editor::createPrefabFromSelected(const std::string& name) {
     if (!app.isEditing() || !world.isAlive(selected) || name.empty()) return;
     std::string path = std::string(PREFAB_DIR) + name + PREFAB_EXT;
     if (SDL_GetPathInfo(path.c_str(), nullptr)) {
-        setStatus("Ya existe " + path + ": elegi otro nombre");
+        setStatus(path + " already exists: choose another name");
         return;
     }
 
@@ -233,15 +233,15 @@ void Editor::createPrefabFromSelected(const std::string& name) {
     Json comps = serializeEntity(world, app.registry(), nullptr, selected)["components"];
     if (comps.contains("Transform")) comps["Transform"]["position"] = Json::array({ 0.0, 0.0 });
     if (!app.prefabs().save(path, comps)) {
-        setStatus("No se pudo guardar " + path + " (ver el log)");
+        setStatus("Could not save " + path + " (see the log)");
         return;
     }
     beginChange(); // enlazarla cambia como se guarda en la escena
     world.add<PrefabInstance>(selected).path = path;
     scanPrefabFiles();
     // No hay prefabs anidados: el prefab es solo esta entidad, sin su rama.
-    if (descendantsOf(world, selected).empty()) setStatus("Prefab creado: " + path);
-    else setStatus("Prefab creado: " + path + " (sus hijas no entran en el prefab)");
+    if (descendantsOf(world, selected).empty()) setStatus("Prefab created: " + path);
+    else setStatus("Prefab created: " + path + " (its children are not part of the prefab)");
 }
 
 void Editor::applyToPrefab() {
@@ -272,12 +272,12 @@ void Editor::applyToPrefab() {
         comps["EntityInfo"]["name"] = old["EntityInfo"]["name"];
     if (!app.prefabs().save(path, comps)) {
         cancelChange(); // no se toco nada
-        setStatus("No se pudo guardar " + path + " (ver el log)");
+        setStatus("Could not save " + path + " (see the log)");
         return;
     }
 
     for (const auto& inst : instances) rebuildEntity(inst.first, inst.second);
-    setStatus("Prefab guardado: " + path + " (" + std::to_string(instances.size()) + " instancias)");
+    setStatus("Prefab saved: " + path + " (" + std::to_string(instances.size()) + " instances)");
 }
 
 void Editor::revertToPrefab() {
@@ -299,7 +299,7 @@ void Editor::revertToPrefab() {
 
     beginChange();
     rebuildEntity(selected, reverted);
-    setStatus("Instancia revertida al prefab");
+    setStatus("Instance reverted to the prefab");
 }
 
 void Editor::unlinkPrefab() {
@@ -307,5 +307,5 @@ void Editor::unlinkPrefab() {
     if (!app.isEditing() || !world.has<PrefabInstance>(selected)) return;
     beginChange();
     world.remove<PrefabInstance>(selected);
-    setStatus("Desvinculada del prefab: ahora es una entidad suelta");
+    setStatus("Unlinked from the prefab: it is now a standalone entity");
 }

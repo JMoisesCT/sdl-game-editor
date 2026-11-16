@@ -31,7 +31,7 @@ Tilemap* Editor::selectedTilemap() {
 
 void Editor::setTileTool(TileTool tool) {
     if (tool != TileTool::Move && !selectedTilemap()) {
-        setStatus("Para pintar, elige una entidad con Tilemap");
+        setStatus("To paint, select an entity with a Tilemap");
         return;
     }
     tileTool = tool;
@@ -45,7 +45,7 @@ void Editor::drawTilePalette() {
     if (!map) return;
 
     ImGui::Spacing();
-    if (!ImGui::CollapsingHeader("Pintar tiles", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    if (!ImGui::CollapsingHeader("Paint tiles", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
     // Herramientas: el boton de la activa se ve pulsado.
     auto toolButton = [&](const char* label, TileTool tool, const char* tip) {
@@ -56,22 +56,22 @@ void Editor::drawTilePalette() {
         ImGui::SetItemTooltip("%s", tip);
         ImGui::SameLine();
     };
-    toolButton("Mover", TileTool::Move, "V: elegir y arrastrar entidades");
-    toolButton("Pincel", TileTool::Brush, "B: pinta los tiles elegidos en la paleta");
-    toolButton("Goma", TileTool::Erase, "E: vacia celdas");
-    toolButton("Relleno", TileTool::Fill, "G: rellena la zona del mismo tile con los elegidos");
+    toolButton("Move", TileTool::Move, "V: select and drag entities");
+    toolButton("Brush", TileTool::Brush, "B: paints the tiles picked in the palette");
+    toolButton("Eraser", TileTool::Erase, "E: clears cells");
+    toolButton("Fill", TileTool::Fill, "G: fills the area of the same tile with the picked ones");
     ImGui::NewLine();
 
-    ImGui::Checkbox("Ver solidos", &showSolids);
-    ImGui::SetItemTooltip("Resalta en la vista las celdas que frenan");
+    ImGui::Checkbox("Show solids", &showSolids);
+    ImGui::SetItemTooltip("Highlights the blocking cells in the view");
     ImGui::SameLine();
-    ImGui::Checkbox("Marcar solidos", &markSolids);
-    ImGui::SetItemTooltip("Clic en un tile de la paleta: lo marca o desmarca como solido");
+    ImGui::Checkbox("Mark solids", &markSolids);
+    ImGui::SetItemTooltip("Click a tile in the palette to mark or unmark it as solid");
 
     int columns = 0, rows = 0;
     if (!tilesetGrid(app.assets(), *map, columns, rows)) {
-        ImGui::TextDisabled("Elige el tileset (la imagen) en el campo");
-        ImGui::TextDisabled("'tileset' del componente Tilemap.");
+        ImGui::TextDisabled("Pick the tileset (the image) in the 'tileset'");
+        ImGui::TextDisabled("field of the Tilemap component.");
         return;
     }
     SDL_Texture* tex = app.assets().loadTexture(map->tileset);
@@ -158,17 +158,17 @@ void Editor::drawTilePalette() {
         }
         if (hovered) {
             bool solid = isSolidTile(*map, tile);
-            ImGui::SetTooltip("tile %d%s", tile, solid ? "  (solido)" : "");
+            ImGui::SetTooltip("tile %d%s", tile, solid ? "  (solid)" : "");
         }
     }
     ImGui::EndChild();
 
     if (brush.w == 1 && brush.h == 1)
-        ImGui::Text("Pincel: tile %d", brush.y * columns + brush.x);
+        ImGui::Text("Brush: tile %d", brush.y * columns + brush.x);
     else
-        ImGui::Text("Pincel: %d x %d tiles", brush.w, brush.h);
-    ImGui::TextDisabled("Arrastra en la paleta para elegir varios.");
-    ImGui::TextDisabled("Alt+clic en la vista toma el tile de una celda.");
+        ImGui::Text("Brush: %d x %d tiles", brush.w, brush.h);
+    ImGui::TextDisabled("Drag in the palette to pick several.");
+    ImGui::TextDisabled("Alt+click in the view picks a cell's tile.");
 }
 
 // --- Pintar en la vista ----------------------------------------------------------------

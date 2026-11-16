@@ -17,19 +17,19 @@ Audio::~Audio() {
 bool Audio::init() {
     if (mixer) return true;
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
-        SDL_Log("Audio: no se pudo iniciar el audio de SDL (el juego sigue sin sonido): %s", SDL_GetError());
+        SDL_Log("Audio: could not start SDL audio (the game continues without sound): %s", SDL_GetError());
         return false;
     }
     subsystemReady = true;
     if (!MIX_Init()) {
-        SDL_Log("Audio: no se pudo iniciar SDL_mixer: %s", SDL_GetError());
+        SDL_Log("Audio: could not start SDL_mixer: %s", SDL_GetError());
         shutdown();
         return false;
     }
     // El dispositivo de salida por defecto, en el formato que el prefiera.
     mixer = MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr);
     if (!mixer) {
-        SDL_Log("Audio: no hay dispositivo de audio (el juego sigue sin sonido): %s", SDL_GetError());
+        SDL_Log("Audio: no audio device (the game continues without sound): %s", SDL_GetError());
         MIX_Quit();
         shutdown();
         return false;
@@ -70,7 +70,7 @@ MIX_Audio* Audio::load(const std::string& path) {
     // larga convendria false (se decodifica mientras suena); aqui todo es corto.
     MIX_Audio* audio = MIX_LoadAudio(mixer, path.c_str(), true);
     if (!audio) {
-        SDL_Log("Audio: no se pudo cargar '%s': %s", path.c_str(), SDL_GetError());
+        SDL_Log("Audio: could not load '%s': %s", path.c_str(), SDL_GetError());
         failed.insert(path);
         return nullptr;
     }

@@ -3,12 +3,12 @@
   "version": 1,
   "entities": [
     { "id": 1, "components": {
-        "EntityInfo": {"name":"Camara","tag":"MainCamera"},
+        "EntityInfo": {"name":"Camera","tag":"MainCamera"},
         "Transform": {"position":[0.0,0.0],"rotation":0.0,"scale":[1.0,1.0]},
         "Camera": {"zoom":1.0,"background":[24,20,37,255],"pixelSize":3.0}
     }},
     { "id": 2, "components": {
-        "EntityInfo": {"name":"Piso","tag":""},
+        "EntityInfo": {"name":"Floor","tag":""},
         "Transform": {"position":[-480.0,-360.0],"rotation":0.0,"scale":[3.0,3.0]},
         "Tilemap": {"tileset":"assets/ninja_adventure/Backgrounds/Tilesets/TilesetFloor.png","tileWidth":16,"tileHeight":16,"solidTiles":[],"collision":true,"visible":true,"tint":[255,255,255,255],"order":-10,"cells":[
           [112,112,112,112,112,112,112,112,112,112,112,112,112,112,112,112,112,112,112,112],
