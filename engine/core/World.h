@@ -138,8 +138,13 @@ public:
 
     bool isAlive(Entity e) const { return aliveSet.count(e) != 0; }
 
-    // Todas las entidades vivas, en orden de creacion.
+    // Todas las entidades vivas, en orden de creacion (o en el que dejo setOrder). Es
+    // el orden de la Jerarquia del editor y del archivo de escena.
     const std::vector<Entity>& entities() const { return alive; }
+
+    // Cambia el orden de entities(). 'order' debe tener exactamente las entidades
+    // vivas, cada una una vez; si no, no hace nada y devuelve false. No cambia ids.
+    bool setOrder(const std::vector<Entity>& order);
 
     // Borra todo. Los ids NO vuelven a empezar (salvo con resetIds = true, al cargar
     // una escena desde cero).

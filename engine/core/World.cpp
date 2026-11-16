@@ -20,6 +20,15 @@ void World::addAlive(Entity e) {
     aliveSet.insert(e);
 }
 
+bool World::setOrder(const std::vector<Entity>& order) {
+    if (order.size() != alive.size()) return false;
+    std::unordered_set<Entity> seen;
+    for (Entity e : order)
+        if (!isAlive(e) || !seen.insert(e).second) return false;
+    alive = order;
+    return true;
+}
+
 void World::destroy(Entity e) {
     if (isAlive(e)) pendingDestroy.push_back(e);
 }

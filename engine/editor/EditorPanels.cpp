@@ -12,9 +12,13 @@
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
+#include <functional>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "app/Application.h"
 #include "components/CoreComponents.h"
+#include "core/Hierarchy.h"
 #include "core/Prefabs.h"
 #include "core/Reflection.h"
 #include "platform/AssetManager.h"
@@ -24,6 +28,9 @@
 // campos en que una instancia difiere de su prefab.
 static const ImVec4 PREFAB_COLOR(0.45f, 0.75f, 1.0f, 1.0f);
 static const ImVec4 OVERRIDE_COLOR(1.0f, 0.72f, 0.3f, 1.0f);
+// Tipo del arrastre de una entidad desde la Jerarquia (a otra entidad o a un campo
+// Entity del Inspector). El dato es el Entity.
+static const char* ENTITY_PAYLOAD = "ENTITY";
 
 // --- Jerarquia -------------------------------------------------------------------------
 
@@ -33,6 +40,16 @@ std::string Editor::entityLabel(Entity e) {
     return "Entidad " + std::to_string(e);
 }
 
+// El hermano que sigue a e (saltando 'skip'), o NullEntity si es el ultimo.
+static Entity nextSibling(const World& world, Entity e, Entity skip) {
+    std::vector<Entity> siblings = childrenOf(world, parentOf(world, e));
+    auto it = std::find(siblings.begin(), siblings.end(), e);
+    if (it == siblings.end()) return NullEntity;
+    for (++it; it != siblings.end(); ++it)
+        if (*it != skip) return *it;
+    return NullEntity;
+}
+
 void Editor::drawHierarchy() {
     World& world = app.world();
 
@@ -40,65 +57,183 @@ void Editor::drawHierarchy() {
     ImGui::SameLine();
     ImGui::BeginDisabled(!world.isAlive(selected));
     if (ImGui::Button("Duplicar")) duplicateSelected();
-    ImGui::SetItemTooltip("Ctrl+D");
+    ImGui::SetItemTooltip("Ctrl+D (con toda su rama)");
     ImGui::SameLine();
     if (ImGui::Button("Borrar")) deleteSelected();
-    ImGui::SetItemTooltip("Supr");
+    ImGui::SetItemTooltip("Supr (con toda su rama)");
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+    ImGui::SetItemTooltip("Arrastrar una entidad sobre otra: la hace su hija.\n"
+                          "Sobre el borde de arriba o de abajo: la pone antes o despues.\n"
+                          "Al hueco de abajo: la saca de su grupo.\n"
+                          "Mover al padre mueve tambien a sus hijos (solo editando).");
     ImGui::Separator();
 
-    // Las acciones del menu contextual se aplican despues del bucle: borrar o duplicar
+    // Las acciones se aplican despues de dibujar el arbol: borrar, duplicar o mover
     // dentro cambiaria la lista que se esta recorriendo.
-    enum class Action { None, Duplicate, Delete } action = Action::None;
+    enum class Action { None, Duplicate, Delete, CreateChild, Move };
+    struct HierarchyAction {
+        Action kind = Action::None;
+        Entity e = NullEntity, parent = NullEntity, before = NullEntity;
+    } act;
+
+    // Padre -> hijos, en el orden del World (NullEntity = las raices).
+    std::unordered_map<Entity, std::vector<Entity>> children;
+    for (Entity e : world.entities()) children[parentOf(world, e)].push_back(e);
+
+    // Si la seleccion cambio (p. ej. se eligio en la vista), se abre su rama y se la
+    // trae a la vista una vez.
+    const bool reveal = selected != revealedSelection && world.isAlive(selected);
+    std::unordered_set<Entity> toOpen;
+    if (reveal)
+        for (Entity p = parentOf(world, selected); p != NullEntity; p = parentOf(world, p)) toOpen.insert(p);
+
+    const ImU32 dropColor = ImGui::GetColorU32(ImGuiCol_DragDropTarget);
+    std::function<void(Entity)> drawNode = [&](Entity e) {
+        auto kids = children.find(e);
+        const bool leaf = kids == children.end();
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth |
+                                   ImGuiTreeNodeFlags_DefaultOpen;
+        if (leaf) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        if (selected == e) flags |= ImGuiTreeNodeFlags_Selected;
+        if (toOpen.count(e)) ImGui::SetNextItemOpen(true);
+
+        std::string label = entityLabel(e) + "###e" + std::to_string(e);
+        const PrefabInstance* link = world.get<PrefabInstance>(e);
+        if (link) ImGui::PushStyleColor(ImGuiCol_Text, PREFAB_COLOR);
+        const bool open = ImGui::TreeNodeEx(label.c_str(), flags);
+        if (link) ImGui::PopStyleColor();
+
+        // Clic elige (salvo en la flecha, que abre o cierra), pero al SOLTAR y si no se
+        // arrastro: asi se puede arrastrar una entidad a un campo Entity del Inspector
+        // sin que el Inspector pase a mostrar a la arrastrada. Doble clic centra.
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen()) hierarchyPress = e;
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+            frameEntity(e);
+        if (reveal && e == selected && !ImGui::IsItemVisible()) ImGui::SetScrollHereY();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && !ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            const EntityInfo* info = world.get<EntityInfo>(e);
+            ImGui::SetTooltip("id %u%s%s%s%s", e, info && !info->tag.empty() ? "  tag: " : "",
+                              info ? info->tag.c_str() : "", link ? "\nprefab: " : "",
+                              link ? link->path.c_str() : "");
+        }
+
+        // Arrastrar: a otra entidad de la Jerarquia o a un campo Entity del Inspector.
+        if (ImGui::BeginDragDropSource()) {
+            ImGui::SetDragDropPayload(ENTITY_PAYLOAD, &e, sizeof(Entity));
+            ImGui::TextUnformatted(entityLabel(e).c_str());
+            ImGui::EndDragDropSource();
+        }
+        // Soltar: el cuarto de arriba = antes, el de abajo = despues, el medio = hija.
+        if (ImGui::BeginDragDropTarget()) {
+            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(
+                ENTITY_PAYLOAD, ImGuiDragDropFlags_AcceptBeforeDelivery | ImGuiDragDropFlags_AcceptNoDrawDefaultRect);
+            Entity dragged = payload ? *static_cast<const Entity*>(payload->Data) : NullEntity;
+            // No se puede soltar una entidad sobre si misma ni sobre su propia rama.
+            if (payload && dragged != e && !isAncestorOf(world, dragged, e)) {
+                ImVec2 r0 = ImGui::GetItemRectMin(), r1 = ImGui::GetItemRectMax();
+                float y = ImGui::GetIO().MousePos.y, quarter = (r1.y - r0.y) * 0.25f;
+                ImDrawList* dl = ImGui::GetWindowDrawList();
+                Entity parent = parentOf(world, e), before = NullEntity;
+                if (y < r0.y + quarter) {
+                    before = e;
+                    dl->AddLine(ImVec2(r0.x, r0.y), ImVec2(r1.x, r0.y), dropColor, 2.0f);
+                } else if (y > r1.y - quarter) {
+                    before = nextSibling(world, e, dragged);
+                    dl->AddLine(ImVec2(r0.x, r1.y), ImVec2(r1.x, r1.y), dropColor, 2.0f);
+                } else {
+                    parent = e;
+                    dl->AddRect(r0, r1, dropColor, 0.0f, 0, 2.0f);
+                }
+                if (payload->IsDelivery()) act = { Action::Move, dragged, parent, before };
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        if (ImGui::BeginPopupContextItem()) {
+            selected = e;
+            if (ImGui::MenuItem("Crear hija")) act = { Action::CreateChild, e };
+            if (ImGui::MenuItem("Duplicar", "Ctrl+D")) act = { Action::Duplicate, e };
+            if (ImGui::MenuItem("Borrar", "Supr")) act = { Action::Delete, e };
+            if (parentOf(world, e) != NullEntity && ImGui::MenuItem("Sacar del grupo"))
+                act = { Action::Move, e, parentOf(world, parentOf(world, e)), nextSibling(world, parentOf(world, e), e) };
+            ImGui::EndPopup();
+        }
+
+        if (open && !leaf) {
+            for (Entity child : kids->second) drawNode(child);
+            ImGui::TreePop();
+        }
+    };
 
     if (ImGui::BeginChild("##entities")) {
-        for (Entity e : world.entities()) {
-            std::string label = entityLabel(e) + "###e" + std::to_string(e);
-            const PrefabInstance* link = world.get<PrefabInstance>(e);
-            if (link) ImGui::PushStyleColor(ImGuiCol_Text, PREFAB_COLOR);
-            bool clicked = ImGui::Selectable(label.c_str(), selected == e, ImGuiSelectableFlags_AllowDoubleClick);
-            if (link) ImGui::PopStyleColor();
-            if (clicked) {
-                selected = e;
-                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) frameEntity(e);
-            }
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                const EntityInfo* info = world.get<EntityInfo>(e);
-                ImGui::SetTooltip("id %u%s%s%s%s", e, info && !info->tag.empty() ? "  tag: " : "",
-                                  info ? info->tag.c_str() : "", link ? "\nprefab: " : "",
-                                  link ? link->path.c_str() : "");
-            }
-            if (ImGui::BeginPopupContextItem()) {
-                selected = e;
-                if (ImGui::MenuItem("Duplicar", "Ctrl+D")) action = Action::Duplicate;
-                if (ImGui::MenuItem("Borrar", "Supr")) action = Action::Delete;
-                ImGui::EndPopup();
-            }
+        auto roots = children.find(NullEntity);
+        if (roots != children.end())
+            for (Entity e : roots->second) drawNode(e);
+
+        // El hueco libre de abajo: soltar ahi saca a la entidad de su grupo (queda
+        // ultima entre las raices); un clic quita la seleccion.
+        ImVec2 rest = ImGui::GetContentRegionAvail();
+        ImGui::Dummy(ImVec2(std::max(rest.x, 1.0f), std::max(rest.y, ImGui::GetFrameHeight())));
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(ENTITY_PAYLOAD))
+                act = { Action::Move, *static_cast<const Entity*>(payload->Data), NullEntity, NullEntity };
+            ImGui::EndDragDropTarget();
         }
-        // Clic en el hueco libre de la lista: quitar la seleccion.
         if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
             !ImGui::IsAnyItemHovered())
             selected = NullEntity;
     }
     ImGui::EndChild();
 
-    if (action == Action::Duplicate) duplicateSelected();
-    if (action == Action::Delete) deleteSelected();
+    if (hierarchyPress != NullEntity && !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        const ImGuiIO& io = ImGui::GetIO();
+        const bool dragged = io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] >= io.MouseDragThreshold * io.MouseDragThreshold;
+        if (!dragged && world.isAlive(hierarchyPress)) selected = hierarchyPress;
+        hierarchyPress = NullEntity;
+    }
+    revealedSelection = selected;
+
+    switch (act.kind) {
+    case Action::Duplicate:   duplicateSelected(); break;
+    case Action::Delete:      deleteSelected(); break;
+    case Action::CreateChild: createEntity(act.e); break;
+    case Action::Move:
+        if (world.isAlive(act.e)) {
+            // Soltar donde ya estaba no es un cambio (ni un paso de deshacer).
+            const bool wasPending = changePending;
+            const std::vector<Entity> oldOrder = world.entities();
+            const Entity oldParent = parentOf(world, act.e);
+            beginChange();
+            if (moveInHierarchy(world, act.e, act.parent, act.before)) selected = act.e;
+            if (!wasPending && world.entities() == oldOrder && parentOf(world, act.e) == oldParent) cancelChange();
+        }
+        break;
+    case Action::None: break;
+    }
 }
 
-Entity Editor::createEntity() {
+Entity Editor::createEntity(Entity parent) {
     World& world = app.world();
     beginChange();
     Entity e = world.create();
     world.add<EntityInfo>(e).name = "Entidad " + std::to_string(e);
     Transform t;
-    // Aparece en el centro de la vista del editor (en la grilla, si se ajusta).
-    t.position = sceneView.center;
-    if (snapToGrid) {
-        t.position.x = std::round(t.position.x / gridSize) * gridSize;
-        t.position.y = std::round(t.position.y / gridSize) * gridSize;
+    const Transform* pt = world.get<Transform>(parent);
+    if (pt) {
+        // Una hija nace donde esta su padre.
+        t.position = pt->position;
+    } else {
+        // Aparece en el centro de la vista del editor (en la grilla, si se ajusta).
+        t.position = sceneView.center;
+        if (snapToGrid) {
+            t.position.x = std::round(t.position.x / gridSize) * gridSize;
+            t.position.y = std::round(t.position.y / gridSize) * gridSize;
+        }
     }
     world.add<Transform>(e, t);
+    if (world.isAlive(parent)) moveInHierarchy(world, e, parent);
     selected = e;
     return e;
 }
@@ -107,25 +242,59 @@ void Editor::duplicateSelected() {
     World& world = app.world();
     if (!world.isAlive(selected)) return;
     beginChange();
-    // Copiar = serializar y deserializar en una entidad nueva: copia exactamente lo
-    // que se guarda en el archivo, ni mas ni menos (una instancia sigue enlazada).
-    Json copy = serializeEntity(world, app.registry(), &app.prefabs(), selected);
-    Entity e = world.create();
-    deserializeEntity(world, app.registry(), &app.prefabs(), e, copy);
-    if (EntityInfo* info = world.get<EntityInfo>(e)) info->name += " (copia)";
-    if (Transform* t = world.get<Transform>(e)) {
-        t->position.x += gridSize; // corrida un paso, para que se vea que hay dos
-        t->position.y += gridSize;
+    const ComponentRegistry& registry = app.registry();
+
+    // La entidad y toda su rama. Copiar = serializar y deserializar en entidades
+    // nuevas: copia exactamente lo que se guarda en el archivo, ni mas ni menos (una
+    // instancia sigue enlazada).
+    std::vector<Entity> branch = descendantsOf(world, selected);
+    branch.insert(branch.begin(), selected);
+    std::unordered_map<Entity, Entity> copyOf; // original -> copia
+    for (Entity src : branch) copyOf[src] = world.create();
+    for (Entity src : branch) {
+        Entity dst = copyOf[src];
+        Json copy = serializeEntity(world, registry, &app.prefabs(), src);
+        copy.erase("parent"); // el de la copia se pone abajo
+        deserializeEntity(world, registry, &app.prefabs(), dst, copy);
+        if (src != selected) setParent(world, dst, copyOf[parentOf(world, src)]);
+        // Lo que apuntaba dentro de la rama pasa a apuntar a la copia; lo de afuera
+        // sigue apuntando a lo mismo.
+        forEachEntityField(registry, world, dst, [&](Entity& ref) {
+            auto it = copyOf.find(ref);
+            if (it != copyOf.end()) ref = it->second;
+        });
+        if (Transform* t = world.get<Transform>(dst)) {
+            t->position.x += gridSize; // corrida un paso, para que se vea que hay dos
+            t->position.y += gridSize;
+        }
     }
-    selected = e;
+    Entity root = copyOf[selected];
+    if (EntityInfo* info = world.get<EntityInfo>(root)) info->name += " (copia)";
+    // Justo despues del original, entre sus hermanos.
+    moveInHierarchy(world, root, parentOf(world, selected), nextSibling(world, selected, root));
+    selected = root;
 }
 
 void Editor::deleteSelected() {
     World& world = app.world();
     if (!world.isAlive(selected)) return;
     beginChange();
+    for (Entity d : descendantsOf(world, selected)) world.destroyNow(d);
     world.destroyNow(selected);
     selected = NullEntity;
+}
+
+void Editor::moveBranch(Entity e, Vec2 delta) {
+    // Jugando no: los hijos no siguen al padre en el juego, y en el editor tampoco.
+    if (!app.isEditing() || (delta.x == 0.0f && delta.y == 0.0f)) return;
+    World& world = app.world();
+    const bool hud = isHudEntity(e);
+    for (Entity d : descendantsOf(world, e)) {
+        Transform* t = world.get<Transform>(d);
+        if (!t || isHudEntity(d) != hud) continue;
+        t->position.x += delta.x;
+        t->position.y += delta.y;
+    }
 }
 
 // --- Inspector -------------------------------------------------------------------------
@@ -142,6 +311,10 @@ void Editor::drawInspector() {
     }
 
     ImGui::Text("Entidad %u", selected);
+    if (Entity parent = parentOf(world, selected)) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("(hija de %s)", entityLabel(parent).c_str());
+    }
     drawPrefabHeader();
     ImGui::Separator();
 
@@ -164,6 +337,9 @@ void Editor::drawInspector() {
             ? ImGui::CollapsingHeader(info.name.c_str(), &keep, ImGuiTreeNodeFlags_DefaultOpen)
             : ImGui::CollapsingHeader(info.name.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
         if (open) {
+            // Mover al padre desde el Inspector mueve tambien a sus hijos.
+            Transform* moved = info.typeId == componentTypeId<Transform>() ? static_cast<Transform*>(component) : nullptr;
+            const Vec2 before = moved ? moved->position : Vec2{};
             auto changed = overrides.find(info.name); // sin prefab, overrides es null: end()
             for (const FieldInfo& f : info.fields) {
                 bool over = changed != overrides.end() && changed->contains(f.name);
@@ -172,6 +348,8 @@ void Editor::drawInspector() {
                 if (over) ImGui::PopStyleColor();
             }
             if (info.fields.empty()) ImGui::TextDisabled("(sin campos)");
+            if (moved)
+                moveBranch(selected, { moved->position.x - before.x, moved->position.y - before.y });
         }
         if (!keep) toRemove = &info;
         ImGui::PopID();
@@ -313,6 +491,12 @@ bool Editor::drawField(const FieldInfo& f, void* value) {
         }
         break;
     }
+    case FieldType::Entity: {
+        Entity& ref = *static_cast<Entity*>(value);
+        Entity v = ref;
+        if (drawEntityPicker(label, ref, v) && v != ref) { beginChange(); ref = v; changed = true; }
+        break;
+    }
     case FieldType::List:
         // La ayuda va en la cabecera de la lista (dentro, cada campo tiene la suya).
         return drawList(f, value);
@@ -447,6 +631,52 @@ void Editor::scanAssetFiles() {
     std::sort(audioFiles.begin(), audioFiles.end());
     assetFilesScanned = true;
     app.assets().forgetFailures(); // una imagen nueva puede ser la que faltaba
+}
+
+// --- Selector de entidades (campos Entity) ---------------------------------------------
+
+bool Editor::drawEntityPicker(const char* label, Entity current, Entity& out) {
+    World& world = app.world();
+    out = current;
+    bool changed = false;
+    auto nameOf = [&](Entity e) { return entityLabel(e) + "  #" + std::to_string(e); };
+
+    std::string preview = current == NullEntity ? "(ninguna)"
+                        : world.isAlive(current) ? nameOf(current)
+                        : "(no existe: #" + std::to_string(current) + ")";
+    if (ImGui::BeginCombo(label, preview.c_str(), ImGuiComboFlags_HeightLarge)) {
+        if (ImGui::IsWindowAppearing()) {
+            entityFilter.clear();
+            ImGui::SetKeyboardFocusHere();
+        }
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::InputTextWithHint("##filter", "filtrar...", &entityFilter);
+        if (ImGui::Selectable("(ninguna)", current == NullEntity)) { out = NullEntity; changed = true; }
+        // Sangria segun la profundidad en la Jerarquia (el World ya esta en ese orden
+        // despues de cualquier cambio de jerarquia).
+        const std::string filter = toLower(entityFilter);
+        for (Entity e : world.entities()) {
+            std::string name = nameOf(e);
+            if (!filter.empty() && toLower(name).find(filter) == std::string::npos) continue;
+            int depth = 0;
+            for (Entity p = parentOf(world, e); p != NullEntity; p = parentOf(world, p)) ++depth;
+            ImGui::PushID((int)e);
+            if (filter.empty() && depth > 0) ImGui::Indent(depth * ImGui::GetStyle().IndentSpacing);
+            if (ImGui::Selectable(name.c_str(), e == current)) { out = e; changed = true; }
+            if (filter.empty() && depth > 0) ImGui::Unindent(depth * ImGui::GetStyle().IndentSpacing);
+            ImGui::PopID();
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SetItemTooltip("Elegir de la lista, o soltar aqui una entidad arrastrada desde la Jerarquia");
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(ENTITY_PAYLOAD)) {
+            out = *static_cast<const Entity*>(payload->Data);
+            changed = true;
+        }
+        ImGui::EndDragDropTarget();
+    }
+    return changed;
 }
 
 bool Editor::drawFilePicker(const char* label, const std::string& current, std::string& out, bool audio) {

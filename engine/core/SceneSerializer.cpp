@@ -8,6 +8,7 @@
 #include <set>
 #include <sstream>
 
+#include "core/Hierarchy.h"
 #include "core/Prefabs.h"
 
 static const char* SCENE_FORMAT = "sdl_engine_scene";
@@ -42,6 +43,7 @@ static Json writeField(const FieldInfo& f, const void* p) {
         return Json::array({ r.x, r.y, r.w, r.h });
     }
     case FieldType::IntList: return *static_cast<const std::vector<int>*>(p);
+    case FieldType::Entity:  return *static_cast<const Entity*>(p); // el id; 0 = ninguna
     case FieldType::IntGrid: {
         // Lista de filas: [[fila 0], [fila 1], ...]. El ancho es el largo de una fila.
         const IntGrid& g = *static_cast<const IntGrid*>(p);
@@ -96,6 +98,7 @@ static void readField(const FieldInfo& f, void* p, const Json& j) {
         break;
     }
     case FieldType::IntList: *static_cast<std::vector<int>*>(p) = j.get<std::vector<int>>(); break;
+    case FieldType::Entity:  *static_cast<Entity*>(p) = j.get<Entity>(); break;
     case FieldType::IntGrid: {
         // El ancho lo da la fila mas larga; si alguna fila quedo corta (editada a
         // mano), lo que le falta queda en -1 (vacio).
@@ -169,6 +172,8 @@ Json serializeEntity(const World& world, const ComponentRegistry& registry,
 
     Json out = Json::object();
     out["id"] = e;
+    // La jerarquia (ver Hierarchy.h): un padre que ya no existe no se escribe.
+    if (Entity parent = parentOf(world, e)) out["parent"] = parent;
     if (link) {
         out["prefab"] = link->path;
         // Componentes del prefab que esta instancia ya no tiene.
@@ -187,6 +192,11 @@ Json serializeEntity(const World& world, const ComponentRegistry& registry,
 void deserializeEntity(World& world, const ComponentRegistry& registry,
                        PrefabLibrary* prefabs, Entity e, const Json& entity) {
     if (!entity.is_object()) return;
+    // El padre puede no existir todavia (viene mas abajo en el archivo): se anota tal
+    // cual y fixHierarchy lo revisa al terminar de cargar la escena.
+    auto parent = entity.find("parent");
+    if (parent != entity.end() && parent->is_number_unsigned() && parent->get<Entity>() != e)
+        world.add<Parent>(e).entity = parent->get<Entity>();
     auto prefab = entity.find("prefab");
     if (prefab != entity.end() && prefab->is_string()) {
         std::string path = prefab->get<std::string>();
@@ -274,6 +284,7 @@ bool deserializeWorld(World& world, const ComponentRegistry& registry, PrefabLib
         }
         deserializeEntity(world, registry, prefabs, id, ej);
     }
+    fixHierarchy(world); // padres que no existen o ciclos (archivo editado a mano)
     return true;
 }
 
@@ -416,6 +427,7 @@ bool saveSceneFile(const std::string& path, const Json& scene) {
         const Json& ej = entities[i];
         out << (i == 0 ? "\n" : ",\n");
         out << "    { \"id\": " << ej.at("id").dump();
+        if (ej.contains("parent")) out << ", \"parent\": " << ej["parent"].dump();
         if (ej.contains("prefab")) out << ", \"prefab\": " << ej["prefab"].dump();
         if (ej.contains("removed")) out << ", \"removed\": " << ej["removed"].dump();
         out << ", \"components\": {";

@@ -22,7 +22,10 @@ union SDL_Event;
 //
 // Paneles (Dear ImGui, posicion fija):
 //   - Barra superior: Jugar/Detener, Pausa, Guardar, Deshacer/Rehacer, Abrir, grilla.
-//   - Jerarquia (izquierda): las entidades; crear, duplicar, borrar.
+//   - Jerarquia (izquierda): las entidades en arbol; crear, duplicar, borrar, y
+//     arrastrar una sobre otra para hacerla su hija o cambiarla de lugar (ver
+//     core/Hierarchy.h). Duplicar y borrar llevan a toda la rama, y mover al padre
+//     (en la vista o en el Inspector) mueve tambien a sus hijos.
 //   - Prefabs (izquierda, debajo): los .prefab.json, para colocar instancias.
 //   - Inspector (derecha): los componentes de la seleccionada, editables.
 //   - Vista (centro): pestanas "Escena" (camara libre del editor) y "Juego" (lo que
@@ -111,12 +114,18 @@ private:
     // assets/; los sonidos se pueden escuchar. true si se eligio o escribio otra ruta
     // (queda en out; quien llama decide si la aplica).
     bool drawFilePicker(const char* label, const std::string& current, std::string& out, bool audio);
+    // Campo Entity: lista de las entidades de la escena, o soltar una arrastrada desde
+    // la Jerarquia. true si se eligio otra (queda en out).
+    bool drawEntityPicker(const char* label, Entity current, Entity& out);
     void scanAssetFiles();
 
-    Entity createEntity();
+    Entity createEntity(Entity parent = NullEntity); // con padre: hija suya, en su posicion
     void duplicateSelected();
     void deleteSelected();
     std::string entityLabel(Entity e);
+    // Mueve a toda la rama de e (no a e) en 'delta': lo que se hace al mover al padre.
+    // Los textos del HUD estan en px de pantalla: solo se mueven con un padre del HUD.
+    void moveBranch(Entity e, Vec2 delta);
 
     // --- EditorViewport.cpp ---
     void drawViewport();
@@ -167,6 +176,9 @@ private:
     float uiScale = 1.0f;
 
     Entity selected = NullEntity;
+    Entity revealedSelection = NullEntity; // la Jerarquia ya abrio la rama de esta y la mostro
+    Entity hierarchyPress = NullEntity;    // se pulso sobre esta en la Jerarquia (se elige al soltar)
+    std::string entityFilter;              // texto del filtro del selector de entidades
 
     // Vista del editor (independiente de cualquier Camera de la escena).
     View sceneView;

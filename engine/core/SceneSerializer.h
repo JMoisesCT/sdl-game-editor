@@ -27,9 +27,13 @@ class PrefabLibrary;
 //       { "id": 2, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
 //           "Transform": {"position":[480,416]}
 //       }},
+//       { "id": 3, "parent": 1, "components": { ... }},
 //       ...
 //     ]
 //   }
+//
+// JERARQUIA (ver Hierarchy.h): una entidad hija lleva "parent" con el id de su padre.
+// El orden de la lista es el de la Jerarquia del editor.
 //
 // INSTANCIAS DE PREFAB (ver Prefabs.h): una entidad con "prefab" se arma primero con
 // los componentes del prefab y despues se le aplica lo que dice "components" encima.
@@ -60,11 +64,13 @@ class PrefabLibrary;
 
 using Json = nlohmann::ordered_json; // conserva el orden de las claves al escribir
 
-// Una entidad: { "id": N, ["prefab": ruta,] ["removed": [...],] "components": {...} }.
+// Una entidad: { "id": N, ["parent": P,] ["prefab": ruta,] ["removed": [...],]
+// "components": {...} }.
 Json serializeEntity(const World& world, const ComponentRegistry& registry,
                      PrefabLibrary* prefabs, Entity e);
-// Arma una entidad que YA existe con lo que dice ese JSON: el prefab (si tiene), los
-// componentes quitados y encima "components". No mira el "id".
+// Arma una entidad que YA existe con lo que dice ese JSON: el padre, el prefab (si
+// tiene), los componentes quitados y encima "components". No mira el "id". Sin
+// "parent", el padre que ya tuviera se conserva.
 void deserializeEntity(World& world, const ComponentRegistry& registry,
                        PrefabLibrary* prefabs, Entity e, const Json& entity);
 // Aplica una seccion "components" a una entidad que YA existe. Los componentes que ya

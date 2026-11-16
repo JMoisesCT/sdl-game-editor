@@ -11,6 +11,9 @@ Json PrefabLibrary::complete(const Json& components) const {
     World scratch;
     Entity e = scratch.create();
     deserializeComponents(scratch, registry, e, components);
+    // Una referencia a otra entidad (un campo Entity) es un id de UNA escena: en el
+    // prefab no significa nada. Queda vacia, y cada instancia la pone como override.
+    forEachEntityField(registry, scratch, e, [](Entity& ref) { ref = NullEntity; });
     return serializeEntity(scratch, registry, nullptr, e)["components"];
 }
 

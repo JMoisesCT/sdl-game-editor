@@ -213,7 +213,11 @@ void Editor::handleSceneInput(Vec2 imagePos, bool hovered) {
                     p.x = std::round(p.x / gridSize) * gridSize;
                     p.y = std::round(p.y / gridSize) * gridSize;
                 }
-                if (Transform* t = world.get<Transform>(selected)) t->position = p;
+                if (Transform* t = world.get<Transform>(selected)) {
+                    Vec2 delta{ p.x - t->position.x, p.y - t->position.y };
+                    t->position = p;
+                    moveBranch(selected, delta); // los hijos van con el padre
+                }
             }
         }
     }

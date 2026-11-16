@@ -30,3 +30,22 @@ const ComponentInfo* ComponentRegistry::findByTypeId(std::size_t typeId) const {
         if (info->typeId == typeId) return info.get();
     return nullptr;
 }
+
+static void visitEntityFields(const std::vector<FieldInfo>& fields, void* object,
+                              const std::function<void(Entity&)>& fn) {
+    for (const FieldInfo& f : fields) {
+        if (f.type == FieldType::Entity) {
+            fn(*static_cast<Entity*>(f.in(object)));
+        } else if (f.type == FieldType::List) {
+            void* list = f.in(object);
+            const std::size_t n = f.listSize(list);
+            for (std::size_t i = 0; i < n; ++i) visitEntityFields(f.elementFields, f.listElement(list, i), fn);
+        }
+    }
+}
+
+void forEachEntityField(const ComponentRegistry& registry, World& world, Entity e,
+                        const std::function<void(Entity&)>& fn) {
+    for (const auto& info : registry.all())
+        if (void* c = info->get(world, e)) visitEntityFields(info->fields, c, fn);
+}

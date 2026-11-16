@@ -27,6 +27,7 @@
     <ClCompile Include="engine\components\PhysicsComponents.cpp" />
     <ClCompile Include="engine\components\PresentationComponents.cpp" />
     <ClCompile Include="engine\components\RuleComponents.cpp" />
+    <ClCompile Include="engine\core\Hierarchy.cpp" />
     <ClCompile Include="engine\core\Prefabs.cpp" />
     <ClCompile Include="engine\core\Reflection.cpp" />
     <ClCompile Include="engine\core\SceneSerializer.cpp" />
@@ -72,6 +73,7 @@
     <ClInclude Include="engine\components\PresentationComponents.h" />
     <ClInclude Include="engine\components\RuleComponents.h" />
     <ClInclude Include="engine\core\Entity.h" />
+    <ClInclude Include="engine\core\Hierarchy.h" />
     <ClInclude Include="engine\core\Math.h" />
     <ClInclude Include="engine\core\Prefabs.h" />
     <ClInclude Include="engine\core\Reflection.h" />

@@ -32,8 +32,9 @@ editando escenas en un editor propio, sin pelear con la API cruda de SDL.
   Con esa lista el motor lo guarda y carga en JSON, y el Inspector del editor lo muestra y
   edita. Un componente nuevo aparece en el editor **sin tocar el editor**. Un campo puede
   ser también una **lista de structs** (los clips de una animación), declarada con
-  `.list(...)`, y un texto puede ofrecer **opciones** (`.choices(...)`) que el Inspector
-  muestra como lista desplegable.
+  `.list(...)`; un texto puede ofrecer **opciones** (`.choices(...)`) que el Inspector
+  muestra como lista desplegable, y un campo de tipo `Entity` es una **referencia a otra
+  entidad** de la escena (se elige de una lista o arrastrándola desde la Jerarquía).
 - **La aplicación es dueña del bucle.** El juego no escribe su `main` de SDL: registra sus
   componentes y sistemas, y abre una escena.
 
@@ -48,10 +49,18 @@ editando escenas en un editor propio, sin pelear con la API cruda de SDL.
   }
   ```
 
+### Tu propio código
+
+Para sumar comportamiento propio con valores editables en el Inspector (un componente, su
+registro y un sistema, todo en `game/`), ver la guía paso a paso
+**[docs/GUIA_CODIGO_PROPIO.md](docs/GUIA_CODIGO_PROPIO.md)**: un ejemplo completo, los
+tipos de campo, referencias a otras entidades, condiciones para animación y sonido, y los
+errores más comunes.
+
 ## El editor
 
-- **Jerarquía** (izquierda): las entidades de la escena; crear, duplicar y borrar. Las
-  instancias de prefab se ven en azul.
+- **Jerarquía** (izquierda): las entidades de la escena en **árbol**; crear, duplicar y
+  borrar. Las instancias de prefab se ven en azul. Ver [Jerarquía](#jerarquía).
 - **Prefabs** (izquierda, abajo): los prefabs de `assets/`; doble clic o arrastrar a la
   vista para colocar uno.
 - **Inspector** (derecha): los componentes de la entidad elegida, editables; agregar y
@@ -61,6 +70,26 @@ editando escenas en un editor propio, sin pelear con la API cruda de SDL.
   - **Juego**: lo que ve el jugador, a la resolución del juego.
 - **Jugar / Pausa / Detener**: al detener, la escena vuelve exactamente a como estaba antes
   de jugar.
+
+### Jerarquía
+
+Las entidades se pueden **anidar** para ordenar la escena en grupos ("Frutas", "Trampas",
+"HUD"...). Es una jerarquía de **organización**: el `Transform` de cada entidad sigue siendo
+su posición en el mundo, así que la física, el dibujo y las reglas no cambian.
+
+- **Arrastra** una entidad sobre otra para hacerla su **hija**; sobre el borde de arriba o de
+  abajo de otra, para ponerla **antes** o **después** (como hermana). Soltarla en el hueco
+  libre de abajo la saca de su grupo. El menú del clic derecho ofrece **Crear hija** y
+  **Sacar del grupo**.
+- Un grupo puede ser una entidad vacía (**+ Nueva**, sin sprite) que solo sirve de carpeta.
+- **Mover al padre** (en la vista o en el Inspector) mueve también a toda su rama, y
+  **Duplicar** o **Borrar** se llevan la rama entera.
+- **Jugando**, los hijos **no** siguen al padre (si un sistema destruye al padre, los hijos
+  quedan sueltos; para llevárselos, `destroyWithChildren`).
+- Un prefab es **una** entidad: al crear un prefab desde un padre, sus hijas no entran.
+
+En el archivo, una hija lleva el id de su padre: `{ "id": 7, "parent": 3, "components": {...} }`,
+y las entidades se guardan en el orden del árbol.
 
 ### Tilemaps
 
@@ -225,6 +254,7 @@ app.conditions().add("attacking", [](World& w, Entity e) { /* ... */ });
 | Mover la vista | Clic derecho o medio arrastrando |
 | Zoom hacia el cursor | Rueda del ratón |
 | Centrar en la seleccionada | `F` (o doble clic en la Jerarquía) |
+| Anidar / reordenar entidades | Arrastrar en la Jerarquía (al medio: hija; al borde: antes o después) |
 | Jugar / detener | `Ctrl+P` |
 | Guardar | `Ctrl+S` |
 | Deshacer / rehacer | `Ctrl+Z` / `Ctrl+Y` o `Ctrl+Shift+Z` |
@@ -239,7 +269,7 @@ Con el argumento `--play`, el ejecutable abre la escena y la juega directamente,
 
 ```
 engine/
-  core/        Entity, World (ECS), Reflection, SceneSerializer, Prefabs
+  core/        Entity, World (ECS), Reflection, SceneSerializer, Prefabs, Hierarchy
   components/  componentes del motor (EntityInfo, Transform, Sprite, Tilemap, Camera,
                RigidBody2D, BoxCollider, PlatformerMotor, Health, Hazard, KillZone,
                Collectible, Checkpoint, Respawn, SpriteAnimator, AnimatorStateMachine,
@@ -255,6 +285,7 @@ engine/
 game/          código del juego de ejemplo (PlatformerControl: teclas -> intención;
                PlatformerRules: frutas, meta, HUD y la condición goalReached)
 assets/        sprites, tilesets, prefabs (assets/prefabs/) y escenas (assets/scenes/)
+docs/          GUIA_CODIGO_PROPIO.md: cómo sumar componentes y sistemas propios
 main.cpp       registra los sistemas en orden y abre la escena
 ```
 

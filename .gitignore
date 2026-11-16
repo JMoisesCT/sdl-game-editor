@@ -6,6 +6,8 @@
 # --- Documentacion / contexto: NO se sube (solo el motor, no los prompts) ---
 *.md
 !README.md
+# La guia para los alumnos es documentacion publica: si se sube.
+!docs/GUIA_CODIGO_PROPIO.md
 # Si en el futuro quieres subir uno publico, descomenta y ajusta:
 # !README.md
 

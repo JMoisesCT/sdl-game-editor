@@ -38,8 +38,12 @@
 // en fieldTypeOf, en el guardado (SceneSerializer.cpp) y en el Inspector.
 //   IntList = std::vector<int> (p. ej. los tiles solidos de un Tilemap).
 //   IntGrid = grilla de enteros (las celdas de un Tilemap; ver Math.h).
+//   Entity  = referencia a OTRA entidad de la escena (un miembro de tipo Entity). Se
+//             guarda como su id (0 = ninguna) y el Inspector ofrece elegirla de una
+//             lista o soltarla arrastrandola desde la Jerarquia. Puede apuntar a una
+//             entidad que ya no existe: se pregunta con world.isAlive.
 //   List    = std::vector<E> de structs (se declara con list(), no con field()).
-enum class FieldType { Bool, Int, Float, String, Vec2, Color, IntRect, IntList, IntGrid, List };
+enum class FieldType { Bool, Int, Float, String, Vec2, Color, IntRect, IntList, IntGrid, Entity, List };
 
 // Pista para el editor: como mostrar el campo (el tipo sigue siendo el mismo).
 enum class FieldHint {
@@ -106,6 +110,8 @@ constexpr FieldType fieldTypeOf() {
     else if constexpr (std::is_same_v<M, IntRect>) return FieldType::IntRect;
     else if constexpr (std::is_same_v<M, std::vector<int>>) return FieldType::IntList;
     else if constexpr (std::is_same_v<M, IntGrid>) return FieldType::IntGrid;
+    // Entity es un std::uint32_t: cualquier miembro de ese tipo es una referencia.
+    else if constexpr (std::is_same_v<M, Entity>) return FieldType::Entity;
     else static_assert(sizeof(M) == 0, "Tipo de campo no soportado (una lista de structs va con list())");
 }
 
@@ -223,3 +229,9 @@ private:
     // moverse cuando el vector crece.
     std::vector<std::unique_ptr<ComponentInfo>> infos;
 };
+
+// Llama a fn con cada campo Entity de los componentes registrados de e (tambien los
+// de los elementos de una lista). fn puede cambiar el valor: asi se rehacen las
+// referencias de una copia (duplicar una rama) o se vacian (al guardar un prefab).
+void forEachEntityField(const ComponentRegistry& registry, World& world, Entity e,
+                        const std::function<void(Entity&)>& fn);

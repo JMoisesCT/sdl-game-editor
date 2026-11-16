@@ -60,6 +60,9 @@
     <ClCompile Include="engine\components\RuleComponents.cpp">
       <Filter>engine\components</Filter>
     </ClCompile>
+    <ClCompile Include="engine\core\Hierarchy.cpp">
+      <Filter>engine\core</Filter>
+    </ClCompile>
     <ClCompile Include="engine\core\Prefabs.cpp">
       <Filter>engine\core</Filter>
     </ClCompile>
@@ -185,6 +188,9 @@
       <Filter>engine\components</Filter>
     </ClInclude>
     <ClInclude Include="engine\core\Entity.h">
+      <Filter>engine\core</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\core\Hierarchy.h">
       <Filter>engine\core</Filter>
     </ClInclude>
     <ClInclude Include="engine\core\Math.h">

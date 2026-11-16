@@ -14,6 +14,7 @@
 
 #include "app/Application.h"
 #include "components/CoreComponents.h"
+#include "core/Hierarchy.h"
 #include "core/Prefabs.h"
 #include "core/Reflection.h"
 #include "platform/AssetManager.h"
@@ -238,7 +239,9 @@ void Editor::createPrefabFromSelected(const std::string& name) {
     beginChange(); // enlazarla cambia como se guarda en la escena
     world.add<PrefabInstance>(selected).path = path;
     scanPrefabFiles();
-    setStatus("Prefab creado: " + path);
+    // No hay prefabs anidados: el prefab es solo esta entidad, sin su rama.
+    if (descendantsOf(world, selected).empty()) setStatus("Prefab creado: " + path);
+    else setStatus("Prefab creado: " + path + " (sus hijas no entran en el prefab)");
 }
 
 void Editor::applyToPrefab() {
