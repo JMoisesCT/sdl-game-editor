@@ -160,7 +160,14 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="UserMacros">
+    <!-- Folder with the SDL3 packages (SDL3, SDL3_image, SDL3_ttf, SDL3_mixer): deps\ in
+         the repo, or the SGE_DEPS_DIR environment variable if it is set. If they are
+         missing, the first build downloads them (tools\get_sdl.ps1). -->
+    <SgeDepsDir Condition="'$(SgeDepsDir)' == '' and '$(SGE_DEPS_DIR)' != ''">$(SGE_DEPS_DIR)</SgeDepsDir>
+    <SgeDepsDir Condition="'$(SgeDepsDir)' == ''">$(MSBuildProjectDirectory)\deps\</SgeDepsDir>
+    <SgeDepsDir>$([MSBuild]::EnsureTrailingSlash('$(SgeDepsDir)'))</SgeDepsDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -193,23 +200,23 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\SDL3\include;D:\SDL3_image\include;D:\SDL3_mixer\include;D:\SDL3_ttf\include;$(ProjectDir)engine;$(ProjectDir)engine\third_party</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SgeDepsDir)SDL3\include;$(SgeDepsDir)SDL3_image\include;$(SgeDepsDir)SDL3_mixer\include;$(SgeDepsDir)SDL3_ttf\include;$(ProjectDir)engine;$(ProjectDir)engine\third_party</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\SDL3\lib\x64;D:\SDL3_image\lib\x64;D:\SDL3_ttf\lib\x64;D:\SDL3_mixer\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SgeDepsDir)SDL3\lib\x64;$(SgeDepsDir)SDL3_image\lib\x64;$(SgeDepsDir)SDL3_ttf\lib\x64;$(SgeDepsDir)SDL3_mixer\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>SDL3.lib;SDL3_image.lib;SDL3_ttf.lib;SDL3_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y "D:\SDL3\lib\x64\SDL3.dll" "$(OutDir)"
-xcopy /y "D:\SDL3_image\lib\x64\SDL3_image.dll" "$(OutDir)"
- xcopy /y "D:\SDL3_ttf\lib\x64\SDL3_ttf.dll" "$(OutDir)"
- xcopy /y "D:\SDL3_mixer\lib\x64\SDL3_mixer.dll" "$(OutDir)"
- xcopy /y "D:\SDL3_mixer\lib\x64\optional\libogg-0.dll" "$(OutDir)"
- xcopy /y "D:\SDL3_mixer\lib\x64\optional\libopus-0.dll" "$(OutDir)"
- xcopy /y "D:\SDL3_mixer\lib\x64\optional\libopusfile-0.dll" "$(OutDir)"
+      <Command>xcopy /y "$(SgeDepsDir)SDL3\lib\x64\SDL3.dll" "$(OutDir)"
+xcopy /y "$(SgeDepsDir)SDL3_image\lib\x64\SDL3_image.dll" "$(OutDir)"
+ xcopy /y "$(SgeDepsDir)SDL3_ttf\lib\x64\SDL3_ttf.dll" "$(OutDir)"
+ xcopy /y "$(SgeDepsDir)SDL3_mixer\lib\x64\SDL3_mixer.dll" "$(OutDir)"
+ xcopy /y "$(SgeDepsDir)SDL3_mixer\lib\x64\optional\libogg-0.dll" "$(OutDir)"
+ xcopy /y "$(SgeDepsDir)SDL3_mixer\lib\x64\optional\libopus-0.dll" "$(OutDir)"
+ xcopy /y "$(SgeDepsDir)SDL3_mixer\lib\x64\optional\libopusfile-0.dll" "$(OutDir)"
  xcopy /Y /E /I "$(ProjectDir)assets" "$(OutDir)assets"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -221,7 +228,7 @@ xcopy /y "D:\SDL3_image\lib\x64\SDL3_image.dll" "$(OutDir)"
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\SDL3\include;D:\SDL3_image\include;D:\SDL3_mixer\include;D:\SDL3_ttf\include;$(ProjectDir)engine;$(ProjectDir)engine\third_party</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SgeDepsDir)SDL3\include;$(SgeDepsDir)SDL3_image\include;$(SgeDepsDir)SDL3_mixer\include;$(SgeDepsDir)SDL3_ttf\include;$(ProjectDir)engine;$(ProjectDir)engine\third_party</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -229,21 +236,26 @@ xcopy /y "D:\SDL3_image\lib\x64\SDL3_image.dll" "$(OutDir)"
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>D:\SDL3\lib\x64;D:\SDL3_image\lib\x64;D:\SDL3_ttf\lib\x64;D:\SDL3_mixer\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SgeDepsDir)SDL3\lib\x64;$(SgeDepsDir)SDL3_image\lib\x64;$(SgeDepsDir)SDL3_ttf\lib\x64;$(SgeDepsDir)SDL3_mixer\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>SDL3.lib;SDL3_image.lib;SDL3_ttf.lib;SDL3_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y "D:\SDL3\lib\x64\SDL3.dll" "$(OutDir)"
- xcopy /y "D:\SDL3_image\lib\x64\SDL3_image.dll" "$(OutDir)"
- xcopy /y "D:\SDL3_ttf\lib\x64\SDL3_ttf.dll" "$(OutDir)"
- xcopy /y "D:\SDL3_mixer\lib\x64\SDL3_mixer.dll" "$(OutDir)"
- xcopy /y "D:\SDL3_mixer\lib\x64\optional\libogg-0.dll" "$(OutDir)"
- xcopy /y "D:\SDL3_mixer\lib\x64\optional\libopus-0.dll" "$(OutDir)"
- xcopy /y "D:\SDL3_mixer\lib\x64\optional\libopusfile-0.dll" "$(OutDir)"
+      <Command>xcopy /y "$(SgeDepsDir)SDL3\lib\x64\SDL3.dll" "$(OutDir)"
+ xcopy /y "$(SgeDepsDir)SDL3_image\lib\x64\SDL3_image.dll" "$(OutDir)"
+ xcopy /y "$(SgeDepsDir)SDL3_ttf\lib\x64\SDL3_ttf.dll" "$(OutDir)"
+ xcopy /y "$(SgeDepsDir)SDL3_mixer\lib\x64\SDL3_mixer.dll" "$(OutDir)"
+ xcopy /y "$(SgeDepsDir)SDL3_mixer\lib\x64\optional\libogg-0.dll" "$(OutDir)"
+ xcopy /y "$(SgeDepsDir)SDL3_mixer\lib\x64\optional\libopus-0.dll" "$(OutDir)"
+ xcopy /y "$(SgeDepsDir)SDL3_mixer\lib\x64\optional\libopusfile-0.dll" "$(OutDir)"
  xcopy /Y /E /I "$(ProjectDir)assets" "$(OutDir)assets"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <!-- Downloads the SDL3 packages before compiling if any of them is missing. -->
+  <Target Name="SgeGetSdl" BeforeTargets="PrepareForBuild" Condition="!Exists('$(SgeDepsDir)SDL3\include') or !Exists('$(SgeDepsDir)SDL3_image\include') or !Exists('$(SgeDepsDir)SDL3_ttf\include') or !Exists('$(SgeDepsDir)SDL3_mixer\include')">
+    <Message Importance="high" Text="SDL3 packages not found in $(SgeDepsDir): downloading them (only the first time)..." />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\tools\get_sdl.ps1&quot; -Dest &quot;$(SgeDepsDir.TrimEnd('\'))&quot;" />
+  </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>

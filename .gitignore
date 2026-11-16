@@ -425,7 +425,7 @@ imgui.ini
 # --- CMake ---
 # Build folders of the presets (out/build/<preset>) and of "cmake --install".
 /out/
-# SDL development packages unzipped by hand for the CMake build (SGE_DEPS_DIR).
+# SDL3 packages (tools/get_sdl.ps1 downloads them here; the .vcxproj and CMake use them).
 /deps/
 # Personal presets (your own paths).
 CMakeUserPresets.json

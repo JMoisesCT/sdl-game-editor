@@ -324,23 +324,37 @@ assets/        sprites, tilesets, audio, prefabs (assets/prefabs/) and scenes (a
 docs/          GUIA_CODIGO_PROPIO.md: how to add your own components and systems
 main.cpp       registers the systems in order and opens the scene
 CMakeLists.txt the build (with CMakePresets.json); sdl-game-editor.vcxproj, for VS 2026
+tools/         get_sdl.ps1: downloads the prebuilt SDL3 packages into deps/ (Windows)
 ```
 
 ## Building and running
 
-The project builds with **CMake** (`CMakeLists.txt` and `CMakePresets.json`), so you can
-use the IDE or editor you like: Visual Studio, VS Code, CLion, Qt Creator or just the
+**The quickest way (Windows):** clone or download the repo, open
+`sdl-game-editor.vcxproj` in Visual Studio 2026 (or the folder, in Visual Studio 2022 /
+2026) and press **F5**. There is nothing to install or configure: the first build
+downloads SDL into the repo's `deps/` folder.
+
+The project also builds with **CMake** (`CMakeLists.txt` and `CMakePresets.json`), so you
+can use the IDE or editor you like: Visual Studio, VS Code, CLion, Qt Creator or just the
 command line. It is written for Windows, Linux and macOS (so far it has been tested on
 Windows, with MSVC and with MinGW-w64 GCC).
 
 ### Requirements
 
 - A **C++17** compiler: MSVC (Visual Studio 2022 or later), GCC / MinGW-w64 or Clang.
-- **CMake 3.24** or later and **Ninja** (Visual Studio and CLion already include both).
-- **Git**, so CMake can download SDL if it is not installed.
-- The **SDL3 family**. You do not have to install anything: whatever is missing is
-  downloaded from GitHub and built together with the project on the first configure
-  (it takes a few minutes, only the first time for each build folder). The versions used:
+- For CMake: **CMake 3.24** or later and **Ninja** (Visual Studio and CLion already include
+  both).
+- An **Internet connection** the first time, to download SDL (and **Git** outside
+  Windows).
+- The **SDL3 family**. You do not have to install it, it is downloaded when missing:
+  - **On Windows**, the official prebuilt packages (the `-VC` zips from GitHub, a few
+    MB) are unzipped into `deps/SDL3`, `deps/SDL3_image`, `deps/SDL3_ttf` and
+    `deps/SDL3_mixer` (`deps/` is ignored by git). The `.vcxproj` does it on its first
+    build and CMake on its first configure; both use `tools/get_sdl.ps1`, which can also
+    be run by hand.
+  - **On Linux and macOS** (or if that download fails), CMake downloads the sources from
+    GitHub and builds them together with the project (a few minutes, only the first time
+    for each build folder).
 
   | Library | Version | Used for |
   |---|---|---|
@@ -349,42 +363,42 @@ Windows, with MSVC and with MinGW-w64 GCC).
   | **SDL3_ttf** | **3.2.2** | text |
   | **SDL3_mixer** | **3.2.4** | audio |
 
-  If you prefer to use them already built:
-  - Unzip the official **development packages** (`-VC` for Visual Studio, `-mingw` for
-    MinGW) into a `deps/` folder in the repo (ignored by git), or anywhere and pass that
-    folder with `-DSGE_DEPS_DIR=<folder>` (for example `-DSGE_DEPS_DIR=D:/` with `D:\SDL3`,
-    `D:\SDL3_image`...). The folders can keep their version in the name
-    (`deps/SDL3-3.4.14`...).
-  - Or install them with a package manager (vcpkg, MSYS2, Homebrew, your Linux
-    distribution...): CMake finds them through `CMAKE_PREFIX_PATH` or the system paths.
-  - `-DSGE_FETCH_SDL=OFF` turns the download off (configuring fails if something is
+  To use copies you already have instead:
+  - The **`SGE_DEPS_DIR` environment variable** (or `-DSGE_DEPS_DIR=<folder>` in CMake)
+    points to another folder with the packages unzipped, for example `D:\` with
+    `D:\SDL3`, `D:\SDL3_image`... For the `.vcxproj` the folders must have exactly those
+    names; CMake also accepts them with the version (`SDL3-3.4.14`...) and the `-mingw`
+    packages.
+  - With CMake, the ones installed with a package manager (vcpkg, MSYS2, Homebrew, your
+    Linux distribution...) are found through `CMAKE_PREFIX_PATH` or the system paths.
+  - `-DSGE_FETCH_SDL=OFF` turns CMake's download off (configuring fails if something is
     missing).
 
-  The downloaded SDL3_image and SDL3_mixer are built without the formats that need extra
-  libraries: images and WAV, OGG Vorbis, FLAC and MP3 work; Opus, MOD, WavPack and the
-  like do not (the sample only uses PNG and WAV). On Linux, building SDL from source needs
-  the development packages of your desktop (X11 / Wayland, ALSA / PulseAudio /
-  PipeWire...): see SDL's `docs/README-linux.md`.
+  When CMake builds SDL3_image and SDL3_mixer from source, it leaves out the formats that
+  need extra libraries: images and WAV, OGG Vorbis, FLAC and MP3 work; Opus, MOD, WavPack
+  and the like do not (the sample only uses PNG and WAV). On Linux, building SDL from
+  source needs the development packages of your desktop (X11 / Wayland, ALSA / PulseAudio
+  / PipeWire...): see SDL's `docs/README-linux.md`.
 - **nlohmann/json** and **Dear ImGui** are already in `engine/third_party/`: nothing to
   install.
 
 ### With an IDE
 
-- **Visual Studio 2022 / 2026**: **File > Open > Folder...** and choose the repo. Pick the
-  `debug` or `release` configuration in the toolbar, `sdl-game-editor.exe` as the startup
-  item, and run with F5. If you prefer a classic solution: `cmake --preset vs2026` (or
-  `vs2022`) generates it in `out/build/vs2026/` (`.slnx` in VS 2026, `.sln` in VS 2022).
+- **Visual Studio 2026 with `sdl-game-editor.vcxproj`**: open it, choose **x64** (Debug or
+  Release) and press F5. Until the first build has downloaded SDL, IntelliSense marks the
+  SDL headers as missing. It does not pick up new files by itself: add them to the
+  project.
+- **Visual Studio 2022 / 2026 with CMake**: **File > Open > Folder...** and choose the repo.
+  Pick the `debug` or `release` configuration in the toolbar, `sdl-game-editor.exe` as the
+  startup item, and run with F5. If you prefer a classic solution: `cmake --preset vs2026`
+  (or `vs2022`) generates it in `out/build/vs2026/` (`.slnx` in VS 2026, `.sln` in VS
+  2022).
 - **VS Code**: install the **C/C++** and **CMake Tools** extensions, open the folder, pick a
   configure preset when asked (`debug`, `release`, or `mingw-debug` / `mingw-release` to
   force MinGW's GCC on Windows) and use **Build** and **Run** / **Debug** in the status
   bar.
 - **CLion**: open the folder; in **Settings > Build, Execution, Deployment > CMake** enable
   the `debug` / `release` presets.
-- **Visual Studio 2026 with `sdl-game-editor.vcxproj`**: still there, as before. It
-  expects the VC packages unzipped in `D:\SDL3`, `D:\SDL3_image`, `D:\SDL3_ttf` and
-  `D:\SDL3_mixer` (if you use other paths, adjust `AdditionalIncludeDirectories`,
-  `AdditionalLibraryDirectories` and the `PostBuildEvent`). It does not pick up new files
-  by itself: add them to the project.
 
 ### From the command line
 

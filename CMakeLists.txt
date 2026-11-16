@@ -8,12 +8,13 @@
 #
 # The SDL3 family (SDL3, SDL3_image, SDL3_ttf, SDL3_mixer) is looked up first among the
 # installed packages (CMAKE_PREFIX_PATH, SGE_DEPS_DIR, the system, vcpkg, Homebrew, MSYS2...).
-# Whatever is not found is downloaded from GitHub and built together with the project
-# (SGE_FETCH_SDL, ON by default): the first configure takes a few minutes, the next ones
-# do not. See "Building and running" in README.md.
+# Whatever is not found is downloaded (SGE_FETCH_SDL, ON by default): on Windows, the
+# official prebuilt packages into deps/ (tools/get_sdl.ps1, the same ones the .vcxproj
+# uses); elsewhere, or if that fails, the sources from GitHub, built together with the
+# project (the first configure takes a few minutes). See "Building and running" in
+# README.md.
 #
-# sdl-game-editor.vcxproj stays as an alternative for Visual Studio 2026 with the SDL
-# packages unzipped in D:\.
+# sdl-game-editor.vcxproj stays as an alternative for Visual Studio 2026.
 
 cmake_minimum_required(VERSION 3.24)
 project(sdl-game-editor LANGUAGES C CXX)
@@ -47,7 +48,7 @@ set(SGE_SDL_IMAGE_TAG "release-3.4.4")
 set(SGE_SDL_TTF_TAG   "release-3.2.2")
 set(SGE_SDL_MIXER_TAG "release-3.2.4")
 
-option(SGE_FETCH_SDL "Download and build the SDL3 libraries that are not installed" ON)
+option(SGE_FETCH_SDL "Download the SDL3 libraries that are not installed" ON)
 
 # A folder with the unzipped SDL development packages (for example the VC or mingw zips
 # from GitHub: deps/SDL3-3.4.14, deps/SDL3_image-3.4.4...). By default, deps/ in the repo.
@@ -60,6 +61,27 @@ if(EXISTS "${SGE_DEPS_DIR}")
     # find_package also looks in <prefix>/<Name>*/cmake, so the package folders can keep
     # their version in the name.
     list(APPEND CMAKE_PREFIX_PATH "${SGE_DEPS_DIR}")
+endif()
+
+# Windows: if something is missing, the official prebuilt packages are downloaded into
+# SGE_DEPS_DIR (much faster than building SDL; they also work with MinGW).
+if(WIN32 AND SGE_FETCH_SDL AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    find_package(SDL3 3.4 CONFIG QUIET COMPONENTS SDL3)
+    find_package(SDL3_image 3.4 CONFIG QUIET)
+    find_package(SDL3_ttf 3.2 CONFIG QUIET)
+    find_package(SDL3_mixer 3.2 CONFIG QUIET)
+    if(NOT (SDL3_FOUND AND SDL3_image_FOUND AND SDL3_ttf_FOUND AND SDL3_mixer_FOUND))
+        message(STATUS "Downloading the prebuilt SDL3 packages into ${SGE_DEPS_DIR}")
+        execute_process(
+            COMMAND powershell -NoProfile -ExecutionPolicy Bypass
+                    -File "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_sdl.ps1" -Dest "${SGE_DEPS_DIR}"
+            RESULT_VARIABLE _get_sdl_result)
+        if(_get_sdl_result EQUAL 0)
+            list(APPEND CMAKE_PREFIX_PATH "${SGE_DEPS_DIR}")
+        else()
+            message(STATUS "Could not download them: the sources will be built instead")
+        endif()
+    endif()
 endif()
 
 include(FetchContent)
