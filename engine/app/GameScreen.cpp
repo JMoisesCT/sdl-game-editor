@@ -27,7 +27,7 @@ bool parseGameScale(const char* text, GameScale& scale) {
 }
 
 namespace {
-    // Limpia con el color de la camara y dibuja el mundo y despues el HUD.
+    // Clears with the camera's color and draws the world and then the HUD.
     void drawFrame(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& view,
                    const Color& bg, const View& hud) {
         SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255);
@@ -36,7 +36,7 @@ namespace {
         renderScreenTexts(world, assets, renderer, hud);
     }
 
-    // Zoom y pixelSize de la camara que usa el juego (la primera, como findCameraView).
+    // Zoom and pixelSize of the camera the game uses (the first one, like findCameraView).
     void cameraSettings(World& world, float& zoom, float& pixel) {
         zoom = pixel = 1.0f;
         bool found = false;
@@ -57,19 +57,19 @@ bool drawGameScreen(World& world, AssetManager& assets, SDL_Renderer* renderer, 
         SDL_SetRenderTarget(renderer, nullptr);
         return false;
     }
-    // Tamano de la imagen al ajustarla al area (Ajustar y Pixel perfecto), en px enteros:
-    // es el que se va a dibujar de verdad.
+    // Size of the image when fitted to the area (Fit and Pixel perfect), in whole px:
+    // it is the one that will actually be drawn.
     const float fitW = std::fmax(1.0f, std::round(gameWidth * fit));
     const float fitH = std::fmax(1.0f, std::round(gameHeight * fit));
 
     View view;
     Color bg;
     if (mode == GameScale::PixelPerfect) {
-        // Directo al tamano mostrado, con el zoom redondeado a pixeles enteros del dibujo.
-        // Si al redondear hacia abajo entra MAS mundo que en el juego, el lienzo se achica
-        // a la misma porcion de mundo (bandas un poco mas anchas): si no, se veria lo que
-        // la camara esconde, como lo que hay mas alla del borde del nivel. Si entra menos,
-        // el lienzo ocupa el area y se ve un poco menos de mundo.
+        // Straight at the displayed size, with the zoom rounded to whole art pixels.
+        // If rounding down lets MORE of the world in than in the game, the canvas shrinks to
+        // the same portion of the world (slightly wider bars): otherwise, what the camera
+        // hides would show, such as what lies beyond the edge of the level. If less fits,
+        // the canvas fills the area and slightly less of the world is visible.
         float camZoom = 1.0f, pixel = 1.0f;
         cameraSettings(world, camZoom, pixel);
         out.hasCamera = findScaledCameraView(world, (int)fitW, (int)fitH, fit, true, view, &bg);
@@ -78,19 +78,19 @@ bool drawGameScreen(World& world, AssetManager& assets, SDL_Renderer* renderer, 
         if (!canvas.begin((int)w, (int)h)) return false;
         view.width = (int)w;
         view.height = (int)h;
-        // El HUD (en px de la pantalla del juego) ocupa el lienzo entero, como en el juego.
+        // The HUD (in game screen px) covers the whole canvas, as in the game.
         View hud = screenView(gameWidth, gameHeight);
         hud.zoom = w / gameWidth;
         hud.width = (int)w;
         hud.height = (int)h;
         drawFrame(world, assets, renderer, view, bg, hud);
-        out.texture = canvas.scaledFor(w, h); // mismo tamano: vecino mas cercano, 1:1
+        out.texture = canvas.scaledFor(w, h); // same size: nearest neighbor, 1:1
         out.pixel = view.zoom * pixel;
         out.textureW = out.srcW = out.dstW = w;
         out.textureH = out.srcH = out.dstH = h;
         out.scale = w / gameWidth;
     } else {
-        // A la resolucion del juego; despues, escalado (Ajustar) o 1:1 (100%).
+        // At the game's resolution; then scaled (Fit) or 1:1 (100%).
         if (!canvas.begin(gameWidth, gameHeight)) return false;
         out.hasCamera = findCameraView(world, gameWidth, gameHeight, view, &bg);
         drawFrame(world, assets, renderer, view, bg, screenView(gameWidth, gameHeight));
@@ -106,7 +106,7 @@ bool drawGameScreen(World& world, AssetManager& assets, SDL_Renderer* renderer, 
             out.scale = fitW / gameWidth;
         } else {
             out.texture = canvas.scaledFor((float)gameWidth, (float)gameHeight);
-            // Lo que no cabe se recorta, parejo por los dos lados.
+            // Whatever does not fit is cropped, evenly on both sides.
             out.dstW = out.srcW = std::fmin((float)gameWidth, std::floor(areaW));
             out.dstH = out.srcH = std::fmin((float)gameHeight, std::floor(areaH));
             out.srcX = std::floor((gameWidth - out.srcW) * 0.5f);

@@ -3,90 +3,90 @@
 
 class ComponentRegistry;
 
-// Componentes de fisica y de movimiento de personaje. Igual que los basicos, son SOLO
-// datos: los mueve PhysicsSystem (RigidBody2D, BoxCollider) y PlatformerMotorSystem
-// (PlatformerMotor). Los campos que no se registran en PhysicsComponents.cpp son estado
-// de ejecucion: no se guardan ni se ven en el Inspector, y los escriben los sistemas.
+// Physics and character movement components. Like the basic ones, they are ONLY
+// data: PhysicsSystem moves them (RigidBody2D, BoxCollider) and PlatformerMotorSystem
+// (PlatformerMotor). Fields not registered in PhysicsComponents.cpp are runtime
+// state: they are not saved or shown in the Inspector, and the systems write them.
 
-// Cuerpo DINAMICO: la fisica lo mueve con su velocidad y su gravedad. Una entidad sin
-// RigidBody2D es estatica (una pared, una plataforma): si tiene BoxCollider, frena a
-// los cuerpos, pero nunca se mueve sola.
+// DYNAMIC body: physics moves it with its velocity and gravity. An entity without a
+// RigidBody2D is static (a wall, a platform): if it has a BoxCollider, it blocks
+// bodies, but it never moves on its own.
 struct RigidBody2D {
-    Vec2 velocity;          // px/seg; el valor guardado es la velocidad al empezar a jugar
-    float gravity = 980.0f; // px/seg^2 hacia abajo; 0 = sin gravedad (top-down, naves)
+    Vec2 velocity;          // px/s; the saved value is the velocity when play starts
+    float gravity = 980.0f; // px/s^2 downward; 0 = no gravity (top-down, shmups)
 
-    // --- Estado de ejecucion (lo escribe PhysicsSystem) ---
-    bool grounded = false;  // apoyado sobre algo solido en el ultimo paso de fisica
-    Vec2 previous;          // posicion antes de moverse en el ultimo paso
-    float ignoreOneWay = 0.0f; // seg que aun atraviesa las plataformas de un sentido (bajar de ellas)
+    // --- Runtime state (written by PhysicsSystem) ---
+    bool grounded = false;  // resting on something solid in the last physics step
+    Vec2 previous;          // position before moving in the last step
+    float ignoreOneWay = 0.0f; // seconds it still passes through one-way platforms (dropping down)
 };
 
-// Rectangulo de colision (AABB) centrado en el Transform. Como el Sprite, se mide en
-// pixeles de la IMAGEN y se multiplica por la escala del Transform: si el personaje se
-// agranda, su caja tambien. La rotacion no se aplica (la caja nunca gira). El offset
-// sigue al dibujo: con el Sprite volteado (flipX/flipY, o escala negativa) el
-// corrimiento se refleja en ese eje, asi la caja no queda del lado equivocado cuando
-// el personaje se da vuelta.
+// Collision rectangle (AABB) centered on the Transform. Like the Sprite, it is measured
+// in IMAGE pixels and multiplied by the Transform's scale: if the character grows,
+// so does its box. Rotation does not apply (the box never rotates). The offset
+// follows the drawing: with the Sprite flipped (flipX/flipY, or a negative scale) the
+// shift is mirrored on that axis, so the box does not end up on the wrong side when
+// the character turns around.
 //
-// Sin RigidBody2D la caja es un obstaculo fijo; con RigidBody2D, la fisica la separa
-// de los tilemaps solidos y de las otras cajas. Un trigger no frena ni es frenado:
-// solo se superpone (para recoger, danar, activar...).
+// Without a RigidBody2D the box is a fixed obstacle; with a RigidBody2D, physics
+// separates it from solid tilemaps and from other boxes. A trigger neither blocks nor
+// gets blocked: it only overlaps (to collect, damage, activate...).
 //
-// DE UN SENTIDO (oneWay): una plataforma fina que solo frena desde ARRIBA. Se la
-// atraviesa saltando desde abajo o de costado, y al caer sobre ella se queda parado.
-// Un cuerpo con RigidBody2D::ignoreOneWay > 0 la atraviesa tambien hacia abajo: asi
-// se baja de ella (ver PlatformerMotor::dropThroughTime).
+// ONE-WAY (oneWay): a thin platform that only blocks from ABOVE. You can pass through
+// it jumping from below or from the side, and when you fall onto it you stand on it.
+// A body with RigidBody2D::ignoreOneWay > 0 also passes through it downward: that is
+// how you drop off it (see PlatformerMotor::dropThroughTime).
 struct BoxCollider {
-    Vec2 size{ 16.0f, 16.0f }; // ancho y alto (px de la imagen)
-    Vec2 offset;               // corrimiento del centro de la caja respecto al Transform
+    Vec2 size{ 16.0f, 16.0f }; // width and height (image px)
+    Vec2 offset;               // shift of the box center relative to the Transform
     bool isTrigger = false;
-    bool oneWay = false;       // solo frena a lo que cae desde arriba
+    bool oneWay = false;       // only blocks what falls from above
 };
 
-// Movimiento de personaje de PLATAFORMAS: aceleracion y frenado, salto con altura en
-// pixeles y variable (soltar el boton lo corta), coyote time, jump buffer y saltos en
-// el aire. Necesita un RigidBody2D en la misma entidad, con gravedad.
+// PLATFORMER character movement: acceleration and braking, a jump with a height in
+// pixels and variable (releasing the button cuts it), coyote time, jump buffer and air
+// jumps. Needs a RigidBody2D on the same entity, with gravity.
 //
-// No lee el teclado: cada frame alguien le escribe la INTENCION (moveInput, jumpPressed,
-// jumpHeld, dropHeld) y PlatformerMotorSystem la traduce en velocidad. Ese alguien es un sistema
-// del juego (ver game/PlatformerControl), una IA o una repeticion: el motor no cambia.
+// It does not read the keyboard: every frame someone writes the INTENT (moveInput,
+// jumpPressed, jumpHeld, dropHeld) and PlatformerMotorSystem turns it into velocity. That someone is a
+// game system (see game/PlatformerControl), an AI or a replay: the motor does not change.
 struct PlatformerMotor {
-    // --- Ajustes ("game feel"); se guardan y se ven en el Inspector ---
-    float maxSpeed = 250.0f;   // px/seg al correr
-    float accel = 2200.0f;     // px/seg^2 para llegar a maxSpeed en el suelo
-    float decel = 2600.0f;     // px/seg^2 para frenar en el suelo al soltar
-    float airAccel = 1400.0f;  // lo mismo en el aire (menos control = mas peso)
+    // --- Settings ("game feel"); saved and shown in the Inspector ---
+    float maxSpeed = 250.0f;   // px/s when running
+    float accel = 2200.0f;     // px/s^2 to reach maxSpeed on the ground
+    float decel = 2600.0f;     // px/s^2 to brake on the ground when released
+    float airAccel = 1400.0f;  // the same in the air (less control = more weight)
     float airDecel = 700.0f;
-    float jumpHeight = 150.0f; // altura del salto completo en px (no una velocidad)
-    float coyoteTime = 0.10f;  // seg para saltar aun despues de dejar el borde
-    float jumpBufferTime = 0.12f; // seg que se recuerda un salto pulsado antes de aterrizar
-    float cutJumpMultiplier = 0.45f; // al soltar subiendo, la velocidad se multiplica por esto
-    float maxFallSpeed = 900.0f; // velocidad maxima de caida (0 = sin limite)
-    int maxAirJumps = 0;       // saltos extra en el aire (1 = doble salto)
-    float dropThroughTime = 0.25f; // seg que atraviesa las plataformas de un sentido al
-                                   // bajar de ellas con abajo + salto (0 = no se puede)
+    float jumpHeight = 150.0f; // height of a full jump in px (not a speed)
+    float coyoteTime = 0.10f;  // seconds you can still jump after leaving a ledge
+    float jumpBufferTime = 0.12f; // seconds a jump pressed before landing is remembered
+    float cutJumpMultiplier = 0.45f; // when released while rising, the speed is multiplied by this
+    float maxFallSpeed = 900.0f; // maximum fall speed (0 = no limit)
+    int maxAirJumps = 0;       // extra jumps in the air (1 = double jump)
+    float dropThroughTime = 0.25f; // seconds it passes through one-way platforms when
+                                   // dropping off them with down + jump (0 = cannot)
 
-    // --- Intencion: la escribe el juego CADA frame ---
-    float moveInput = 0.0f;    // -1 izquierda, 0 quieto, +1 derecha (valen intermedios)
-    bool jumpPressed = false;  // el boton de salto se ACABA de pulsar en este frame
-    bool jumpHeld = false;     // el boton de salto sigue pulsado
-    bool dropHeld = false;     // "abajo" mantenido: junto con jumpPressed, sobre una
-                               // plataforma de un sentido, baja de ella en vez de saltar
+    // --- Intent: written by the game EVERY frame ---
+    float moveInput = 0.0f;    // -1 left, 0 still, +1 right (values in between are fine)
+    bool jumpPressed = false;  // the jump button was JUST pressed this frame
+    bool jumpHeld = false;     // the jump button is still held
+    bool dropHeld = false;     // "down" held: together with jumpPressed, on a one-way
+                               // platform, drops off it instead of jumping
 
-    // --- Resultado: lo escribe PlatformerMotorSystem (sirve para la animacion) ---
-    bool grounded = false;     // apoyo suavizado por el coyote time (ignora microcortes)
-    bool justLanded = false;   // solo en el frame en que toca el suelo
-    bool justJumped = false;   // solo en el frame del despegue
-    bool justDropped = false;  // solo en el frame en que se deja caer de una plataforma
+    // --- Result: written by PlatformerMotorSystem (useful for animation) ---
+    bool grounded = false;     // grounded, smoothed by coyote time (ignores micro-gaps)
+    bool justLanded = false;   // only on the frame it touches the ground
+    bool justJumped = false;   // only on the takeoff frame
+    bool justDropped = false;  // only on the frame it drops off a platform
 
-    // --- Estado interno de PlatformerMotorSystem ---
-    float coyote = 0.0f;       // tiempo que queda de la ventana de coyote
-    float buffer = 0.0f;       // tiempo que queda del salto adelantado
+    // --- Internal state of PlatformerMotorSystem ---
+    float coyote = 0.0f;       // time left in the coyote window
+    float buffer = 0.0f;       // time left of the buffered jump
     int airJumpsLeft = 0;
-    bool jumping = false;      // salto en curso al que aun se le puede cortar la altura
+    bool jumping = false;      // jump in progress whose height can still be cut
     bool wasGrounded = false;
 };
 
-// Declara los componentes de arriba a la reflexion. La llama Application al arrancar,
-// despues de registerCoreComponents.
+// Declares the components above to the reflection. Application calls it at startup,
+// after registerCoreComponents.
 void registerPhysicsComponents(ComponentRegistry& registry);

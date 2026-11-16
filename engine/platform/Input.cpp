@@ -2,26 +2,26 @@
 
 #include <SDL3/SDL.h>
 
-// Todo el estado vive aqui (no en el header): el alumno solo ve la API de consulta.
+// All the state lives here (not in the header): the student only sees the query API.
 namespace {
     const int KEY_COUNT   = static_cast<int>(Key::Count);
     const int MOUSE_COUNT = static_cast<int>(MouseButton::Count);
 
-    bool keysNow[KEY_COUNT]  = { false }; // estado de ESTE frame
-    bool keysPrev[KEY_COUNT] = { false }; // estado del frame ANTERIOR
+    bool keysNow[KEY_COUNT]  = { false }; // state of THIS frame
+    bool keysPrev[KEY_COUNT] = { false }; // state of the PREVIOUS frame
 
     bool mouseNow[MOUSE_COUNT]  = { false };
     bool mousePrev[MOUSE_COUNT] = { false };
     float cursorX = 0.0f, cursorY = 0.0f;
 
-    float wheelPending = 0.0f; // acumulado por processEvent hasta el proximo update
-    float wheelFrame   = 0.0f; // lo que se giro en ESTE frame
+    float wheelPending = 0.0f; // accumulated by processEvent until the next update
+    float wheelFrame   = 0.0f; // what was scrolled in THIS frame
 
     bool keyboardEnabled = true;
-    bool keyboardResumed = false; // se acaba de volver a encender: sin flancos falsos
+    bool keyboardResumed = false; // just turned back on: no false edges
 
-    // Traduccion Key -> scancode de SDL. Un switch (y no una tabla indexada por el
-    // enum) para que agregar una tecla no dependa de mantener el orden del array.
+    // Key -> SDL scancode translation. A switch (and not a table indexed by the enum)
+    // so that adding a key does not depend on keeping the array in order.
     SDL_Scancode toScancode(Key k) {
         switch (k) {
         case Key::A: return SDL_SCANCODE_A;  case Key::B: return SDL_SCANCODE_B;
@@ -74,7 +74,7 @@ namespace {
         }
     }
 
-    // Lee el hardware y vuelca el estado ACTUAL en keysNow / mouseNow / cursor.
+    // Reads the hardware and dumps the CURRENT state into keysNow / mouseNow / cursor.
     void readDevices() {
         int count = 0;
         const bool* sdlKeys = SDL_GetKeyboardState(&count); // SDL3: const bool*
@@ -90,24 +90,24 @@ namespace {
         mouseNow[static_cast<int>(MouseButton::Right)]  = (buttons & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT))  != 0;
     }
 
-    // Consulta segura: fuera de rango responde "sin pulsar" en vez de leer basura.
+    // Safe query: out of range answers "not pressed" instead of reading garbage.
     bool valid(Key k)         { int i = static_cast<int>(k); return i >= 0 && i < KEY_COUNT; }
     bool valid(MouseButton b) { int i = static_cast<int>(b); return i >= 0 && i < MOUSE_COUNT; }
 }
 
 void Input::update() {
-    // El estado de este frame pasa a ser el del frame anterior, y releemos.
+    // This frame's state becomes the previous frame's, and we read again.
     for (int i = 0; i < KEY_COUNT; ++i)   keysPrev[i]  = keysNow[i];
     for (int i = 0; i < MOUSE_COUNT; ++i) mousePrev[i] = mouseNow[i];
     readDevices();
     if (keyboardResumed) {
-        // Lo que ya estaba mantenido al volver (la tecla con la que se salio del
-        // campo, por ejemplo) no es una pulsacion nueva.
+        // What was already held when turning back on (the key used to leave the
+        // field, for example) is not a new press.
         for (int i = 0; i < KEY_COUNT; ++i) keysPrev[i] = keysNow[i];
         keyboardResumed = false;
     }
 
-    // La rueda de este frame es lo que llego en los eventos desde el update anterior.
+    // This frame's wheel is what arrived in the events since the previous update.
     wheelFrame = wheelPending;
     wheelPending = 0.0f;
 }
@@ -115,14 +115,14 @@ void Input::update() {
 void Input::processEvent(const SDL_Event& e) {
     if (e.type != SDL_EVENT_MOUSE_WHEEL) return;
     float y = e.wheel.y;
-    // Con el "desplazamiento natural" del sistema SDL entrega el valor invertido.
+    // With the system's "natural scrolling", SDL delivers the value inverted.
     if (e.wheel.direction == SDL_MOUSEWHEEL_FLIPPED) y = -y;
     wheelPending += y;
 }
 
 void Input::reset() {
-    // Releemos y dejamos "anterior" == "actual": no hay flancos pendientes, pero las
-    // teclas que el jugador tiene apretadas siguen contando como mantenidas.
+    // Read again and make "previous" == "current": no pending edges, but the
+    // keys the player is holding still count as held.
     readDevices();
     for (int i = 0; i < KEY_COUNT; ++i)   keysPrev[i]  = keysNow[i];
     for (int i = 0; i < MOUSE_COUNT; ++i) mousePrev[i] = mouseNow[i];
@@ -142,7 +142,7 @@ float Input::axis(Key negative, Key positive) {
     float v = 0.0f;
     if (isDown(negative)) v -= 1.0f;
     if (isDown(positive)) v += 1.0f;
-    return v; // ambas a la vez se cancelan: 0
+    return v; // both at once cancel out: 0
 }
 
 bool Input::isMouseDown(MouseButton b)      { return valid(b) &&  mouseNow[(int)b]; }

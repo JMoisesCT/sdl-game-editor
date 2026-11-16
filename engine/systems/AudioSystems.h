@@ -7,13 +7,13 @@
 class World;
 class Audio;
 
-// Sistemas de AUDIO (componentes en components/AudioComponents.h). Van al final del
-// frame, con todo ya resuelto (ver main.cpp): las condiciones de los sonidos miran los
-// avisos de un frame (jumped, damaged...) antes de que se apaguen en el frame siguiente.
+// AUDIO systems (components in components/AudioComponents.h). They run at the end
+// of the frame, with everything resolved (see main.cpp): the sound conditions look at
+// the one-frame flags (jumped, damaged...) before they are cleared on the next frame.
 //
-// Al detener el juego, Application corta todo el sonido; en pausa, lo congela.
+// When the game stops, Application cuts all sound; when paused, it freezes it.
 
-// Hace sonar las reglas de los SoundEffects cuyas condiciones empiezan a cumplirse.
+// Plays the SoundEffects rules whose conditions start to hold.
 class SoundSystem : public System {
 public:
     SoundSystem(Audio& audio, const ConditionRegistry& conditions) : audio(audio), conditions(conditions) {}
@@ -26,7 +26,7 @@ private:
     const ConditionRegistry& conditions;
 };
 
-// Hace sonar la Music de la escena (la primera que encuentra) y la cambia si cambia.
+// Plays the scene's Music (the first one it finds) and switches it if it changes.
 class MusicSystem : public System {
 public:
     explicit MusicSystem(Audio& audio) : audio(audio) {}
@@ -36,5 +36,5 @@ public:
 
 private:
     Audio& audio;
-    std::string playing; // la que se pidio por ultima vez ("" = ninguna)
+    std::string playing; // the last one requested ("" = none)
 };

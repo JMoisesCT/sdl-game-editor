@@ -4,34 +4,34 @@
 
 class World;
 
-// Sistemas de REGLAS (componentes en components/RuleComponents.h). Todos funcionan
-// igual: buscan los contactos entre la caja de la regla (el peligro, la fruta, la
-// bandera) y las cajas de las entidades con la etiqueta que les interesa, y actuan.
+// RULE systems (components in components/RuleComponents.h). They all work the same
+// way: they look for contacts between the rule's box (the hazard, the fruit, the
+// flag) and the boxes of the entities with the tag they care about, and act.
 //
-// Van DESPUES de PhysicsSystem (miran las posiciones ya resueltas) y en este orden
-// (ver main.cpp):
-//   HealthSystem      -> cuenta la invulnerabilidad, parpadea y apaga los avisos
-//                        de un frame (justDamaged, justDied) del frame anterior
-//   HazardSystem      -> dano + empujon
-//   KillZoneSystem    -> muerte en el acto
-//   CollectibleSystem -> recoger
-//   CheckpointSystem  -> fijar el punto de reaparicion
-//   RespawnSystem     -> esperar y reaparecer a los muertos
-// HealthSystem va PRIMERO porque es el que borra los avisos: asi un golpe de este
-// frame sigue marcado hasta el final del frame, para los sistemas del juego.
+// They run AFTER PhysicsSystem (they look at the resolved positions) and in this
+// order (see main.cpp):
+//   HealthSystem      -> counts invulnerability, blinks, and clears the previous
+//                        frame's one-frame flags (justDamaged, justDied)
+//   HazardSystem      -> damage + knockback
+//   KillZoneSystem    -> instant death
+//   CollectibleSystem -> collecting
+//   CheckpointSystem  -> setting the respawn point
+//   RespawnSystem     -> waiting and respawning the dead
+// HealthSystem goes FIRST because it is the one that clears the flags: that way a hit
+// from this frame stays flagged until the end of the frame, for the game systems.
 
-// Margen de contacto (px): dos cajas solidas que la fisica deja borde con borde (un
-// enemigo solido contra el jugador) tambien cuentan como tocandose.
+// Contact margin (px): two solid boxes that physics leaves edge to edge (a solid
+// enemy against the player) also count as touching.
 constexpr float RULE_CONTACT_MARGIN = 1.0f;
 
-// Quita vida respetando la invulnerabilidad. true si el golpe conto. Si la vida llega
-// a 0 la entidad muere (ver Health). Sin Health no hace nada.
+// Takes health respecting invulnerability. true if the hit counted. If health reaches
+// 0 the entity dies (see Health). Without Health it does nothing.
 bool damageEntity(World& world, Entity target, int amount);
-// Mata en el acto, aunque este invulnerable (caer al vacio). Sin Health no hace nada.
+// Kills on the spot, even when invulnerable (falling into the void). Without Health it does nothing.
 void killEntity(World& world, Entity target);
-// Devuelve vida, sin pasar de maxHP. A un muerto no lo cura.
+// Restores health, without going over maxHP. It does not heal the dead.
 void healEntity(World& world, Entity target, int amount);
-// true si tiene Health y su vida llego a 0 (esperando reaparecer, o sin Respawn).
+// true if it has Health and its health reached 0 (waiting to respawn, or without Respawn).
 bool isDead(World& world, Entity e);
 
 class HealthSystem : public System {

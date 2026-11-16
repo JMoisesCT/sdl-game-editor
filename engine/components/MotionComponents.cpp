@@ -3,7 +3,7 @@
 #include "core/Reflection.h"
 
 void registerMotionComponents(ComponentRegistry& registry) {
-    // La lista va al final: en el archivo ocupa una linea por elemento.
+    // The list goes last: in the file it takes one line per element.
     registry.add<PathMover>("PathMover")
         .field("speed", &PathMover::speed).range(0.0f, 5000.0f).speed(1.0f).tooltip("px/s")
         .field("waitTime", &PathMover::waitTime).range(0.0f, 60.0f).speed(0.01f).tooltip("Seconds of pause at each point")

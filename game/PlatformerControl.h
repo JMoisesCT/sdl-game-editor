@@ -1,17 +1,17 @@
 #pragma once
 #include "systems/System.h"
 
-// Codigo del JUEGO (no del motor): traduce TECLAS a INTENCION para el PlatformerMotor
-// de las entidades con tag "Player". Eso es todo lo que hace: no sabe de gravedad, de
-// coyote time ni de saltos dobles; de eso se ocupa el motor, que sirve para cualquier
-// plataformas. Cambiar los controles (o enchufar un mando, o una IA) es cambiar solo
-// este sistema.
+// GAME code (not engine code): translates KEYS into INTENT for the PlatformerMotor
+// of the entities tagged "Player". That is all it does: it knows nothing about gravity,
+// coyote time or double jumps; the motor takes care of that, and it works for any
+// platformer. Changing the controls (or plugging in a gamepad, or an AI) means changing
+// only this system.
 //
-// Controles: flechas o A/D para moverse; Espacio, W o flecha arriba para saltar; abajo
-// (flecha o S) + salto para bajar de una plataforma de un sentido.
+// Controls: arrows or A/D to move; Space, W or the up arrow to jump; down (arrow
+// or S) + jump to drop off a one-way platform.
 //
-// Va ANTES de PlatformerMotorSystem (ver main.cpp): si fuera despues, la tecla llegaria
-// al motor un frame tarde.
+// Runs BEFORE PlatformerMotorSystem (see main.cpp): if it ran after, the key would
+// reach the motor one frame late.
 class PlatformerControlSystem : public System {
 public:
     const char* name() const override { return "PlatformerControl"; }

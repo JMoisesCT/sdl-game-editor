@@ -22,7 +22,7 @@ bool GameCanvas::begin(int width, int height) {
         }
         canvasW = width;
         canvasH = height;
-        upscaledFactor = 0; // el agrandado tambien cambia de tamano
+        upscaledFactor = 0; // the enlarged one also changes size
     }
     SDL_SetRenderTarget(renderer, canvas);
     return true;
@@ -33,16 +33,16 @@ SDL_Texture* GameCanvas::scaledFor(float displayWidth, float displayHeight) {
     if (!canvas) return nullptr;
     const float k = std::fmin(displayWidth / canvasW, displayHeight / canvasH);
 
-    // Factor entero (100%, 200%...): vecino mas cercano directo, ya es exacto. Mas
-    // chico que el lienzo: suavizado lineal (con vecino mas cercano se perderian filas
-    // enteras de pixeles).
+    // Integer factor (100%, 200%...): straight nearest neighbor, already exact. Smaller
+    // than the canvas: linear smoothing (with nearest neighbor whole rows of pixels
+    // would be lost).
     if (k <= 1.0f || std::fabs(k - std::round(k)) < 0.001f) {
         SDL_SetTextureScaleMode(canvas, k < 1.0f ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
         return canvas;
     }
 
-    // Factor no entero: agrandar al entero de arriba con vecino mas cercano y dejar que
-    // el dibujo final lo achique con suavizado lineal.
+    // Non-integer factor: enlarge to the next integer with nearest neighbor and let
+    // the final draw shrink it with linear smoothing.
     const int factor = (int)std::ceil(k);
     if (!upscaled || upscaledFactor != factor) {
         if (upscaled) SDL_DestroyTexture(upscaled);
@@ -52,7 +52,7 @@ SDL_Texture* GameCanvas::scaledFor(float displayWidth, float displayHeight) {
             SDL_Log("GameCanvas: could not create the upscaled canvas: %s", SDL_GetError());
             upscaledFactor = 0;
             SDL_SetTextureScaleMode(canvas, SDL_SCALEMODE_NEAREST);
-            return canvas; // mejor deformado que nada
+            return canvas; // better distorted than nothing
         }
         SDL_SetTextureScaleMode(upscaled, SDL_SCALEMODE_LINEAR);
         upscaledFactor = factor;

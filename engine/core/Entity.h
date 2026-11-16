@@ -1,14 +1,14 @@
 #pragma once
 #include <cstdint>
 
-// Una entidad es SOLO un numero: no tiene datos ni comportamiento. Lo que la hace
-// "jugador" o "fruta" son los componentes que el World le asocia a ese numero.
+// An entity is ONLY a number: it has no data and no behavior. What makes it a
+// "player" or a "fruit" are the components the World associates with that number.
 //
-// Los ids NUNCA se reutilizan dentro de un World (cuentan hacia arriba desde 1), asi
-// que guardar un Entity y preguntar mas tarde world.isAlive(e) es seguro: si la
-// entidad se destruyo, la respuesta es false y no hay puntero colgante.
-// El id tambien se guarda en el archivo de escena, asi que es estable entre sesiones.
+// Ids are NEVER reused within a World (they count up from 1), so storing an Entity
+// and later asking world.isAlive(e) is safe: if the entity was destroyed, the
+// answer is false and there is no dangling pointer.
+// The id is also saved in the scene file, so it is stable across sessions.
 
 using Entity = std::uint32_t;
 
-constexpr Entity NullEntity = 0; // "ninguna entidad"
+constexpr Entity NullEntity = 0; // "no entity"

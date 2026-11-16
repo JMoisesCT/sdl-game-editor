@@ -8,16 +8,16 @@ AssetManager::AssetManager(SDL_Renderer* renderer)
     : renderer(renderer) {}
 
 AssetManager::~AssetManager() {
-    // Liberamos todas las texturas que cargamos.
+    // Release every texture we loaded.
     for (auto& [path, texture] : textures) {
         SDL_DestroyTexture(texture);
     }
     textures.clear();
 
-    // Las imagenes de texto (antes que sus fuentes).
+    // The text images (before their fonts).
     clearTextTextures();
 
-    // Y todas las fuentes.
+    // And every font.
     for (auto& [key, font] : fonts) {
         TTF_CloseFont(font);
     }
@@ -25,15 +25,15 @@ AssetManager::~AssetManager() {
 }
 
 SDL_Texture* AssetManager::loadTexture(const std::string& path) {
-    // Si ya esta cargada, la devolvemos directo (sin recargar).
+    // If it is already loaded, return it directly (no reload).
     auto it = textures.find(path);
     if (it != textures.end()) {
         return it->second;
     }
-    // Ya fallo antes: no se reintenta en cada frame (ni se llena el log).
+    // It already failed: it is not retried every frame (and does not flood the log).
     if (failedTextures.count(path)) return nullptr;
 
-    // Primera vez: cargar desde disco.
+    // First time: load from disk.
     SDL_Surface* surface = IMG_Load(path.c_str());
     if (!surface) {
         SDL_Log("Could not load the image '%s': %s", path.c_str(), SDL_GetError());
@@ -50,30 +50,30 @@ SDL_Texture* AssetManager::loadTexture(const std::string& path) {
         return nullptr;
     }
 
-    // Muestreo por vecino mas cercano (no bilineal): coherencia de pixel art y
-    // evita el sangrado de bordes al escalar (tilesets y sprites por igual).
+    // Nearest-neighbor sampling (not bilinear): consistent with pixel art, and it
+    // avoids edge bleeding when scaling (tilesets and sprites alike).
     SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
 
-    // Guardar en cache y devolver.
+    // Cache and return it.
     textures[path] = texture;
     return texture;
 }
 
 TTF_Font* AssetManager::loadFont(const std::string& path, int size) {
-    // Clave compuesta (ruta + tamanio): la misma fuente a dos tamanios son dos
-    // recursos distintos, cada uno en su entrada de cache.
+    // Composite key (path + size): the same font at two sizes is two different
+    // resources, each one with its own cache entry.
     std::string key = path + "#" + std::to_string(size);
 
-    // Si ya esta abierta a ese tamanio, la devolvemos directo (sin reabrir).
+    // If it is already open at that size, return it directly (no reopening).
     auto it = fonts.find(key);
     if (it != fonts.end()) {
         return it->second;
     }
 
-    // Ya fallo antes: no se reintenta en cada frame (ni se llena el log).
+    // It already failed: it is not retried every frame (and does not flood the log).
     if (failedFonts.count(key)) return nullptr;
 
-    // Primera vez: abrir desde disco. En SDL3_ttf el tamanio en puntos es float.
+    // First time: open from disk. In SDL3_ttf the size in points is a float.
     TTF_Font* font = TTF_OpenFont(path.c_str(), (float)size);
     if (!font) {
         SDL_Log("Could not open the font '%s' at %d pt: %s", path.c_str(), size, SDL_GetError());
@@ -81,7 +81,7 @@ TTF_Font* AssetManager::loadFont(const std::string& path, int size) {
         return nullptr;
     }
 
-    // Guardar en cache y devolver.
+    // Cache and return it.
     fonts[key] = font;
     return font;
 }
@@ -95,8 +95,8 @@ SDL_Texture* AssetManager::textTexture(const std::string& fontPath, int size, co
     TTF_Font* font = loadFont(fontPath, size);
     if (!font) return nullptr;
 
-    // _Solid: sin suavizado, para que una fuente pixel quede nitida. En SDL3_ttf el
-    // largo 0 significa "hasta el fin de la cadena".
+    // _Solid: no antialiasing, so a pixel font stays crisp. In SDL3_ttf a length
+    // of 0 means "up to the end of the string".
     SDL_Surface* surface = TTF_RenderText_Solid(font, text.c_str(), 0, SDL_Color{ 255, 255, 255, 255 });
     if (!surface) {
         SDL_Log("Could not render the text '%s': %s", text.c_str(), SDL_GetError());
@@ -110,9 +110,9 @@ SDL_Texture* AssetManager::textTexture(const std::string& fontPath, int size, co
     }
     SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
 
-    // Sin limite, un cronometro llenaria la memoria de texturas que no se vuelven a
-    // usar. Vaciar todo de vez en cuando es simple y alcanza: lo que se sigue
-    // mostrando se vuelve a crear en el frame siguiente.
+    // Without a limit, a stopwatch would fill memory with textures that are never used
+    // again. Clearing everything now and then is simple and good enough: whatever is
+    // still shown is created again on the next frame.
     if (textTextures.size() >= MAX_TEXT_TEXTURES) clearTextTextures();
     textTextures[key] = texture;
     return texture;

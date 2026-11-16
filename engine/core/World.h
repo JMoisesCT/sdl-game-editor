@@ -8,29 +8,30 @@
 
 #include "core/Entity.h"
 
-// El World guarda TODAS las entidades y sus componentes. Es el "ECS" del motor:
-//   - Entity    = un numero (ver Entity.h).
-//   - Componente = un struct de datos SIN logica (Transform, Sprite...).
-//   - Sistema   = una funcion que recorre las entidades que tienen ciertos componentes
-//                 y hace algo con ellos (mover, dibujar, colisionar...).
+// The World holds ALL the entities and their components. It is the engine's "ECS":
+//   - Entity    = a number (see Entity.h).
+//   - Component = a data struct with NO logic (Transform, Sprite...).
+//   - System    = a function that walks the entities that have certain components
+//                 and does something with them (move, draw, collide...).
 //
-// Cada tipo de componente vive en su propio ComponentPool: un vector compacto con los
-// datos de todas las entidades que lo tienen, mas un indice entidad -> posicion.
+// Each component type lives in its own ComponentPool: a compact vector with the
+// data of every entity that has it, plus an entity -> position index.
 //
-// Uso tipico:
+// Typical use:
 //     Entity e = world.create();
 //     world.add<Transform>(e).position = { 100, 50 };
 //     world.add<Sprite>(e).texture = "assets/player.png";
 //
 //     world.each<Transform, Sprite>([](Entity e, Transform& t, Sprite& s) { ... });
 //
-// REGLA IMPORTANTE: las referencias T& que devuelven add/get/each son validas solo
-// AHORA. Agregar un componente de ese mismo tipo a otra entidad puede mover el vector
-// y dejarlas colgando. Para recordar algo entre frames se guarda el Entity, no un T*.
+// IMPORTANT RULE: the T& references returned by add/get/each are only valid
+// RIGHT NOW. Adding a component of that same type to another entity may move the
+// vector and leave them dangling. To remember something between frames, store the
+// Entity, not a T*.
 
 namespace detail {
-    // Un numero distinto por cada tipo de componente, asignado la primera vez que se
-    // pide. Sirve de indice en el vector de pools del World.
+    // A distinct number for each component type, assigned the first time it is
+    // requested. It is the index into the World's vector of pools.
     inline std::size_t nextComponentTypeId() {
         static std::size_t counter = 0;
         return counter++;
@@ -43,8 +44,8 @@ std::size_t componentTypeId() {
     return id;
 }
 
-// Interfaz sin tipo de un pool: la usan la reflexion y el World para operar sobre
-// componentes sin conocer su tipo en tiempo de compilacion (el editor, el guardado).
+// Untyped interface of a pool: the reflection and the World use it to operate on
+// components without knowing their type at compile time (the editor, saving).
 class IComponentPool {
 public:
     virtual ~IComponentPool() = default;
@@ -59,7 +60,7 @@ public:
 template <class T>
 class ComponentPool : public IComponentPool {
 public:
-    // Si la entidad ya lo tenia, se reemplaza el valor.
+    // If the entity already had it, the value is replaced.
     T& add(Entity e, T value) {
         auto it = index.find(e);
         if (it != index.end()) {
@@ -85,7 +86,7 @@ public:
     void* getRaw(Entity e) override { return get(e); }
     const void* getRaw(Entity e) const override { return get(e); }
 
-    // Quitar = mover el ultimo al hueco (swap and pop): el vector sigue compacto.
+    // Removing = moving the last one into the gap (swap and pop): the vector stays compact.
     void remove(Entity e) override {
         auto it = index.find(e);
         if (it == index.end()) return;
@@ -109,48 +110,48 @@ public:
 
     std::size_t size() const override { return data.size(); }
 
-    // Acceso directo para recorrer: data[i] es el componente de owners[i].
+    // Direct access for iterating: data[i] is the component of owners[i].
     std::vector<T> data;
     std::vector<Entity> owners;
 
 private:
-    std::unordered_map<Entity, std::size_t> index; // entidad -> posicion en data
+    std::unordered_map<Entity, std::size_t> index; // entity -> position in data
 };
 
 class World {
 public:
     World() = default;
-    World(const World&) = delete;            // copiar un World se hace serializando
+    World(const World&) = delete;            // a World is copied by serializing it
     World& operator=(const World&) = delete;
 
-    // --- Entidades -------------------------------------------------------------------
+    // --- Entities --------------------------------------------------------------------
     Entity create();
-    // Crea la entidad con un id concreto (al cargar una escena). false si ya existe o
-    // si es NullEntity. Los ids nuevos siguen despues del mayor que se haya usado.
+    // Creates the entity with a specific id (when loading a scene). false if it already
+    // exists or is NullEntity. New ids continue after the highest one ever used.
     bool createWithId(Entity id);
 
-    // Diferido: la entidad sigue viva hasta flushDestroyed() (lo llama el bucle al
-    // final de cada frame). Asi un sistema puede destruir mientras otro recorre.
+    // Deferred: the entity stays alive until flushDestroyed() (the loop calls it at the
+    // end of each frame). That way a system can destroy while another one iterates.
     void destroy(Entity e);
-    // Inmediato: para el editor, que nunca esta en medio de un recorrido.
+    // Immediate: for the editor, which is never in the middle of an iteration.
     void destroyNow(Entity e);
     void flushDestroyed();
 
     bool isAlive(Entity e) const { return aliveSet.count(e) != 0; }
 
-    // Todas las entidades vivas, en orden de creacion (o en el que dejo setOrder). Es
-    // el orden de la Jerarquia del editor y del archivo de escena.
+    // Every living entity, in creation order (or the one setOrder left). It is the
+    // order of the editor's Hierarchy and of the scene file.
     const std::vector<Entity>& entities() const { return alive; }
 
-    // Cambia el orden de entities(). 'order' debe tener exactamente las entidades
-    // vivas, cada una una vez; si no, no hace nada y devuelve false. No cambia ids.
+    // Changes the order of entities(). 'order' must contain exactly the living
+    // entities, each one once; otherwise it does nothing and returns false. Ids do not change.
     bool setOrder(const std::vector<Entity>& order);
 
-    // Borra todo. Los ids NO vuelven a empezar (salvo con resetIds = true, al cargar
-    // una escena desde cero).
+    // Clears everything. Ids do NOT start over (except with resetIds = true, when
+    // loading a scene from scratch).
     void clear(bool resetIds = false);
 
-    // --- Componentes -----------------------------------------------------------------
+    // --- Components ------------------------------------------------------------------
     template <class T>
     T& add(Entity e, T value = T{}) {
         return pool<T>().add(e, std::move(value));
@@ -178,10 +179,10 @@ public:
         if (auto* p = findPool<T>()) p->remove(e);
     }
 
-    // Recorre las entidades que tienen TODOS los componentes pedidos y llama a
-    // fn(Entity, First&, Rest&...). Se recorre el pool del primer tipo, asi que
-    // conviene poner primero el componente mas raro (el que menos entidades tienen).
-    // Dentro de fn no se deben agregar ni quitar componentes de los tipos recorridos.
+    // Walks the entities that have ALL the requested components and calls
+    // fn(Entity, First&, Rest&...). It walks the pool of the first type, so it is
+    // best to put the rarest component first (the one the fewest entities have).
+    // Inside fn, do not add or remove components of the types being iterated.
     template <class First, class... Rest, class Fn>
     void each(Fn&& fn) {
         auto* first = findPool<First>();
@@ -192,7 +193,7 @@ public:
         }
     }
 
-    // El pool de un tipo (se crea si no existia).
+    // The pool of a type (created if it did not exist).
     template <class T>
     ComponentPool<T>& pool() {
         std::size_t id = componentTypeId<T>();
@@ -201,7 +202,7 @@ public:
         return static_cast<ComponentPool<T>&>(*pools[id]);
     }
 
-    // Pool por numero de tipo, sin crearlo: nullptr si nadie uso ese tipo todavia.
+    // Pool by type number, without creating it: nullptr if nobody has used that type yet.
     IComponentPool* findPool(std::size_t typeId) {
         return typeId < pools.size() ? pools[typeId].get() : nullptr;
     }
@@ -221,9 +222,9 @@ private:
 
     void addAlive(Entity e);
 
-    std::vector<std::unique_ptr<IComponentPool>> pools; // indice = componentTypeId<T>()
-    std::vector<Entity> alive;                          // orden de creacion
-    std::unordered_set<Entity> aliveSet;                // para isAlive en O(1)
+    std::vector<std::unique_ptr<IComponentPool>> pools; // index = componentTypeId<T>()
+    std::vector<Entity> alive;                          // creation order
+    std::unordered_set<Entity> aliveSet;                // for isAlive in O(1)
     std::vector<Entity> pendingDestroy;
     Entity nextId = 1;
 };

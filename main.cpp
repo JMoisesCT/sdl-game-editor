@@ -12,12 +12,12 @@
 #include "systems/Presentation.h"
 #include "systems/Rules.h"
 
-// La aplicacion es duena del bucle: aqui solo se configura, se registran las piezas
-// del juego (componentes, condiciones y sistemas) y se abre la escena.
+// The application owns the loop: here we only configure it, register the game's
+// pieces (components, conditions and systems) and open the scene.
 //
-// Con el argumento --play arranca sin editor, jugando la escena directamente (como
-// lo veria el jugador). --scale=pixel (por defecto), fit o 100 elige como se muestra
-// el juego si la ventana no mide lo mismo que su resolucion.
+// With the --play argument it starts without the editor, playing the scene directly
+// (as the player would see it). --scale=pixel (the default), fit or 100 picks how the
+// game is shown if the window is not the size of its resolution.
 int main(int argc, char* argv[]) {
     AppConfig config;
     config.title = "SDL Game Editor";
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     config.gameHeight = 720;
     for (int i = 1; i < argc; ++i) {
         if (SDL_strcmp(argv[i], "--play") == 0) config.editor = false;
-        // --scale=pixel | fit | 100: como se muestra el juego (ver app/GameScreen.h).
+        // --scale=pixel | fit | 100: how the game is shown (see app/GameScreen.h).
         else if (SDL_strncmp(argv[i], "--scale=", 8) == 0 && !parseGameScale(argv[i] + 8, config.scale))
             SDL_Log("Unknown scale '%s' (pixel, fit or 100)", argv[i] + 8);
     }
@@ -33,36 +33,36 @@ int main(int argc, char* argv[]) {
     Application app;
     if (!app.init(config)) return 1;
 
-    // Componentes del juego: antes de abrir la escena, para que se carguen. Y sus
-    // condiciones (las del motor ya estan).
+    // Game components: before opening the scene, so they get loaded. And its
+    // conditions (the engine's are already there).
     registerPlatformerComponents(app.registry());
     registerPlatformerConditions(app.conditions());
 
-    // Sistemas. Corren en el orden en que se agregan, y aqui el orden es la cadena de
-    // cada frame:
-    //   teclas -> intencion -> velocidad -> posicion y choques -> reglas -> partida
-    //   -> presentacion (animacion, sonido, camara, fondo).
-    app.addSystem(std::make_unique<PlatformerControlSystem>()); // juego: teclas -> intencion
-    app.addSystem(std::make_unique<PlatformerMotorSystem>());   // motor: intencion -> velocidad
-    // Mecanismos (ver systems/Motion.h): las plataformas se mueven antes de la fisica,
-    // llevandose a los que estan encima; el trampolin mira las posiciones ya resueltas.
+    // Systems. They run in the order they are added, and here the order is the chain of
+    // each frame:
+    //   keys -> intent -> velocity -> position and collisions -> rules -> playthrough
+    //   -> presentation (animation, sound, camera, background).
+    app.addSystem(std::make_unique<PlatformerControlSystem>()); // game: keys -> intent
+    app.addSystem(std::make_unique<PlatformerMotorSystem>());   // motor: intent -> velocity
+    // Mechanisms (see systems/Motion.h): the platforms move before physics, carrying
+    // whoever is on top; the trampoline looks at the already resolved positions.
     app.addSystem(std::make_unique<PathMoverSystem>());
     app.addSystem(std::make_unique<FallingPlatformSystem>());
-    app.addSystem(std::make_unique<PhysicsSystem>());           // motor: movimiento y choques
+    app.addSystem(std::make_unique<PhysicsSystem>());           // motor: movement and collisions
     app.addSystem(std::make_unique<BouncerSystem>());
-    // Reglas del motor (ver systems/Rules.h): HealthSystem primero, porque apaga los
-    // avisos de un frame que los demas encienden.
+    // Engine rules (see systems/Rules.h): HealthSystem first, because it clears the
+    // one-frame flags the others set.
     app.addSystem(std::make_unique<HealthSystem>());
     app.addSystem(std::make_unique<HazardSystem>());
     app.addSystem(std::make_unique<KillZoneSystem>());
     app.addSystem(std::make_unique<CollectibleSystem>());
     app.addSystem(std::make_unique<CheckpointSystem>());
     app.addSystem(std::make_unique<RespawnSystem>());
-    app.addSystem(std::make_unique<PlatformerRulesSystem>());   // juego: frutas, meta y HUD
-    // Presentacion: con todo ya resuelto en este frame. La maquina de estados elige el
-    // clip y el animador lo avanza; los sonidos ven los avisos de un frame (jumped,
-    // damaged...) antes de que se apaguen; la camara sigue la posicion final (tambien
-    // tras reaparecer).
+    app.addSystem(std::make_unique<PlatformerRulesSystem>());   // game: fruits, goal and HUD
+    // Presentation: with everything already resolved this frame. The state machine picks
+    // the clip and the animator advances it; the sounds see the one-frame flags (jumped,
+    // damaged...) before they are cleared; the camera follows the final position (also
+    // after respawning).
     app.addSystem(std::make_unique<AnimatorStateMachineSystem>(app.conditions()));
     app.addSystem(std::make_unique<SpriteAnimatorSystem>(app.assets()));
     app.addSystem(std::make_unique<SoundSystem>(app.audio(), app.conditions()));

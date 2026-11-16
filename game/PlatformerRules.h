@@ -6,40 +6,40 @@
 class ConditionRegistry;
 class ComponentRegistry;
 
-// Codigo del JUEGO (no del motor): las reglas propias de ESTE plataformas, armadas
-// sobre las piezas genericas del motor (Collectible, Health, Text...). Sirve de ejemplo
-// de como un juego suma SUS componentes, condiciones y sistemas sin tocar el motor.
+// GAME code (not engine code): the rules of THIS platformer, built on top of the
+// engine's generic pieces (Collectible, Health, Text...). It is an example of how a
+// game adds ITS OWN components, conditions and systems without touching the engine.
 
-// Meta del nivel: al tocarla quien lleva targetTag, el nivel se completa. Necesita un
-// BoxCollider (trigger). Es del juego porque "ganar" no significa lo mismo en todos.
+// The level's goal: when someone with targetTag touches it, the level is complete. Needs
+// a BoxCollider (trigger). It belongs to the game because "winning" does not mean the same in every game.
 struct LevelGoal {
     std::string targetTag = "Player";
 
-    // --- Estado de ejecucion ---
+    // --- Runtime state ---
     bool reached = false;
 };
 
-// Declara los componentes del juego a la reflexion: aparecen en "Agregar componente"
-// del editor y se guardan en la escena como los del motor. main.cpp la llama antes de
-// abrir la escena.
+// Declares the game's components to the reflection: they appear in the editor's "Add
+// component" and are saved in the scene like the engine's. main.cpp calls it before
+// opening the scene.
 void registerPlatformerComponents(ComponentRegistry& registry);
 
-// Condiciones del juego (systems/Conditions.h), para AnimatorStateMachine y SoundEffects:
-//   goalReached  la LevelGoal de la entidad ya se toco (la meta se hunde)
+// The game's conditions (systems/Conditions.h), for AnimatorStateMachine and SoundEffects:
+//   goalReached  the entity's LevelGoal has been touched (the goal sinks)
 void registerPlatformerConditions(ConditionRegistry& conditions);
 
-// La partida: cuenta las frutas (Collectible con tag "Pickup") que hay y las que se
-// recogieron, y si se llego a la meta. El motor no lleva ninguna cuenta: este sistema
-// lee los avisos de un frame (justCollected) y decide que significan.
+// The playthrough: counts the fruits (Collectible tagged "Pickup") there are and the
+// ones collected, and whether the goal was reached. The engine keeps no count: this
+// system reads the one-frame flags (justCollected) and decides what they mean.
 //
-// HUD: escribe el texto de las entidades con Text y estas etiquetas (el lugar, la
-// fuente y el color se eligen en el editor; aqui solo el contenido):
-//   HudLives   "VIDA: 2/3" (la Health del jugador)
-//   HudFruits  "FRUTAS: 1/3"
-//   HudBanner  se hace visible al completar el nivel (su texto es el de la escena)
+// HUD: writes the text of the entities with a Text and these tags (position, font
+// and color are chosen in the editor; here only the content):
+//   HudLives   "HP: 2/3" (the player's Health)
+//   HudFruits  "FRUITS: 1/3"
+//   HudBanner  becomes visible when the level is complete (its text is the scene's)
 //
-// Va DESPUES de los sistemas de reglas del motor (ver main.cpp), para ver sus avisos
-// en el mismo frame.
+// Runs AFTER the engine's rule systems (see main.cpp), to see their flags in the
+// same frame.
 class PlatformerRulesSystem : public System {
 public:
     const char* name() const override { return "PlatformerRules"; }

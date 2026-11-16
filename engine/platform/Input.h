@@ -1,87 +1,87 @@
 #pragma once
 
-// Estado del teclado y del raton, consultable desde CUALQUIER componente.
+// Keyboard and mouse state, queryable from ANY system.
 //
-// Por que existe: SDL_GetKeyboardState solo dice si una tecla esta MANTENIDA. El
-// "se acaba de presionar" (flanco) vivia en el bucle de eventos de main, inalcanzable
-// desde un componente, asi que cada controlador se inventaba su propia memoria del
-// frame anterior (un bool jumpPrev por componente). Input guarda el estado de ESTE
-// frame y del ANTERIOR una sola vez, y todos consultan lo mismo.
+// Why it exists: SDL_GetKeyboardState only says whether a key is HELD. "Just
+// pressed" (the edge) lived in main's event loop, out of reach of the game code,
+// so each controller made up its own memory of the previous frame (a jumpPrev
+// bool per component). Input stores the state of THIS frame and the PREVIOUS one
+// once, and everyone queries the same thing.
 //
-// No es un componente: es una clase ESTATICA (un unico estado global de entrada).
-// Tampoco incluye SDL: las teclas se nombran con el enum Key de abajo y la traduccion
-// a scancodes de SDL ocurre solo en Input.cpp.
+// It is not a component: it is a STATIC class (a single global input state).
+// It does not include SDL either: keys are named with the Key enum below and the
+// translation to SDL scancodes happens only in Input.cpp.
 //
-// Uso desde el bucle de main, UNA vez por frame, ANTES de scene->update(dt):
+// Use from the main loop, ONCE per frame, BEFORE updating the systems:
 //     Input::update();
-// Uso desde un componente:
-//     if (Input::wasPressed(Key::Space)) saltar();
-//     float mover = Input::axis(Key::Left, Key::Right);   // -1, 0 o +1
+// Use from a system:
+//     if (Input::wasPressed(Key::Space)) jump();
+//     float move = Input::axis(Key::Left, Key::Right);   // -1, 0 or +1
 
-// Teclas disponibles. Se pueden agregar mas: basta sumar el valor aqui y su caso en
-// la traduccion de Input.cpp (el compilador avisa si falta, la tabla es exhaustiva).
+// Available keys. More can be added: just add the value here and its case in the
+// translation in Input.cpp (the compiler warns if one is missing; the switch is exhaustive).
 enum class Key {
-    // Letras
+    // Letters
     A, B, C, D, E, F, G, H, I, J, K, L, M,
     N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
-    // Numeros de la fila superior
+    // Top-row numbers
     Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
-    // Flechas
+    // Arrows
     Left, Right, Up, Down,
-    // Teclas de control
+    // Control keys
     Space, Enter, Escape, Tab, Backspace, Delete,
     LShift, RShift, LCtrl, RCtrl, LAlt, RAlt,
-    // Funcion
+    // Function keys
     F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
 
-    Count // marcador final: cuantas teclas maneja Input (no es una tecla)
+    Count // end marker: how many keys Input handles (not a key)
 };
 
 enum class MouseButton { Left, Middle, Right, Count };
 
-union SDL_Event; // declaracion adelantada: SDL solo aparece en Input.cpp
+union SDL_Event; // forward declaration: SDL only appears in Input.cpp
 
 class Input {
 public:
-    // Refresca el estado. La llama el bucle de main una vez por frame, antes de
-    // actualizar la escena. Guarda el estado del frame previo para los flancos.
+    // Refreshes the state. The main loop calls it once per frame, before updating
+    // the systems. It keeps the previous frame's state for the edges.
     static void update();
 
-    // La rueda del raton NO es un estado que se pueda leer (como una tecla): llega solo
-    // como EVENTO. Por eso el bucle de main le pasa cada evento aqui, dentro de su
-    // while (SDL_PollEvent(&e)), antes de Input::update(). Los demas eventos se ignoran.
+    // The mouse wheel is NOT a state that can be read (like a key): it only arrives
+    // as an EVENT. That is why the main loop passes each event here, inside its
+    // while (SDL_PollEvent(&e)), before Input::update(). Other events are ignored.
     static void processEvent(const SDL_Event& e);
 
-    // Olvida los flancos sin perder que teclas estan mantenidas: deja el estado
-    // "previo" igual al actual. Llamarlo al cambiar de escena, para que la tecla que
-    // provoco el cambio no se lea como recien presionada en la escena nueva.
+    // Forgets the edges without losing which keys are held: makes the "previous"
+    // state equal to the current one. Call it when switching scenes (or pressing Play),
+    // so the key that caused the switch is not read as just pressed in the new scene.
     static void reset();
 
-    // Con false el teclado se lee como si no hubiera ninguna tecla pulsada (el raton
-    // sigue igual). El editor lo apaga mientras se escribe en un campo de un panel,
-    // para que esas teclas no muevan al jugador. Al volver a encenderlo, las teclas
-    // que ya estaban mantenidas no cuentan como recien pulsadas. Se aplica en el
-    // proximo update().
+    // With false the keyboard reads as if no key were pressed (the mouse stays the
+    // same). The editor turns it off while typing in a panel field, so those keys do
+    // not move the player. When it is turned back on, keys that were already held
+    // do not count as just pressed. It applies on the next
+    // update().
     static void setKeyboardEnabled(bool enabled);
 
-    static bool isDown(Key k);       // mantenida en este frame
-    static bool wasPressed(Key k);   // paso de suelta a mantenida en este frame
-    static bool wasReleased(Key k);  // paso de mantenida a suelta en este frame
+    static bool isDown(Key k);       // held this frame
+    static bool wasPressed(Key k);   // went from released to held this frame
+    static bool wasReleased(Key k);  // went from held to released this frame
 
-    // Eje digital: +1 si solo esta 'positive', -1 si solo 'negative', 0 si ninguna
-    // o ambas. Atajo del patron "if (izquierda) -1; if (derecha) +1".
+    // Digital axis: +1 if only 'positive', -1 if only 'negative', 0 if neither
+    // or both. Shortcut for the pattern "if (left) -1; if (right) +1".
     static float axis(Key negative, Key positive);
 
     static bool isMouseDown(MouseButton b);
     static bool wasMousePressed(MouseButton b);
     static bool wasMouseReleased(MouseButton b);
 
-    // Posicion del cursor en pixeles de PANTALLA (no de mundo): la esquina superior
-    // izquierda de la ventana es (0,0). Para llevarlo al mundo hace falta la camara.
+    // Cursor position in SCREEN pixels (not world): the window's top left corner is
+    // (0,0). Converting it to the world requires the camera.
     static float mouseX();
     static float mouseY();
 
-    // Cuanto giro la rueda en ESTE frame: >0 hacia adelante (alejando la mano), <0
-    // hacia atras, 0 si no se movio. Una "muesca" de una rueda comun vale 1.
+    // How much the wheel turned in THIS frame: >0 forward (away from the hand), <0
+    // backward, 0 if it did not move. One "notch" of a regular wheel is 1.
     static float mouseWheel();
 };

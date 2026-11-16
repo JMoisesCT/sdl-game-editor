@@ -10,10 +10,10 @@
 #include "core/World.h"
 #include "platform/AssetManager.h"
 
-// --- Reproduccion ------------------------------------------------------------------------
+// --- Playback ----------------------------------------------------------------------------
 
-// Seg que se le perdonan a un cuadro para darlo por cumplido (ver update). Mayor que el
-// temblor tipico del reloj con VSync (~1 ms) y mucho menor que un frame.
+// Seconds a frame is forgiven to count it as done (see update). Larger than the
+// typical jitter of the clock with VSync (~1 ms) and much smaller than a frame.
 static const float FRAME_TIME_MARGIN = 0.002f;
 
 namespace {
@@ -30,8 +30,8 @@ namespace {
         a.finished = false;
     }
 
-    // La imagen de un clip y su grilla (columnas y filas de cuadros). false si no carga
-    // o el cuadro no cabe.
+    // A clip's image and its grid (columns and rows of frames). false if it does not
+    // load or the frame does not fit.
     bool clipGrid(AssetManager& assets, const AnimationClip& clip, const std::string& path,
                   int& columns, int& rows) {
         if (path.empty() || clip.frameWidth <= 0 || clip.frameHeight <= 0) return false;
@@ -48,7 +48,7 @@ namespace {
 bool playAnimation(World& world, Entity e, const std::string& clip, bool restart) {
     SpriteAnimator* a = world.get<SpriteAnimator>(e);
     if (!a || !findClip(*a, clip)) return false;
-    if (a->current == clip && !restart) return true; // ya suena: no se corta
+    if (a->current == clip && !restart) return true; // already playing: do not cut it
     startClip(*a, clip);
     return true;
 }
@@ -66,9 +66,9 @@ void SpriteAnimatorSystem::onPlay(World& world) {
 void SpriteAnimatorSystem::update(World& world, float dt) {
     world.each<SpriteAnimator, Sprite>([&](Entity e, SpriteAnimator& a, Sprite& sprite) {
         a.justFinished = false;
-        // Arranque perezoso (vale tambien para una entidad creada jugando): se recuerda
-        // la imagen del Sprite, que es la de los clips sin textura propia, y si nadie
-        // pidio otro clip todavia, suena el inicial.
+        // Lazy start (also works for an entity created while playing): the Sprite's image
+        // is remembered, which is the one for clips without their own texture, and if
+        // nobody requested another clip yet, the start clip plays.
         if (!a.started) {
             a.started = true;
             a.baseTexture = sprite.texture;
@@ -85,12 +85,12 @@ void SpriteAnimatorSystem::update(World& world, float dt) {
         if (!clipGrid(assets, *clip, path, columns, rows)) return;
         const int count = clip->frames.empty() ? columns * rows : (int)clip->frames.size();
 
-        // Avanza tantos cuadros como quepan en el tiempo acumulado (a pocos fps, o con
-        // un frame lento, pueden ser varios). Con MARGEN: a 20 fps un cuadro dura 50 ms,
-        // justo 3 frames de 60 Hz, pero el reloj real tiembla y 3 frames pueden sumar
-        // 49,8 ms. Sin margen ese cuadro esperaria un 4.o frame y el siguiente duraria 2:
-        // la animacion iria a tirones (3, 4, 2, 3...). Lo que se adelanta se descuenta
-        // del cuadro siguiente (timer queda negativo), asi la velocidad media no cambia.
+        // Advances as many frames as fit in the accumulated time (at low fps, or with a
+        // slow frame, there can be several). With a MARGIN: at 20 fps a frame lasts 50 ms,
+        // exactly 3 frames at 60 Hz, but the real clock jitters and 3 frames can add up
+        // to 49.8 ms. Without a margin that frame would wait for a 4th frame and the next
+        // would last 2: the animation would stutter (3, 4, 2, 3...). What runs ahead is
+        // deducted from the next frame (timer goes negative), so the average speed does not change.
         if (!a.finished && clip->fps > 0.0f && a.speed > 0.0f) {
             const float frameTime = 1.0f / clip->fps;
             const float margin = std::fmin(FRAME_TIME_MARGIN, frameTime * 0.25f);
@@ -102,22 +102,22 @@ void SpriteAnimatorSystem::update(World& world, float dt) {
                 } else if (clip->loop) {
                     a.frame = 0;
                 } else {
-                    a.finished = a.justFinished = true; // se queda en el ultimo cuadro
+                    a.finished = a.justFinished = true; // stays on the last frame
                     a.timer = 0.0f;
                     break;
                 }
             }
         }
-        if (a.frame >= count) a.frame = count - 1; // el clip se edito con menos cuadros
+        if (a.frame >= count) a.frame = count - 1; // the clip was edited to have fewer frames
 
-        // El cuadro actual pasa al Sprite: imagen y recorte.
+        // The current frame goes to the Sprite: image and crop.
         const int cell = clip->frames.empty() ? a.frame : clip->frames[a.frame];
         const int col = cell % columns, row = cell / columns;
         sprite.texture = path;
         sprite.source = { col * clip->frameWidth, row * clip->frameHeight, clip->frameWidth, clip->frameHeight };
 
-        // Al terminar un clip sin loop: destruir (diferido) o encadenar. Va al final:
-        // startClip cambia a.current, y 'clip' y 'path' apuntan a datos del animador.
+        // When a clip without loop ends: destroy (deferred) or chain. Goes last:
+        // startClip changes a.current, and 'clip' and 'path' point to the animator's data.
         if (a.justFinished) {
             if (clip->destroyOnEnd) world.destroy(e);
             else if (!clip->next.empty() && findClip(a, clip->next)) startClip(a, std::string(clip->next));
@@ -125,14 +125,14 @@ void SpriteAnimatorSystem::update(World& world, float dt) {
     });
 }
 
-// --- Maquina de estados ------------------------------------------------------------------
+// --- State machine -----------------------------------------------------------------------
 
 void AnimatorStateMachineSystem::onPlay(World& world) {
     world.each<AnimatorStateMachine>([](Entity, AnimatorStateMachine& fsm) { fsm.state.clear(); });
 }
 
 void AnimatorStateMachineSystem::update(World& world, float) {
-    // Un aviso por nombre desconocido, no uno por frame.
+    // One warning per unknown name, not one per frame.
     static std::set<std::string> warned;
     world.each<AnimatorStateMachine>([&](Entity e, AnimatorStateMachine& fsm) {
         const std::string* chosen = &fsm.defaultClip;
@@ -144,12 +144,12 @@ void AnimatorStateMachineSystem::update(World& world, float) {
                             rule.condition.c_str());
                 continue;
             }
-            if ((*condition)(world, e)) { chosen = &rule.clip; break; } // gana la primera
+            if ((*condition)(world, e)) { chosen = &rule.clip; break; } // the first one wins
         }
-        // Solo al cambiar de regla: dentro de un mismo estado, el clip puede haber
-        // encadenado con su 'next' y no hay que reiniciarlo.
-        // Sin regla ni defaultClip: el clip sigue como esta, y la proxima regla que
-        // gane (aunque sea la misma de antes) lo vuelve a arrancar.
+        // Only when the rule changes: within the same state, the clip may have chained
+        // into its 'next' and must not be restarted.
+        // With no rule and no defaultClip: the clip keeps going as is, and the next rule
+        // that wins (even the same one as before) starts it again.
         if (chosen->empty()) {
             fsm.state.clear();
             return;

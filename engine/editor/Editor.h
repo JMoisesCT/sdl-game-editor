@@ -13,44 +13,46 @@ class GameCanvas;
 struct ComponentInfo;
 struct FieldInfo;
 struct Tilemap;
-struct SDL_Texture;  // declaraciones adelantadas: SDL e ImGui solo en los .cpp
+struct SDL_Texture;  // forward declarations: SDL and ImGui only in the .cpp files
 union SDL_Event;
 
-// Editor generalista: edita DIRECTAMENTE el World de la aplicacion (no una copia).
-// No sabe nada de ningun juego: todo lo que muestra sale de la reflexion, asi que un
-// componente nuevo del juego aparece en el Inspector sin tocar el editor.
+// General-purpose editor: it edits the application's World DIRECTLY (not a copy).
+// It knows nothing about any game: everything it shows comes from the reflection, so a
+// new game component shows up in the Inspector without touching the editor.
 //
-// Paneles (Dear ImGui, posicion fija):
-//   - Barra superior: Jugar/Detener, Pausa, Guardar, Deshacer/Rehacer, Abrir, grilla.
-//   - Jerarquia (izquierda): las entidades en arbol; crear, duplicar, borrar, y
-//     arrastrar una sobre otra para hacerla su hija o cambiarla de lugar (ver
-//     core/Hierarchy.h). Duplicar y borrar llevan a toda la rama, y mover al padre
-//     (en la vista o en el Inspector) mueve tambien a sus hijos.
-//   - Prefabs (izquierda, debajo): los .prefab.json, para colocar instancias.
-//   - Inspector (derecha): los componentes de la seleccionada, editables.
-//   - Vista (centro): pestanas "Escena" (camara libre del editor) y "Juego" (lo que
-//     ve el jugador, a la resolucion del juego). Cada una se dibuja en su textura.
+// Panels (Dear ImGui, fixed position):
+//   - Top bar: Play/Stop, Pause, Save, Undo/Redo, Open, grid.
+//   - Hierarchy (left): the entities as a tree; create, duplicate, delete, and drag
+//     one onto another to make it its child or move it (see core/Hierarchy.h).
+//     Duplicate and delete take the whole branch, and moving the parent (in the view
+//     or in the Inspector) also moves its children. Ctrl+click and Shift+click select
+//     several; dragging, Duplicate, Delete and Group (Ctrl+G) act on all of them.
+//   - Prefabs (left, below): the .prefab.json files, to place instances.
+//   - Inspector (right): the components of the active entity (the last one
+//     selected), editable.
+//   - View (center): "Scene" tab (the editor's free camera) and "Game" tab (what the
+//     player sees, at the game's resolution). Each one is drawn on its own texture.
 //
-// Deshacer: cada paso es una COPIA de la escena serializada. Todo cambio pasa por
-// beginChange() ANTES de modificar el World, y el paso se anota al terminar el gesto
-// (soltar el raton o salir del campo de texto). Un cambio que no pase por
-// beginChange no se puede deshacer y no marca la escena como modificada.
-// Jugando no se anota nada: al detener, la escena vuelve a como estaba.
+// Undo: each step is a COPY of the serialized scene. Every change goes through
+// beginChange() BEFORE modifying the World, and the step is recorded when the gesture
+// ends (releasing the mouse or leaving the text field). A change that does not go
+// through beginChange cannot be undone and does not mark the scene as modified.
+// Nothing is recorded while playing: on Stop, the scene goes back to how it was.
 //
-// Tilemaps: con una entidad con Tilemap elegida, el Inspector muestra la paleta del
-// tileset y las herramientas (Mover, Pincel, Goma, Relleno); con una de pintar, el
-// clic en la vista de escena pinta las celdas de ESA capa en vez de elegir entidades.
-// Cada trazo (pulsar, arrastrar, soltar) es un paso de deshacer.
+// Tilemaps: with an entity with a Tilemap selected, the Inspector shows the tileset
+// palette and the tools (Move, Brush, Eraser, Fill); with a painting tool, clicking
+// in the scene view paints the cells of THAT layer instead of selecting entities.
+// Each stroke (press, drag, release) is one undo step.
 //
-// Prefabs: el panel Prefabs (bajo la Jerarquia) lista los .prefab.json de assets/;
-// doble clic o arrastrar a la vista coloca una instancia. Con una instancia elegida,
-// el Inspector muestra su prefab, resalta los campos que difieren de el y ofrece
-// Aplicar, Revertir y Desvincular. Aplicar guarda el prefab en el acto: deshacer
-// vuelve atras la escena, no el archivo del prefab.
+// Prefabs: the Prefabs panel (below the Hierarchy) lists the .prefab.json files in
+// assets/; double-clicking or dragging into the view places an instance. With an
+// instance selected, the Inspector shows its prefab, highlights the fields that differ
+// from it and offers Apply, Revert and Unlink. Apply saves the prefab right away: undo
+// reverts the scene, not the prefab file.
 //
-// Se reparte en cinco .cpp: Editor.cpp (marco, barra, deshacer, atajos),
-// EditorPanels.cpp (Jerarquia e Inspector), EditorViewport.cpp (vistas),
-// EditorTilemap.cpp (paleta y pinceles) y EditorPrefabs.cpp (prefabs).
+// It is split into five .cpp files: Editor.cpp (frame, toolbar, undo, shortcuts),
+// EditorPanels.cpp (Hierarchy and Inspector), EditorViewport.cpp (views),
+// EditorTilemap.cpp (palette and brushes) and EditorPrefabs.cpp (prefabs).
 class Editor {
 public:
     explicit Editor(Application& app);
@@ -58,26 +60,26 @@ public:
     Editor(const Editor&) = delete;
     Editor& operator=(const Editor&) = delete;
 
-    bool init();      // ImGui sobre la ventana y el renderer de la aplicacion
-    void shutdown();  // antes de destruir el renderer
+    bool init();      // ImGui on the application's window and renderer
+    void shutdown();  // before destroying the renderer
     void processEvent(const SDL_Event& e);
 
-    // Arma los paneles y dibuja las vistas en sus texturas. Despues, con el destino
-    // de render ya en la ventana, present() dibuja los paneles.
+    // Builds the panels and draws the views onto their textures. Then, with the render
+    // target already on the window, present() draws the panels.
     void frame(float dt);
     void present();
 
-    // La aplicacion acaba de cargar una escena: se olvidan seleccion e historial.
+    // The application just loaded a scene: selection and history are forgotten.
     void onSceneLoaded();
 
-    // Si hay cambios sin guardar, pregunta (Guardar / Descartar / Cancelar).
-    // true = se puede seguir con la accion.
+    // If there are unsaved changes, asks (Save / Discard / Cancel).
+    // true = the action can go ahead.
     bool confirmDiscard(const char* action);
 
     bool isDirty() const { return changePending || version != savedVersion; }
 
-    // Si se esta escribiendo en un campo de un panel: entonces las teclas son del
-    // campo y no del juego (Application apaga el teclado de Input).
+    // Whether text is being typed into a panel field: then the keys belong to the
+    // field and not to the game (Application turns off Input's keyboard).
     bool isTypingText() const;
 
 private:
@@ -90,14 +92,14 @@ private:
     void save();
     void togglePlay();
     void scanSceneFiles();
-    // Archivos bajo assets/ que terminan en suffix, con "/" y ordenados.
+    // Files under assets/ ending in suffix, with "/" and sorted.
     static std::vector<std::string> listAssetFiles(const std::string& suffix);
-    void drawOpenPopup();  // lista de escenas; al elegir una, pregunta si hay cambios
+    void drawOpenPopup();  // list of scenes; when one is chosen, asks if there are changes
 
-    void beginChange();       // antes de modificar el World
-    void commitChange();      // anota el paso pendiente (si lo hay)
-    void commitIfIdle();      // ...pero solo si el gesto ya termino
-    void cancelChange();      // olvida el paso pendiente (solo si aun no se modifico nada)
+    void beginChange();       // before modifying the World
+    void commitChange();      // records the pending step (if any)
+    void commitIfIdle();      // ...but only if the gesture has ended
+    void cancelChange();      // forgets the pending step (only if nothing was modified yet)
     void undo();
     void redo();
     void restore(const Json& scene);
@@ -105,26 +107,44 @@ private:
     // --- EditorPanels.cpp ---
     void drawHierarchy();
     void drawInspector();
-    bool drawField(const FieldInfo& field, void* value); // true si cambio
-    bool drawList(const FieldInfo& field, void* value);  // un campo List (lista de structs)
-    // Lista desplegable con esas opciones. true si se eligio otra (queda en out).
+    bool drawField(const FieldInfo& field, void* value); // true if it changed
+    bool drawList(const FieldInfo& field, void* value);  // a List field (list of structs)
+    // Dropdown with those options. true if another one was chosen (left in out).
     bool drawChoice(const char* label, const std::vector<std::string>& options,
                     const std::string& current, std::string& out);
-    // Campo de ruta + boton que lista las imagenes (o, con audio, los sonidos) de
-    // assets/; los sonidos se pueden escuchar. true si se eligio o escribio otra ruta
-    // (queda en out; quien llama decide si la aplica).
+    // Path field + a button that lists the images (or, with audio, the sounds) in
+    // assets/; sounds can be played. true if another path was chosen or typed
+    // (left in out; the caller decides whether to apply it).
     bool drawFilePicker(const char* label, const std::string& current, std::string& out, bool audio);
-    // Campo Entity: lista de las entidades de la escena, o soltar una arrastrada desde
-    // la Jerarquia. true si se eligio otra (queda en out).
+    // Entity field: list of the scene's entities, or drop one dragged from the
+    // Hierarchy. true if another one was chosen (left in out).
     bool drawEntityPicker(const char* label, Entity current, Entity& out);
     void scanAssetFiles();
 
-    Entity createEntity(Entity parent = NullEntity); // con padre: hija suya, en su posicion
-    void duplicateSelected();
-    void deleteSelected();
+    Entity createEntity(Entity parent = NullEntity); // with a parent: its child, at its position
+    void duplicateSelected();        // every selected branch
+    void deleteSelected();           // every selected branch
+    void groupSelected();            // a new empty entity with the selection inside
+    void ungroupSelected();          // the selection out of its groups, next to them
+    Entity duplicateBranch(Entity root); // the copy goes right after the original
+    // Moves these entities (with their branches, in World order) under 'parent', right
+    // before 'before' (NullEntity = last). Not an undo step if nothing moves.
+    void moveEntities(const std::vector<Entity>& entities, Entity parent, Entity before);
+
+    // Multi-selection: 'selection' holds every selected entity and 'selected' (the
+    // active one, the one the Inspector shows) is always among them. Code that sets
+    // 'selected' directly selects only that one: syncSelection() notices it (the
+    // active one is not in the list) and resets the list.
+    void syncSelection();
+    bool isSelected(Entity e) const;
+    void selectOnly(Entity e);
+    void toggleSelected(Entity e);   // Ctrl+click: add it (as the active one) or remove it
+    // The selected entities none of whose ancestors is selected, in World order: moving,
+    // duplicating or deleting them takes the whole selection exactly once.
+    std::vector<Entity> selectedRoots();
     std::string entityLabel(Entity e);
-    // Mueve a toda la rama de e (no a e) en 'delta': lo que se hace al mover al padre.
-    // Los textos del HUD estan en px de pantalla: solo se mueven con un padre del HUD.
+    // Moves e's whole branch (not e) by 'delta': what is done when moving the parent.
+    // HUD texts are in screen px: they only move with a HUD parent.
     void moveBranch(Entity e, Vec2 delta);
 
     // --- EditorViewport.cpp ---
@@ -133,11 +153,11 @@ private:
     void drawGameView(Vec2 pos, Vec2 size);
     void handleSceneInput(Vec2 imagePos, bool hovered);
     void drawGizmos();
-    bool entityBounds(Entity e, Vec2& center, Vec2& size); // en el mundo
-    // Texto del HUD (Text con screenSpace): su posicion son px de la pantalla del juego.
+    bool entityBounds(Entity e, Vec2& center, Vec2& size); // in the world
+    // HUD text (Text with screenSpace): its position is in game screen px.
     bool isHudEntity(Entity e);
-    // Pasa de px de la pantalla del juego a la vista Escena (a traves de la camara del
-    // juego): el HUD se ve sobre el recuadro de la camara.
+    // Maps game screen px to the Scene view (through the game's camera): the HUD is
+    // shown over the camera frame.
     View hudView();
     Entity pickAt(Vec2 world);
     void frameEntity(Entity e);
@@ -146,98 +166,102 @@ private:
 
     // --- EditorTilemap.cpp ---
     enum class TileTool { Move, Brush, Erase, Fill };
-    Tilemap* selectedTilemap();      // el Tilemap de la seleccion (si tambien tiene Transform)
+    Tilemap* selectedTilemap();      // the selection's Tilemap (if it also has a Transform)
     void setTileTool(TileTool tool);
-    void drawTilePalette();          // en el Inspector, bajo los componentes
-    // Con una herramienta de tiles, maneja el clic izquierdo en la vista de escena.
-    // true = el raton ya se uso (no elegir ni arrastrar entidades).
+    void drawTilePalette();          // in the Inspector, below the components
+    // With a tile tool, handles the left click in the scene view.
+    // true = the mouse was already used (do not select or drag entities).
     bool handleTilemapInput(bool hovered);
-    void paintCell(Tilemap& map, int col, int row);        // aplica Pincel o Goma
-    void setCell(Tilemap& map, int col, int row, int tile); // beginChange si cambia
+    void paintCell(Tilemap& map, int col, int row);        // applies Brush or Eraser
+    void setCell(Tilemap& map, int col, int row, int tile); // beginChange if it changes
     void fillFrom(Tilemap& map, int col, int row);
-    void drawTilemapGizmos();        // dentro del destino de la vista de escena
+    void drawTilemapGizmos();        // inside the scene view's target
 
     // --- EditorPrefabs.cpp ---
-    void drawPrefabList();           // panel Prefabs
+    void drawPrefabList();           // Prefabs panel
     void scanPrefabFiles();
-    void reloadPrefabs();            // vuelve a leer los prefabs y rearma las instancias
-    Entity placePrefab(const std::string& path, Vec2 position); // instancia nueva, elegida
-    void drawPrefabHeader();         // en el Inspector: su prefab, o "Crear prefab"
+    void reloadPrefabs();            // reloads the prefabs and rebuilds the instances
+    Entity placePrefab(const std::string& path, Vec2 position); // new instance, selected
+    void drawPrefabHeader();         // in the Inspector: its prefab, or "Create prefab"
     void createPrefabFromSelected(const std::string& name);
-    void applyToPrefab();            // la seleccion pasa a ser el prefab
-    void revertToPrefab();           // la seleccion vuelve a ser igual al prefab
+    void applyToPrefab();            // the selection becomes the prefab
+    void revertToPrefab();           // the selection matches the prefab again
     void unlinkPrefab();
-    // Quita todos los componentes de la entidad y la vuelve a armar desde ese JSON
-    // (forma de serializeEntity), conservando su id.
+    // Removes every component from the entity and rebuilds it from that JSON
+    // (serializeEntity's shape), keeping its id.
     void rebuildEntity(Entity e, const Json& entity);
 
     Application& app;
     bool guiReady = false;
     float uiScale = 1.0f;
 
-    Entity selected = NullEntity;
-    Entity revealedSelection = NullEntity; // la Jerarquia ya abrio la rama de esta y la mostro
-    Entity hierarchyPress = NullEntity;    // se pulso sobre esta en la Jerarquia (se elige al soltar)
-    std::string entityFilter;              // texto del filtro del selector de entidades
+    Entity selected = NullEntity;          // the active entity (see syncSelection)
+    std::vector<Entity> selection;         // every selected entity, 'selected' included
+    Entity selectionAnchor = NullEntity;   // where a Shift+click range in the Hierarchy starts
+    Entity revealedSelection = NullEntity; // the Hierarchy already opened this one's branch and showed it
+    Entity hierarchyPress = NullEntity;    // this one was pressed in the Hierarchy (selected on release)
+    std::string entityFilter;              // filter text of the entity picker
 
-    // Vista del editor (independiente de cualquier Camera de la escena).
+    // Editor view (independent of any Camera in the scene).
     View sceneView;
     bool showGrid = true;
     bool snapToGrid = true;
     int gridSize = 16;
-    bool showColliders = true;     // dibujar las cajas de BoxCollider
-    bool wantGameTab = false;      // seleccionar la pestana "Juego" (al pulsar Jugar)
-    bool wantSceneTab = false;     // ...o "Escena" (al detener)
+    bool showColliders = true;     // draw the BoxCollider boxes
+    bool wantGameTab = false;      // select the "Game" tab (when pressing Play)
+    bool wantSceneTab = false;     // ...or "Scene" (when stopping)
 
-    // Arrastre de una entidad en la vista de escena.
-    bool pressOnEntity = false;    // se pulso sobre una entidad (aun sin moverla)
-    bool dragging = false;         // ya se movio mas alla del umbral
-    Vec2 pressMouse;               // donde se pulso (pantalla)
-    Vec2 dragOffset;               // raton - posicion de la entidad (mundo)
+    // Dragging an entity in the scene view.
+    bool pressOnEntity = false;    // an entity was pressed (not moved yet)
+    bool pressKeepsSelection = false; // pressed on one of several selected: on release
+                                      // without dragging, it becomes the only one
+    bool dragging = false;         // already moved past the threshold
+    Vec2 pressMouse;               // where it was pressed (screen)
+    Vec2 dragOffset;               // mouse - entity position (world)
     bool panning = false;
-    Vec2 mouseWorld;               // raton en el mundo (para la barra)
+    Vec2 mouseWorld;               // mouse in the world (for the bar)
     bool mouseInScene = false;
 
-    // Texturas de render de las dos vistas.
+    // Render textures of the two views.
     SDL_Texture* sceneTarget = nullptr;
     int sceneTargetW = 0, sceneTargetH = 0;
-    std::unique_ptr<GameCanvas> gameCanvas; // la vista de juego: lienzo + escalado nitido
+    std::unique_ptr<GameCanvas> gameCanvas; // the game view: canvas + sharp scaling
 
-    // Deshacer / rehacer: copias de la escena con su numero de version.
+    // Undo / redo: copies of the scene with their version number.
     struct Snapshot { Json scene; int version = 0; };
     std::vector<Snapshot> undoStack;
     std::vector<Snapshot> redoStack;
-    Json pendingBefore;            // la escena antes del cambio en curso
+    Json pendingBefore;            // the scene before the change in progress
     bool changePending = false;
-    int version = 0;               // version de lo que hay ahora en el World
+    int version = 0;               // version of what is in the World now
     int nextVersion = 1;
-    int savedVersion = 0;          // version que esta en disco
+    int savedVersion = 0;          // version that is on disk
 
-    std::string status;            // mensaje de la barra
-    float statusTime = 0.0f;       // segundos que le quedan
+    std::string status;            // status bar message
+    float statusTime = 0.0f;       // seconds it has left
     std::string windowTitle;
 
-    std::vector<std::string> textureFiles; // .png bajo assets/, para elegir texturas
-    std::vector<std::string> audioFiles;   // .wav, .ogg... bajo assets/, para elegir sonidos
+    std::vector<std::string> textureFiles; // .png under assets/, to pick textures
+    std::vector<std::string> audioFiles;   // .wav, .ogg... under assets/, to pick sounds
     bool assetFilesScanned = false;
-    std::string fileFilter;                // texto del filtro de esas listas
+    std::string fileFilter;                // filter text of those lists
 
-    // Tilemaps (estado del editor: no se guarda en la escena).
+    // Tilemaps (editor state: not saved in the scene).
     TileTool tileTool = TileTool::Move;
-    IntRect brush{ 0, 0, 1, 1 };   // tiles elegidos en la paleta, en columnas/filas del tileset
-    bool paletteSelecting = false; // arrastrando en la paleta para elegir varios tiles
+    IntRect brush{ 0, 0, 1, 1 };   // tiles picked in the palette, in tileset columns/rows
+    bool paletteSelecting = false; // dragging in the palette to pick several tiles
     int paletteStartCol = 0, paletteStartRow = 0;
     int paletteZoom = 2;
-    bool markSolids = false;       // clic en la paleta: marcar/desmarcar como solido
-    bool showSolids = false;       // vista de escena: resaltar las celdas que frenan
-    bool painting = false;         // trazo en curso
-    int lastCol = 0, lastRow = 0;  // ultima celda pintada del trazo
-    bool hoverCell = false;        // el raton esta sobre la vista con una herramienta de tiles
+    bool markSolids = false;       // click in the palette: mark/unmark as solid
+    bool showSolids = false;       // scene view: highlight the blocking cells
+    bool painting = false;         // stroke in progress
+    int lastCol = 0, lastRow = 0;  // last cell painted in the stroke
+    bool hoverCell = false;        // the mouse is over the view with a tile tool
     int hoverCol = 0, hoverRow = 0;
 
-    std::vector<std::string> sceneFiles; // .scene.json bajo assets/, para "Abrir..."
+    std::vector<std::string> sceneFiles; // .scene.json under assets/, for "Open..."
 
-    std::vector<std::string> prefabFiles; // .prefab.json bajo assets/, para el panel Prefabs
+    std::vector<std::string> prefabFiles; // .prefab.json under assets/, for the Prefabs panel
     bool prefabFilesScanned = false;
-    std::string newPrefabName;            // texto del cuadro "Crear prefab"
+    std::string newPrefabName;            // text of the "Create prefab" box
 };

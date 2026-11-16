@@ -6,106 +6,106 @@
 
 class ComponentRegistry;
 
-// Componentes de REGLAS de juego: vida, dano, zonas que matan, objetos que se recogen
-// y puntos de reaparicion. Como los demas, son SOLO datos; la logica esta en los
-// sistemas de systems/Rules.h.
+// Gameplay RULE components: health, damage, zones that kill, collectible objects and
+// respawn points. Like the others, they are ONLY data; the logic is in the systems
+// of systems/Rules.h.
 //
-// Todos se activan por CONTACTO entre cajas (BoxCollider): el peligro, la fruta o la
-// bandera necesitan su caja (normalmente isTrigger, para que no frene) y el que los
-// toca tambien. A quien afectan se decide por la ETIQUETA (EntityInfo::tag) del que
-// toca, nunca por su nombre.
+// They are all triggered by CONTACT between boxes (BoxCollider): the hazard, the fruit
+// or the flag need their box (usually isTrigger, so it does not block) and so does
+// whoever touches them. Whom they affect is decided by the TAG (EntityInfo::tag) of
+// whoever touches them, never by their name.
 //
-// No hay callbacks como en el v1 (onDeath, onCollect...): lo que pasa en un frame
-// queda escrito en el componente como un aviso de UN frame (justDamaged, justDied,
-// justCollected...), igual que justLanded en el PlatformerMotor. Un sistema del juego
-// que corra despues lo lee y decide que significa (sumar puntos, un sonido, el HUD).
+// There are no callbacks as in v1 (onDeath, onCollect...): what happens in a frame is
+// written on the component as a ONE-frame flag (justDamaged, justDied,
+// justCollected...), just like justLanded on the PlatformerMotor. A game system
+// running afterwards reads it and decides what it means (add points, a sound, the HUD).
 
-// Puntos de vida, dano e invulnerabilidad temporal con parpadeo. No sabe quien le
-// pega: se le quita vida con damageEntity / killEntity (Rules.h).
+// Hit points, damage and temporary invulnerability with blinking. It does not know
+// who hits it: health is taken with damageEntity / killEntity (Rules.h).
 //
-// INVULNERABILIDAD: tras un golpe, no recibe otro durante invulnerabilityTime. Sin
-// eso, quedarse encima de unos pinchos vaciaria la vida en un punado de frames, porque
-// el contacto se detecta CADA frame que dure. Mientras dura, el Sprite parpadea.
+// INVULNERABILITY: after a hit, it takes no other one for invulnerabilityTime. Without
+// that, standing on some spikes would empty the health in a handful of frames, because
+// the contact is detected EVERY frame it lasts. Meanwhile, the Sprite blinks.
 //
-// Al llegar a 0: si la entidad tiene Respawn, reaparece; si no y destroyOnDeath esta
-// marcado, se destruye (un enemigo); si no, queda muerta (hp 0) y no recibe mas dano.
+// On reaching 0: if the entity has Respawn, it respawns; if not and destroyOnDeath is
+// checked, it is destroyed (an enemy); otherwise, it stays dead (hp 0) and takes no more damage.
 struct Health {
     int maxHP = 3;
-    float invulnerabilityTime = 1.0f; // seg de gracia tras un golpe (0 = sin gracia)
-    float blinkInterval = 0.08f;      // seg entre apagar y encender el sprite
-    bool destroyOnDeath = false;      // al morir se destruye (no usar junto con Respawn)
+    float invulnerabilityTime = 1.0f; // grace seconds after a hit (0 = no grace)
+    float blinkInterval = 0.08f;      // seconds between turning the sprite off and on
+    bool destroyOnDeath = false;      // destroyed on death (do not use together with Respawn)
 
-    // --- Estado de ejecucion (lo escriben los sistemas de Rules.h) ---
-    int hp = 0;                // vida actual; empieza en maxHP
-    float invulnerable = 0.0f; // seg de gracia que quedan
+    // --- Runtime state (written by the systems in Rules.h) ---
+    int hp = 0;                // current health; starts at maxHP
+    float invulnerable = 0.0f; // grace seconds left
     float blinkTimer = 0.0f;
-    bool started = false;      // hp ya se lleno con maxHP
-    bool justDamaged = false;  // recibio dano en este frame
-    bool justDied = false;     // llego a 0 en este frame
+    bool started = false;      // hp has already been filled with maxHP
+    bool justDamaged = false;  // took damage this frame
+    bool justDied = false;     // reached 0 this frame
 };
 
-// Hace dano a lo que lo toque, si lleva la etiqueta targetTag y tiene Health: pinchos,
-// sierras, fuego, un enemigo que dana al contacto.
+// Damages whatever touches it, if it has the tag targetTag and a Health: spikes,
+// saws, fire, an enemy that hurts on contact.
 //
-// EMPUJON: al golpear, lanza al objetivo (si tiene RigidBody2D) hacia el lado
-// contrario al del peligro y hacia arriba. No es adorno: sin el, el jugador se queda
-// encima del peligro y vuelve a cobrar en cuanto se le acaba la invulnerabilidad.
+// KNOCKBACK: on a hit, it launches the target (if it has a RigidBody2D) away from the
+// hazard and upward. It is not decoration: without it, the player stays on top of the
+// hazard and gets hit again as soon as the invulnerability runs out.
 struct Hazard {
     int damage = 1;
     std::string targetTag = "Player";
-    Vec2 knockback{ 240.0f, 320.0f }; // px/seg: x alejandose del peligro, y hacia arriba
-    bool repeat = true;               // false: dana una sola vez (una trampa de un uso)
+    Vec2 knockback{ 240.0f, 320.0f }; // px/s: x away from the hazard, y upward
+    bool repeat = true;               // false: damages only once (a single-use trap)
 
-    // --- Estado de ejecucion ---
+    // --- Runtime state ---
     bool used = false;
 };
 
-// Mata en el acto a lo que entre (si lleva targetTag y tiene Health), aunque este
-// invulnerable: una franja bajo el nivel para que caerse no deje al jugador cayendo
-// para siempre, lava, un pozo. La caja suele ser grande y trigger.
+// Kills whatever enters it on the spot (if it has targetTag and a Health), even when
+// invulnerable: a strip below the level so that falling does not leave the player
+// falling forever, lava, a pit. The box is usually large and a trigger.
 struct KillZone {
     std::string targetTag = "Player";
 };
 
-// Se recoge al tocarlo: monedas, frutas, llaves. El motor NO lleva ninguna cuenta: que
-// significa recogerlo lo decide un sistema del juego mirando justCollected (en ese
-// frame la entidad aun existe, aunque ya este marcada para destruirse).
+// Collected on touch: coins, fruits, keys. The engine does NOT keep any count: what
+// collecting it means is decided by a game system looking at justCollected (on that
+// frame the entity still exists, even if it is already marked for destruction).
 struct Collectible {
-    std::string collectorTag = "Player"; // quien puede recogerlo
-    bool destroyOnCollect = true;        // false: se queda (un interruptor que se pisa)
+    std::string collectorTag = "Player"; // who can collect it
+    bool destroyOnCollect = true;        // false: it stays (a switch you step on)
 
-    // --- Estado de ejecucion ---
-    bool collected = false;        // ya se recogio (una sola vez)
-    bool justCollected = false;    // se recogio en este frame
-    Entity collector = NullEntity; // quien lo recogio
+    // --- Runtime state ---
+    bool collected = false;        // already collected (only once)
+    bool justCollected = false;    // collected this frame
+    Entity collector = NullEntity; // who collected it
 };
 
-// Bandera: al tocarla, fija el punto de reaparicion del que la toca (que necesita un
-// Respawn; la bandera no guarda nada). Se activa una sola vez.
+// Flag: on touch, it sets the respawn point of whoever touches it (who needs a
+// Respawn; the flag stores nothing). It activates only once.
 struct Checkpoint {
     std::string targetTag = "Player";
-    Vec2 offset;               // punto de reaparicion respecto al centro (px de la imagen x escala)
-    std::string activeTexture; // al activarse, el Sprite pasa a esta imagen (vacio = no cambia)
+    Vec2 offset;               // respawn point relative to the center (image px x scale)
+    std::string activeTexture; // when activated, the Sprite switches to this image (empty = unchanged)
 
-    // --- Estado de ejecucion ---
+    // --- Runtime state ---
     bool activated = false;
     bool justActivated = false;
 };
 
-// Va en el JUGADOR: al morir (Health en 0), espera 'delay' segundos congelado y vuelve
-// al ultimo punto de reaparicion con la vida llena. El punto empieza siendo donde
-// estaba al empezar a jugar; un Checkpoint lo cambia.
+// Goes on the PLAYER: on death (Health at 0), it waits 'delay' seconds frozen and
+// returns to the last respawn point with full health. The point starts as where it
+// was when play started; a Checkpoint changes it.
 struct Respawn {
-    float delay = 0.6f; // seg entre la muerte y la reaparicion (deja ver la caida)
+    float delay = 0.6f; // seconds between death and respawn (lets the fall be seen)
 
-    // --- Estado de ejecucion ---
-    Vec2 point;                 // donde reaparece
-    bool started = false;       // point ya se tomo de la posicion inicial
-    bool dying = false;         // muerto, esperando
-    float timer = 0.0f;         // seg que faltan para reaparecer
-    bool justRespawned = false; // reaparecio en este frame
+    // --- Runtime state ---
+    Vec2 point;                 // where it respawns
+    bool started = false;       // point was already taken from the starting position
+    bool dying = false;         // dead, waiting
+    float timer = 0.0f;         // seconds left until respawning
+    bool justRespawned = false; // respawned this frame
 };
 
-// Declara los componentes de arriba a la reflexion. La llama Application al arrancar,
-// despues de registerPhysicsComponents.
+// Declares the components above to the reflection. Application calls it at startup,
+// after registerPhysicsComponents.
 void registerRuleComponents(ComponentRegistry& registry);

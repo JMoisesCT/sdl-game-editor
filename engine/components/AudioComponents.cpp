@@ -4,7 +4,7 @@
 #include "systems/Conditions.h"
 
 void registerAudioComponents(ComponentRegistry& registry, const ConditionRegistry& conditions) {
-    const ConditionRegistry* conds = &conditions; // vive en Application, como el registro
+    const ConditionRegistry* conds = &conditions; // lives in Application, like the registry
     registry.add<SoundEffects>("SoundEffects")
         .list("sounds", &SoundEffects::sounds, [conds](FieldsBuilder<SoundRule>& rule) {
             rule.field("condition", &SoundRule::condition)

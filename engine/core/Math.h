@@ -4,16 +4,16 @@
 #include <cstdint>
 #include <vector>
 
-// Tipos pequenos de valor que usan los componentes. Son datos planos (se copian, se
-// comparan y se guardan en JSON) y no dependen de SDL: la traduccion a SDL_FRect o
-// SDL_Color ocurre solo en los .cpp que dibujan.
+// Small value types used by the components. They are plain data (copied, compared
+// and saved to JSON) and do not depend on SDL: the conversion to SDL_FRect or
+// SDL_Color happens only in the .cpp files that draw.
 
 struct Vec2 {
     float x = 0.0f;
     float y = 0.0f;
 };
 
-// Color RGBA de 0 a 255 por canal.
+// RGBA color, 0 to 255 per channel.
 struct Color {
     std::uint8_t r = 255;
     std::uint8_t g = 255;
@@ -21,8 +21,8 @@ struct Color {
     std::uint8_t a = 255;
 };
 
-// Rectangulo en pixeles enteros (recortes de una textura, celdas...).
-// w == 0 o h == 0 se usa como "sin recorte" donde tenga sentido.
+// Rectangle in whole pixels (texture crops, cells...).
+// w == 0 or h == 0 means "no crop" where that makes sense.
 struct IntRect {
     int x = 0;
     int y = 0;
@@ -30,10 +30,10 @@ struct IntRect {
     int h = 0;
 };
 
-// Grilla de enteros de width x height, guardada por filas: la celda (x, y) es
-// cells[y * width + x]. La usa el Tilemap para sus celdas. En el archivo se escribe
-// como una lista de filas, una por linea.
-// Una grilla vacia es 0 x 0 (si una medida es 0, la otra tambien).
+// Grid of integers, width x height, stored by rows: cell (x, y) is
+// cells[y * width + x]. The Tilemap uses it for its cells. In the file it is written
+// as a list of rows, one per line.
+// An empty grid is 0 x 0 (if one dimension is 0, so is the other).
 struct IntGrid {
     int width = 0;
     int height = 0;
@@ -43,17 +43,17 @@ struct IntGrid {
     IntGrid(int w, int h, int fill) { resize(w, h, fill); }
 
     bool inside(int x, int y) const { return x >= 0 && y >= 0 && x < width && y < height; }
-    // Fuera de la grilla devuelve 'outside'.
+    // Outside the grid it returns 'outside'.
     int get(int x, int y, int outside = -1) const {
         return inside(x, y) ? cells[(std::size_t)y * width + x] : outside;
     }
-    // Fuera de la grilla no hace nada.
+    // Outside the grid it does nothing.
     void set(int x, int y, int value) {
         if (inside(x, y)) cells[(std::size_t)y * width + x] = value;
     }
 
-    // Cambia el tamano conservando lo que sigue cabiendo (anclado arriba a la
-    // izquierda); lo nuevo queda con 'fill'.
+    // Changes the size keeping whatever still fits (anchored at the top left);
+    // the new cells get 'fill'.
     void resize(int w, int h, int fill) {
         if (w <= 0 || h <= 0) w = h = 0;
         std::vector<int> next((std::size_t)w * h, fill);

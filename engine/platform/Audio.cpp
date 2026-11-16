@@ -5,8 +5,8 @@
 
 #include <algorithm>
 
-// Fundidos de la musica (ms): sin ellos, empezar o cortar a mitad de una onda suena
-// como un "click".
+// Music fades (ms): without them, starting or cutting in the middle of a wave sounds
+// like a "click".
 static const Sint64 MUSIC_FADE_IN_MS = 300;
 static const Sint64 MUSIC_FADE_OUT_MS = 300;
 
@@ -26,7 +26,7 @@ bool Audio::init() {
         shutdown();
         return false;
     }
-    // El dispositivo de salida por defecto, en el formato que el prefiera.
+    // The default output device, in the format it prefers.
     mixer = MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr);
     if (!mixer) {
         SDL_Log("Audio: no audio device (the game continues without sound): %s", SDL_GetError());
@@ -39,7 +39,7 @@ bool Audio::init() {
 }
 
 void Audio::shutdown() {
-    // Primero las pistas y los sonidos, despues el mezclador y la libreria.
+    // First the tracks and the sounds, then the mixer and the library.
     if (mixer) {
         MIX_StopAllTracks(mixer, 0);
         for (MIX_Track* t : voices) MIX_DestroyTrack(t);
@@ -63,11 +63,11 @@ MIX_Audio* Audio::load(const std::string& path) {
     if (!mixer || path.empty()) return nullptr;
     auto it = sounds.find(path);
     if (it != sounds.end()) return it->second;
-    if (failed.count(path)) return nullptr; // ya fallo: no se reintenta (ni se llena el log)
+    if (failed.count(path)) return nullptr; // already failed: not retried (and does not flood the log)
 
-    // predecode = true: se decodifica entero al cargar. Gasta mas memoria, pero un
-    // efecto que suena muchas veces no se vuelve a decodificar cada vez. Para la musica
-    // larga convendria false (se decodifica mientras suena); aqui todo es corto.
+    // predecode = true: decoded entirely on load. It uses more memory, but an effect
+    // that plays many times is not decoded again every time. For long music, false would
+    // be better (decoded while playing); here everything is short.
     MIX_Audio* audio = MIX_LoadAudio(mixer, path.c_str(), true);
     if (!audio) {
         SDL_Log("Audio: could not load '%s': %s", path.c_str(), SDL_GetError());
@@ -82,8 +82,8 @@ void Audio::playSound(const std::string& path, float volume) {
     MIX_Audio* audio = load(path);
     if (!audio) return;
 
-    // Una pista libre; si no hay, se crea otra; con todas ocupadas, se corta la que
-    // toca por turno (casi siempre la mas vieja).
+    // A free track; if there is none, another one is created; with all of them busy, the
+    // one whose turn it is gets cut (almost always the oldest).
     MIX_Track* track = nullptr;
     for (MIX_Track* t : voices)
         if (!MIX_TrackPlaying(t)) { track = t; break; }
@@ -105,14 +105,14 @@ void Audio::playSound(const std::string& path, float volume) {
 void Audio::playMusic(const std::string& path, float volume, bool loop) {
     if (!musicTrack) return;
     MIX_SetTrackGain(musicTrack, std::max(volume, 0.0f));
-    // Ya se pidio (suena, o termino si no repite): solo el volumen.
+    // Already requested (playing, or finished if it does not loop): only the volume.
     if (path == musicPath) return;
 
     MIX_Audio* audio = load(path);
     if (!audio) return;
     MIX_SetTrackAudio(musicTrack, audio);
     SDL_PropertiesID options = SDL_CreateProperties();
-    SDL_SetNumberProperty(options, MIX_PROP_PLAY_LOOPS_NUMBER, loop ? -1 : 0); // -1 = sin fin
+    SDL_SetNumberProperty(options, MIX_PROP_PLAY_LOOPS_NUMBER, loop ? -1 : 0); // -1 = forever
     SDL_SetNumberProperty(options, MIX_PROP_PLAY_FADE_IN_MILLISECONDS_NUMBER, MUSIC_FADE_IN_MS);
     MIX_PlayTrack(musicTrack, options);
     SDL_DestroyProperties(options);

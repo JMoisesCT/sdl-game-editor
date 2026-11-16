@@ -9,19 +9,19 @@ namespace Screenshot {
 std::string save(SDL_Renderer* renderer, const std::string& folder) {
     if (!renderer) return "";
 
-    // Lee lo que hay dibujado AHORA en el renderer. Por eso se llama antes de
-    // SDL_RenderPresent: despues del Present el contenido del backbuffer no esta
-    // garantizado (puede salir negro o el frame anterior).
+    // Reads what is drawn on the renderer RIGHT NOW. That is why it is called before
+    // SDL_RenderPresent: after Present the backbuffer's content is not guaranteed
+    // (it may come out black or as the previous frame).
     SDL_Surface* shot = SDL_RenderReadPixels(renderer, nullptr);
     if (!shot) {
         SDL_Log("Screenshot: could not read the screen: %s", SDL_GetError());
         return "";
     }
 
-    SDL_CreateDirectory(folder.c_str()); // si ya existe, no pasa nada
+    SDL_CreateDirectory(folder.c_str()); // if it already exists, nothing happens
 
-    // Nombre con fecha y hora local; los milisegundos evitan pisar una captura si se
-    // pulsa la tecla dos veces en el mismo segundo.
+    // Name with the local date and time; the milliseconds avoid overwriting a capture
+    // if the key is pressed twice in the same second.
     SDL_Time now = 0;
     SDL_DateTime dt{};
     SDL_GetCurrentTime(&now);
@@ -39,9 +39,9 @@ std::string save(SDL_Renderer* renderer, const std::string& folder) {
         return "";
     }
 
-    // Igual que al guardar un nivel: la ruta es relativa al directorio de trabajo, asi
-    // que se deja la ruta completa en el log para saber donde quedo.
-    char* cwd = SDL_GetCurrentDirectory(); // termina en separador
+    // The path is relative to the working directory, so the full path is written to
+    // the log to know where it ended up.
+    char* cwd = SDL_GetCurrentDirectory(); // ends with a separator
     SDL_Log("Screenshot: saved to %s%s", cwd ? cwd : "", path.c_str());
     SDL_free(cwd);
     return path;

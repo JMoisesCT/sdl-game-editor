@@ -40,15 +40,15 @@ void PlatformerRulesSystem::onPlay(World& world) {
 }
 
 void PlatformerRulesSystem::update(World& world, float) {
-    // Frutas recogidas en este frame (aun existen: se destruyen al final del frame, o
-    // al terminar su animacion).
+    // Fruits collected this frame (they still exist: they are destroyed at the end of
+    // the frame, or when their animation ends).
     world.each<Collectible, EntityInfo>([&](Entity, Collectible& c, EntityInfo& info) {
         if (!c.justCollected || info.tag != TAG_PICKUP) return;
         ++collected;
         SDL_Log("Fruits: %d/%d", collected, total);
     });
 
-    // Meta: la toca alguien vivo con la etiqueta pedida.
+    // Goal: touched by someone alive with the requested tag.
     world.each<LevelGoal, BoxCollider>([&](Entity self, LevelGoal& goal, BoxCollider&) {
         if (goal.reached) return;
         world.each<BoxCollider, EntityInfo>([&](Entity other, BoxCollider&, EntityInfo& info) {
@@ -64,16 +64,16 @@ void PlatformerRulesSystem::update(World& world, float) {
 }
 
 void PlatformerRulesSystem::updateHud(World& world) {
-    // La vida del primer jugador con Health.
+    // The health of the first player with Health.
     const Health* hp = nullptr;
     world.each<Health, EntityInfo>([&](Entity, Health& h, EntityInfo& info) {
         if (!hp && info.tag == TAG_PLAYER) hp = &h;
     });
 
-    // Cada dato en su propio Text: si fueran una sola linea, al cambiar de largo se
-    // correria todo lo demas. Asignar el mismo texto no cuesta nada: la imagen de cada
-    // texto se cachea al dibujar. Dos espacios tras ':' porque en NormalFont.ttf el
-    // espacio es muy angosto (4 px a 32 pt).
+    // Each value in its own Text: if they were a single line, a change in length would
+    // shift everything else. Assigning the same text costs nothing: the image of each
+    // text is cached when drawing. Two spaces after ':' because in NormalFont.ttf the
+    // space is very narrow (4 px at 32 pt).
     world.each<Text, EntityInfo>([&](Entity, Text& text, EntityInfo& info) {
         if (info.tag == TAG_HUD_LIVES && hp)
             text.text = "HP:  " + std::to_string(hp->hp) + "/" + std::to_string(hp->maxHP);

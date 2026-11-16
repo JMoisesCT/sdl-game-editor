@@ -3,12 +3,12 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
-# --- Documentacion / contexto: NO se sube (solo el motor, no los prompts) ---
+# --- Docs / context: NOT committed (only the engine, not the prompts) ---
 *.md
-# README en ingles (el principal) y en espanol: si se suben.
+# README in English (the main one) and in Spanish: committed.
 !README.md
 !README.es.md
-# La guia para los alumnos es documentacion publica: si se sube.
+# The students' guide is public documentation: committed.
 !docs/GUIA_CODIGO_PROPIO.md
 
 # User-specific files
@@ -408,16 +408,16 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
-# vcpkg: ya no se usa (nlohmann/json viene vendorizada en engine/third_party);
-# se ignora cualquier arbol residual por si quedo de antes.
+# vcpkg: no longer used (nlohmann/json is vendored in engine/third_party);
+# any leftover tree from before is ignored.
 vcpkg_installed/
 
-# --- Dear ImGui (editor de niveles) ---
-# El editor desactiva imgui.ini; por si acaso, no se sube el estado local de ventanas.
+# --- Dear ImGui (editor) ---
+# The editor disables imgui.ini; just in case, local window state is not committed.
 imgui.ini
-# --- Capturas con F9 (engine/Screenshot) ---
-# Son sueltas y personales; las del README se eligen a mano y van en docs/screenshots/.
+# --- F9 screenshots (engine/platform/Screenshot) ---
+# They are loose and personal; the README ones are picked by hand and go in docs/screenshots/.
 /screenshots/
 
-# --- Ejecutable de prueba que se arma al terminar cada fase (exe + DLLs + assets) ---
+# --- Test build assembled at the end of each phase (exe + DLLs + assets) ---
 /build/

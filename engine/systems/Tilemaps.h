@@ -6,32 +6,32 @@ class AssetManager;
 struct Tilemap;
 struct Transform;
 
-// Consultas sobre un Tilemap: pasar del mundo a las celdas y al reves, y saber que
-// celdas son solidas. Las usan el dibujo, el editor (pincel, seleccion) y la fisica.
-// El origen del mapa es el Transform: la esquina superior izquierda de la celda (0, 0).
+// Queries on a Tilemap: converting from the world to cells and back, and knowing which
+// cells are solid. Used by drawing, the editor (brush, selection) and physics.
+// The map's origin is the Transform: the top left corner of cell (0, 0).
 
-// Tamano de UNA celda en el mundo (el tile de la imagen por la escala del Transform).
+// Size of ONE cell in the world (the image's tile times the Transform's scale).
 Vec2 tilemapCellSize(const Tilemap& map, const Transform& t);
 
-// Rectangulo que ocupa el mapa entero en el mundo (min = esquina superior izquierda).
+// Rectangle the whole map covers in the world (min = top left corner).
 void tilemapBounds(const Tilemap& map, const Transform& t, Vec2& min, Vec2& max);
 
-// Celda bajo un punto del mundo. col y row se calculan siempre, aunque caigan FUERA
-// del mapa (negativas o >= tamano); en ese caso devuelve false.
+// Cell under a world point. col and row are always computed, even if they fall
+// OUTSIDE the map (negative or >= size); in that case it returns false.
 bool tilemapWorldToCell(const Tilemap& map, const Transform& t, Vec2 world, int& col, int& row);
 
-// Esquina superior izquierda de una celda en el mundo (la de la celda col + 1 es su
-// borde derecho).
+// Top left corner of a cell in the world (the one of cell col + 1 is its right
+// edge).
 Vec2 tilemapCellOrigin(const Tilemap& map, const Transform& t, int col, int row);
 
-// Si ese tile esta en solidTiles.
+// Whether that tile is in solidTiles.
 bool isSolidTile(const Tilemap& map, int tile);
-// Si la celda frena: la capa tiene collision y el tile de la celda es solido. Fuera
-// del mapa no es solido (se puede salir por los bordes o caer).
+// Whether the cell blocks: the layer has collision and the cell's tile is solid.
+// Outside the map nothing is solid (you can leave through the edges or fall).
 bool isSolidCell(const Tilemap& map, int col, int row);
-// Si algun Tilemap del World tiene una celda solida en ese punto del mundo.
+// Whether any Tilemap in the World has a solid cell at that world point.
 bool isSolidAt(World& world, Vec2 point);
 
-// Columnas y filas del tileset (tamano de la imagen / tamano del tile). false si la
-// imagen no carga o el tile no cabe en ella.
+// Columns and rows of the tileset (image size / tile size). false if the image does
+// not load or the tile does not fit in it.
 bool tilesetGrid(AssetManager& assets, const Tilemap& map, int& columns, int& rows);

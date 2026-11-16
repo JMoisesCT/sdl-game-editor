@@ -6,7 +6,7 @@
 
 #include "core/World.h"
 
-// Padre -> hijos, en el orden del World. NullEntity agrupa a las raices.
+// Parent -> children, in World order. NullEntity groups the roots.
 using ChildrenMap = std::unordered_map<Entity, std::vector<Entity>>;
 
 static ChildrenMap buildChildren(const World& world, const std::vector<Entity>& order) {
@@ -15,7 +15,7 @@ static ChildrenMap buildChildren(const World& world, const std::vector<Entity>& 
     return children;
 }
 
-// Recorrido en profundidad: cada entidad seguida de su rama.
+// Depth-first walk: each entity followed by its branch.
 static void appendBranch(const ChildrenMap& children, Entity e, std::vector<Entity>& out) {
     auto it = children.find(e);
     if (it == children.end()) return;
@@ -46,7 +46,7 @@ std::vector<Entity> descendantsOf(const World& world, Entity e) {
 
 bool isAncestorOf(const World& world, Entity ancestor, Entity e) {
     if (ancestor == NullEntity) return false;
-    // Tope de pasos: con fixHierarchy no hay ciclos, pero por las dudas no se cuelga.
+    // Step limit: with fixHierarchy there are no cycles, but just in case it cannot hang.
     std::size_t steps = world.entities().size();
     for (Entity p = parentOf(world, e); p != NullEntity && steps-- > 0; p = parentOf(world, p))
         if (p == ancestor) return true;
@@ -66,8 +66,8 @@ bool setParent(World& world, Entity child, Entity parent) {
 bool moveInHierarchy(World& world, Entity e, Entity parent, Entity before) {
     if (!setParent(world, e, parent)) return false;
 
-    // e pasa a estar justo antes de 'before' (o al final), y despues todo se ordena
-    // como el arbol: entre hermanos manda el orden de la lista.
+    // e goes right before 'before' (or at the end), and then everything is ordered
+    // like the tree: among siblings, the order of the list rules.
     std::vector<Entity> order = world.entities();
     order.erase(std::remove(order.begin(), order.end(), e), order.end());
     auto at = before != NullEntity && before != e ? std::find(order.begin(), order.end(), before) : order.end();
@@ -85,8 +85,8 @@ void destroyWithChildren(World& world, Entity e) {
     world.destroy(e);
 }
 
-// El padre de e no existe, o e es parte de un ciclo (subiendo por los padres se
-// vuelve a e). Si e solo cuelga de un ciclo, no: lo arregla cortar el ciclo.
+// e's parent does not exist, or e is part of a cycle (going up through the parents
+// leads back to e). If e merely hangs from a cycle, no: cutting the cycle fixes it.
 static bool hasBrokenParent(const World& world, Entity e) {
     const Parent* p = world.get<Parent>(e);
     if (!p) return false;
@@ -94,14 +94,14 @@ static bool hasBrokenParent(const World& world, Entity e) {
     std::unordered_set<Entity> seen;
     for (Entity a = p->entity; a != NullEntity; a = parentOf(world, a)) {
         if (a == e) return true;
-        if (!seen.insert(a).second) return false; // ciclo mas arriba, sin e
+        if (!seen.insert(a).second) return false; // a cycle further up, without e
     }
     return false;
 }
 
 void fixHierarchy(World& world) {
-    // De a una: cortar un ciclo en una entidad lo repara para las demas del ciclo,
-    // que despues ya no dan roto.
+    // One at a time: cutting a cycle at one entity repairs it for the others in the
+    // cycle, which then no longer show up as broken.
     for (Entity e : world.entities())
         if (hasBrokenParent(world, e)) world.remove<Parent>(e);
 }

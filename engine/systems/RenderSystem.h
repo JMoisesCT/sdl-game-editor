@@ -4,54 +4,54 @@
 
 class World;
 class AssetManager;
-struct SDL_Renderer; // declaracion adelantada: SDL solo aparece en el .cpp
+struct SDL_Renderer; // forward declaration: SDL only appears in the .cpp
 
-// Una vista del mundo: que punto queda en el centro, con que zoom y en un destino de
-// que tamano (en pixeles). La usan la vista del juego (desde una Camera) y la vista
-// del editor (que se mueve sola, sin tocar ninguna entidad).
+// A view of the world: which point is at the center, with what zoom, and on a target
+// of what size (in pixels). Used by the game view (from a Camera) and by the editor
+// view (which moves on its own, without touching any entity).
 struct View {
-    Vec2 center;          // punto del mundo que cae en el centro del destino
+    Vec2 center;          // world point that lands at the center of the target
     float zoom = 1.0f;
-    int width = 0;        // tamano del destino en pixeles
+    int width = 0;        // size of the target in pixels
     int height = 0;
 
     Vec2 worldToScreen(Vec2 world) const;
     Vec2 screenToWorld(Vec2 screen) const;
 };
 
-// Arma la vista de la PRIMERA entidad con Camera + Transform. false si no hay camara
-// (la vista queda centrada en el origen con zoom 1). background recibe el color de
-// la camara, si se pasa.
+// Builds the view of the FIRST entity with Camera + Transform. false if there is no
+// camera (the view stays centered on the origin with zoom 1). background receives the
+// camera's color, if passed.
 bool findCameraView(World& world, int width, int height, View& view, Color* background = nullptr);
 
-// Como findCameraView, para un destino que muestra la pantalla del juego agrandada o
-// achicada por 'scale' (el destino ya mide width x height): el zoom de la camara se
-// multiplica por scale. Con pixelPerfect, ademas, se redondea para que un pixel del
-// dibujo (Camera::pixelSize px del mundo) mida un numero ENTERO de px (al menos 1):
-// se ve un poco mas o menos de mundo, pero el pixel art queda parejo y nitido.
+// Like findCameraView, for a target that shows the game screen enlarged or shrunk
+// by 'scale' (the target already measures width x height): the camera zoom is
+// multiplied by scale. With pixelPerfect it is also rounded so that one art pixel
+// (Camera::pixelSize world px) measures a WHOLE number of px (at least 1): a bit
+// more or less of the world is visible, but the pixel art stays even and crisp.
 bool findScaledCameraView(World& world, int width, int height, float scale, bool pixelPerfect,
                           View& view, Color* background = nullptr);
 
-// Tamano del sprite de esa entidad en el mundo (recorte o textura por la escala).
-// false si no tiene Transform + Sprite o la textura no carga.
+// Size of that entity's sprite in the world (crop or texture times the scale).
+// false if it has no Transform + Sprite or the texture does not load.
 bool spriteWorldSize(World& world, AssetManager& assets, Entity e, Vec2& size);
 
-// Rectangulo de un Text en SU espacio (el mundo, o la pantalla del juego si es
-// screenSpace): centro (corrido segun align) y tamano. false si no tiene Transform +
-// Text o no se puede dibujar (sin fuente o sin texto).
+// Rectangle of a Text in ITS space (the world, or the game screen if it is
+// screenSpace): center (shifted according to align) and size. false if it has no
+// Transform + Text or it cannot be drawn (no font or no text).
 bool textBounds(World& world, AssetManager& assets, Entity e, Vec2& center, Vec2& size);
 
-// Dibuja el MUNDO: los Sprite, Tilemap, ParallaxBackground y Text (los que no son
-// screenSpace) visibles, de menor a mayor order (a igualdad, por id), en el destino de
-// render ACTUAL del renderer. De cada Tilemap solo se dibujan las celdas que caen
-// dentro de la vista; un ParallaxBackground llena la vista entera.
+// Draws the WORLD: the visible Sprites, Tilemaps, ParallaxBackgrounds and Texts (the
+// non-screenSpace ones), from lowest to highest order (on a tie, by id), on the
+// renderer's CURRENT render target. Of each Tilemap only the cells inside the view are
+// drawn; a ParallaxBackground fills the whole view.
 void renderWorld(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& view);
 
-// La vista que deja la pantalla del juego tal cual (px de la resolucion del juego):
-// la que se pasa a renderScreenTexts al dibujar el juego.
+// The view that leaves the game screen as is (px of the game's resolution): the one
+// passed to renderScreenTexts when drawing the game.
 View screenView(int width, int height);
 
-// Dibuja el HUD: los Text con screenSpace, por order, encima de lo que ya haya. 'hud'
-// pasa de px de la pantalla del juego al destino: en el juego es screenView(); el
-// editor la arma para mostrar el HUD sobre el recuadro de la camara en la vista Escena.
+// Draws the HUD: the Texts with screenSpace, by order, on top of whatever is there.
+// 'hud' maps game screen px to the target: in the game it is screenView(); the
+// editor builds it to show the HUD over the camera frame in the Scene view.
 void renderScreenTexts(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& hud);

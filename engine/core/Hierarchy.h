@@ -5,58 +5,58 @@
 
 class World;
 
-// JERARQUIA: una entidad puede ser HIJA de otra, para ordenar la escena en grupos
-// ("Nivel / Pinchos", "HUD"...). Es una jerarquia de ORGANIZACION:
-//   - el Transform de cada entidad sigue siendo su posicion en el mundo (la fisica,
-//     el dibujo y las reglas no saben nada de padres);
-//   - en el editor, mover al padre mueve tambien a sus hijos, y borrarlo o duplicarlo
-//     borra o duplica a toda su rama;
-//   - jugando, los hijos NO siguen al padre: si un sistema destruye al padre, los
-//     hijos quedan sueltos (para llevarselos, destroyWithChildren).
+// HIERARCHY: an entity can be a CHILD of another, to organize the scene into groups
+// ("Level / Spikes", "HUD"...). It is an ORGANIZATIONAL hierarchy:
+//   - each entity's Transform is still its position in the world (physics,
+//     drawing and rules know nothing about parents);
+//   - in the editor, moving the parent also moves its children, and deleting or
+//     duplicating it deletes or duplicates its whole branch;
+//   - while playing, children do NOT follow the parent: if a system destroys the
+//     parent, the children are left on their own (to take them along, destroyWithChildren).
 //
-// En el archivo de escena, una hija lleva el id de su padre junto al suyo:
+// In the scene file, a child stores its parent's id next to its own:
 //     { "id": 7, "parent": 3, "components": { ... } }
-// El orden entre hermanos es el orden de las entidades en el World (y en el archivo).
+// The order among siblings is the order of the entities in the World (and in the file).
 //
-// Desde codigo:
-//     for (Entity hijo : childrenOf(world, grupo)) { ... }
-//     Entity p = parentOf(world, e); // NullEntity si no tiene
+// From code:
+//     for (Entity child : childrenOf(world, group)) { ... }
+//     Entity p = parentOf(world, e); // NullEntity if it has none
 
-// Marca a una entidad como hija. No se registra en la reflexion (como PrefabInstance):
-// el serializador la escribe aparte ("parent": id) y el editor la cambia arrastrando
-// en la Jerarquia. Se cambia con setParent / moveInHierarchy, no a mano: esas
-// funciones impiden los ciclos.
+// Marks an entity as a child. Not registered in the reflection (like PrefabInstance):
+// the serializer writes it separately ("parent": id) and the editor changes it by
+// dragging in the Hierarchy. Change it with setParent / moveInHierarchy, not by hand:
+// those functions prevent cycles.
 struct Parent {
     Entity entity = NullEntity;
 };
 
-// El padre de e, o NullEntity si no tiene (o si su padre ya no existe).
+// The parent of e, or NullEntity if it has none (or if its parent no longer exists).
 Entity parentOf(const World& world, Entity e);
 
-// Los hijos directos de 'parent', en el orden del World. Con NullEntity, las entidades
-// sin padre (las raices).
+// The direct children of 'parent', in World order. With NullEntity, the entities
+// without a parent (the roots).
 std::vector<Entity> childrenOf(const World& world, Entity parent);
 
-// Toda la rama bajo e (hijos, nietos...), en el orden en que se ve en la Jerarquia.
-// No incluye a e.
+// The whole branch under e (children, grandchildren...), in the order shown in the
+// Hierarchy. Does not include e.
 std::vector<Entity> descendantsOf(const World& world, Entity e);
 
-// true si 'ancestor' es el padre de e, o el padre de su padre, etc.
+// true if 'ancestor' is the parent of e, or its parent's parent, etc.
 bool isAncestorOf(const World& world, Entity ancestor, Entity e);
 
-// Hace a 'child' hija de 'parent' (NullEntity = sin padre). false, sin cambiar nada,
-// si formaria un ciclo (una entidad no puede colgar de si misma ni de su rama).
+// Makes 'child' a child of 'parent' (NullEntity = no parent). false, changing nothing,
+// if it would create a cycle (an entity cannot hang from itself or from its branch).
 bool setParent(World& world, Entity child, Entity parent);
 
-// Lo que hace el editor al arrastrar en la Jerarquia: cambia el padre de e y la deja
-// justo antes del hermano 'before' (NullEntity = la ultima de sus hermanas). Despues
-// reordena el World como el arbol (cada padre seguido de su rama), asi el archivo
-// queda agrupado igual que la Jerarquia. false si formaria un ciclo.
+// What the editor does when dragging in the Hierarchy: changes e's parent and puts it
+// right before the sibling 'before' (NullEntity = the last of its siblings). Then it
+// reorders the World like the tree (each parent followed by its branch), so the file
+// is grouped the same way as the Hierarchy. false if it would create a cycle.
 bool moveInHierarchy(World& world, Entity e, Entity parent, Entity before = NullEntity);
 
-// Destruye (diferido, con World::destroy) a e y a toda su rama.
+// Destroys (deferred, with World::destroy) e and its whole branch.
 void destroyWithChildren(World& world, Entity e);
 
-// Repara lo que un archivo editado a mano pudo dejar mal: quita el padre a las
-// entidades cuyo padre no existe o que forman un ciclo. La llama deserializeWorld.
+// Repairs what a hand-edited file may have broken: removes the parent from entities
+// whose parent does not exist or that form a cycle. Called by deserializeWorld.
 void fixHierarchy(World& world);

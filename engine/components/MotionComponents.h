@@ -6,73 +6,73 @@
 
 class ComponentRegistry;
 
-// Componentes de MECANISMOS del escenario: cosas que se mueven solas (plataformas,
-// sierras), plataformas que caen al pisarlas y trampolines. Como los demas, son SOLO
-// datos; la logica esta en systems/Motion.h.
+// Components for stage MECHANISMS: things that move on their own (platforms, saws),
+// platforms that fall when stepped on, and trampolines. Like the others, they are
+// ONLY data; the logic is in systems/Motion.h.
 //
-// Las plataformas que mueven estos componentes son CINEMATICAS: no llevan RigidBody2D
-// (la fisica no las empuja ni les aplica gravedad), las mueve su sistema, y llevan
-// consigo a los cuerpos parados encima (moveCarrying, en Physics.h).
+// The platforms these components move are KINEMATIC: they have no RigidBody2D
+// (physics neither pushes them nor applies gravity), their system moves them, and they
+// carry the bodies standing on top (moveCarrying, in Physics.h).
 
-// Un punto del recorrido de un PathMover, relativo a donde empieza la entidad.
+// A point of a PathMover's path, relative to where the entity starts.
 struct PathPoint {
-    Vec2 offset; // px del mundo respecto a la posicion inicial
+    Vec2 offset; // world px relative to the starting position
 };
 
-// Recorre una lista de puntos a velocidad constante, esperando un rato en cada uno:
-// una plataforma que va y viene, una sierra que patrulla. El primer punto del
-// recorrido es la posicion inicial de la entidad (no hace falta ponerlo en la lista).
+// Walks a list of points at constant speed, waiting a while at each one: a
+// platform that goes back and forth, a saw that patrols. The first point of the
+// path is the entity's starting position (it does not need to be in the list).
 //
-// Con loop, al llegar al ultimo punto vuelve al primero y repite (un circuito); sin
-// loop, recorre la lista de ida y de vuelta.
+// With loop, when it reaches the last point it goes back to the first and repeats
+// (a circuit); without loop, it walks the list there and back.
 struct PathMover {
-    float speed = 80.0f;   // px/seg
-    float waitTime = 0.5f; // seg de pausa en cada punto
-    bool loop = false;     // true: circuito cerrado; false: ida y vuelta
+    float speed = 80.0f;   // px/s
+    float waitTime = 0.5f; // seconds of pause at each point
+    bool loop = false;     // true: closed circuit; false: back and forth
     std::vector<PathPoint> points;
 
-    // --- Estado de ejecucion (lo escribe PathMoverSystem) ---
+    // --- Runtime state (written by PathMoverSystem) ---
     bool started = false;
-    Vec2 origin;          // posicion al empezar: los puntos se miden desde aqui
-    int target = 1;       // indice del punto hacia el que va (0 = el origen)
-    int step = 1;         // +1 o -1 (ida y vuelta)
-    float wait = 0.0f;    // seg de pausa que quedan
+    Vec2 origin;          // position at the start: the points are measured from here
+    int target = 1;       // index of the point it is heading to (0 = the origin)
+    int step = 1;         // +1 or -1 (back and forth)
+    float wait = 0.0f;    // seconds of pause left
 };
 
-// Plataforma que CAE al pisarla: cuando un cuerpo se para encima, espera 'delay'
-// segundos, cae con gravedad (llevandose al que siga encima) y, pasados respawnTime
-// segundos desde que empezo a caer, vuelve a su lugar apareciendo de a poco (la
-// transparencia del tint del Sprite va de 0 a la original en fadeInTime). Necesita su
-// BoxCollider solido (normalmente oneWay) y no lleva RigidBody2D.
+// A platform that FALLS when stepped on: when a body stands on it, it waits 'delay'
+// seconds, falls with gravity (taking along whoever is still on it) and, respawnTime
+// seconds after it started falling, returns to its place fading in (the alpha of the
+// Sprite tint goes from 0 to the original over fadeInTime). It needs its solid
+// BoxCollider (usually oneWay) and has no RigidBody2D.
 struct FallingPlatform {
-    float delay = 0.5f;          // seg entre que la pisan y que cae
-    float gravity = 980.0f;      // px/seg^2 al caer
-    float maxFallSpeed = 700.0f; // px/seg
-    float respawnTime = 3.0f;    // seg desde que empieza a caer hasta volver (0 = no vuelve)
-    float fadeInTime = 0.4f;     // seg que tarda en aparecer al volver (0 = de golpe)
+    float delay = 0.5f;          // seconds between being stepped on and falling
+    float gravity = 980.0f;      // px/s^2 while falling
+    float maxFallSpeed = 700.0f; // px/s
+    float respawnTime = 3.0f;    // seconds from starting to fall until it returns (0 = never returns)
+    float fadeInTime = 0.4f;     // seconds it takes to fade in when it returns (0 = instantly)
 
-    // --- Estado de ejecucion (lo escribe FallingPlatformSystem) ---
+    // --- Runtime state (written by FallingPlatformSystem) ---
     bool started = false;
-    Vec2 origin;               // donde vuelve
-    int baseAlpha = 255;       // transparencia original del Sprite (la del fundido final)
-    float fade = 0.0f;         // seg que quedan del fundido de aparicion
-    bool triggered = false;    // la pisaron: esta por caer o cayendo
+    Vec2 origin;               // where it returns to
+    int baseAlpha = 255;       // original alpha of the Sprite (the end of the fade)
+    float fade = 0.0f;         // seconds of fade-in left
+    bool triggered = false;    // it was stepped on: about to fall or falling
     bool falling = false;
-    float timer = 0.0f;        // seg en el estado actual
-    float speed = 0.0f;        // px/seg de caida
+    float timer = 0.0f;        // seconds in the current state
+    float speed = 0.0f;        // fall speed in px/s
 };
 
-// Trampolin: lanza hacia arriba a un cuerpo que le CAE encima, a la altura que se pida
-// (en px, como el salto del PlatformerMotor). La caja suele ser trigger: asi el
-// trampolin no es "suelo" y el motor no confunde el rebote con un salto propio.
+// Trampoline: launches a body that FALLS onto it upward, to the requested height
+// (in px, like the PlatformerMotor's jump). The box is usually a trigger: that way the
+// trampoline is not "ground" and the motor does not mistake the bounce for its own jump.
 struct Bouncer {
-    float bounceHeight = 260.0f; // px que sube el cuerpo lanzado
-    std::string targetTag;       // a quien lanza (vacio = a cualquier RigidBody2D)
+    float bounceHeight = 260.0f; // px the launched body rises
+    std::string targetTag;       // whom it launches (empty = any RigidBody2D)
 
-    // --- Estado de ejecucion (lo escribe BouncerSystem) ---
-    bool justBounced = false; // lanzo a alguien en este frame
+    // --- Runtime state (written by BouncerSystem) ---
+    bool justBounced = false; // it launched someone this frame
 };
 
-// Declara los componentes de arriba a la reflexion. La llama Application al arrancar,
-// despues de registerRuleComponents.
+// Declares the components above to the reflection. Application calls it at startup,
+// after registerRuleComponents.
 void registerMotionComponents(ComponentRegistry& registry);

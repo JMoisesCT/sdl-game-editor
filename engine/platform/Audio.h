@@ -4,20 +4,20 @@
 #include <unordered_set>
 #include <vector>
 
-struct MIX_Mixer; // declaraciones adelantadas: SDL3_mixer solo aparece en el .cpp
+struct MIX_Mixer; // forward declarations: SDL3_mixer only appears in the .cpp
 struct MIX_Audio;
 struct MIX_Track;
 
-// El AUDIO del motor, sobre SDL3_mixer: efectos de sonido que se superponen y una
-// musica de fondo. Como el AssetManager, es el DUENO de todo lo que carga (cada archivo
-// se lee una sola vez y se reusa).
+// The engine's AUDIO, on top of SDL3_mixer: sound effects that overlap and background
+// music. Like the AssetManager, it OWNS everything it loads (each file is read only
+// once and reused).
 //
-// Formatos: WAV, OGG Vorbis y Opus (las DLL de Opus las copia el post-build).
+// Formats: WAV, OGG Vorbis and Opus (the post-build step copies the Opus DLLs).
 //
-// Si no hay dispositivo de audio (un equipo sin parlantes, una sesion remota), init()
-// devuelve false y todo lo demas no hace nada: el juego sigue, mudo.
+// If there is no audio device (a machine without speakers, a remote session), init()
+// returns false and everything else does nothing: the game goes on, muted.
 //
-// Desde un sistema del juego (aunque lo normal es el componente SoundEffects):
+// From a game system (although the usual way is the SoundEffects component):
 //     app.audio().playSound("assets/audio/sfx/jump.wav", 0.8f);
 class Audio {
 public:
@@ -30,17 +30,17 @@ public:
     void shutdown();
     bool ready() const { return mixer != nullptr; }
 
-    // Un efecto: suena entero y se mezcla con lo que ya suene (hasta MAX_VOICES a la vez;
-    // pasado eso corta el mas viejo). volume: 0 = mudo, 1 = como esta grabado.
+    // An effect: it plays in full and mixes with whatever is already playing (up to
+    // MAX_VOICES at once; beyond that it cuts the oldest). volume: 0 = muted, 1 = as recorded.
     void playSound(const std::string& path, float volume = 1.0f);
 
-    // La musica: una sola a la vez, con un fundido corto. Pedir la que ya se pidio solo
-    // le cambia el volumen (no la reinicia; sin loop, tampoco la repite).
+    // The music: only one at a time, with a short fade. Requesting the one already
+    // requested only changes its volume (it does not restart it; without loop, it does not repeat it either).
     void playMusic(const std::string& path, float volume = 1.0f, bool loop = true);
     void stopMusic();
 
-    void stopAll();               // al detener el juego
-    void setPaused(bool paused);  // la pausa del editor congela tambien el sonido
+    void stopAll();               // when the game stops
+    void setPaused(bool paused);  // the editor's pause also freezes the sound
 
 private:
     static const int MAX_VOICES = 16;
@@ -48,10 +48,10 @@ private:
 
     MIX_Mixer* mixer = nullptr;
     bool subsystemReady = false;
-    std::unordered_map<std::string, MIX_Audio*> sounds; // SI somos dueno
-    std::unordered_set<std::string> failed;             // rutas que no cargaron
-    std::vector<MIX_Track*> voices;                     // pistas para los efectos
-    int nextVoice = 0;                                  // la que se corta si estan todas ocupadas
+    std::unordered_map<std::string, MIX_Audio*> sounds; // owned
+    std::unordered_set<std::string> failed;             // paths that failed to load
+    std::vector<MIX_Track*> voices;                     // tracks for the effects
+    int nextVoice = 0;                                  // the one that gets cut if all are busy
     MIX_Track* musicTrack = nullptr;
-    std::string musicPath;                              // la que suena ("" = ninguna)
+    std::string musicPath;                              // the one playing ("" = none)
 };

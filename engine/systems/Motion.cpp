@@ -12,19 +12,19 @@
 #include "systems/Rules.h"
 
 namespace {
-    // Px que los pies pueden estar ya DENTRO del trampolin en el paso anterior y aun
-    // contar como "venia de arriba".
+    // Px the feet may already be INSIDE the trampoline in the previous step and still
+    // count as "coming from above".
     const float BOUNCE_TOLERANCE = 4.0f;
 
-    // Punto i del recorrido: 0 es el origen, los demas se miden desde el.
+    // Point i of the path: 0 is the origin, the others are measured from it.
     Vec2 pathPoint(const PathMover& m, int i) {
         if (i <= 0) return m.origin;
         const Vec2& o = m.points[i - 1].offset;
         return { m.origin.x + o.x, m.origin.y + o.y };
     }
 
-    // Pasa al punto siguiente: en circuito, del ultimo al primero; si no, rebota en
-    // los extremos.
+    // Moves on to the next point: in a circuit, from the last to the first; otherwise,
+    // it bounces at the ends.
     void advance(PathMover& m, int count) {
         if (m.loop) {
             m.target = (m.target + 1) % count;
@@ -42,8 +42,8 @@ namespace {
         return found;
     }
 
-    // Si la caja de 'e', llevada a 'position', se superpone con algun cuerpo (para no
-    // hacer aparecer una plataforma encima del jugador).
+    // Whether the box of 'e', moved to 'position', overlaps any body (so a platform
+    // does not appear on top of the player).
     bool bodyAt(World& world, Entity e, Vec2 position) {
         Vec2 min, max;
         const Transform* t = world.get<Transform>(e);
@@ -61,7 +61,7 @@ namespace {
     }
 }
 
-// --- Recorridos --------------------------------------------------------------------------
+// --- Paths -------------------------------------------------------------------------------
 
 void PathMoverSystem::onPlay(World& world) {
     world.each<PathMover>([](Entity, PathMover& m) { m.started = false; });
@@ -69,7 +69,7 @@ void PathMoverSystem::onPlay(World& world) {
 
 void PathMoverSystem::update(World& world, float dt) {
     world.each<PathMover, Transform>([&](Entity e, PathMover& m, Transform& t) {
-        // Arranque perezoso (vale tambien para una entidad creada jugando).
+        // Lazy start (also works for an entity created while playing).
         if (!m.started) {
             m.started = true;
             m.origin = t.position;
@@ -77,11 +77,11 @@ void PathMoverSystem::update(World& world, float dt) {
             m.step = 1;
             m.wait = 0.0f;
         }
-        const int count = (int)m.points.size() + 1; // con el origen
+        const int count = (int)m.points.size() + 1; // with the origin
         if (count < 2 || m.speed <= 0.0f) return;
         if (m.target >= count) m.target = count - 1;
 
-        // La pausa consume tiempo; lo que sobra de ella ya es camino.
+        // The pause consumes time; whatever is left over is already movement.
         float distance = m.speed * dt;
         if (m.wait > 0.0f) {
             m.wait -= dt;
@@ -90,8 +90,8 @@ void PathMoverSystem::update(World& world, float dt) {
             m.wait = 0.0f;
         }
 
-        // Avanza 'distance' por el recorrido; si llega a un punto con camino de sobra
-        // (sin pausa, o un frame lento), sigue hacia el siguiente.
+        // Advances 'distance' along the path; if it reaches a point with distance to spare
+        // (no pause, or a slow frame), it continues toward the next one.
         Vec2 pos = t.position;
         for (int guard = 0; guard < 8 && distance > 0.0f; ++guard) {
             Vec2 goal = pathPoint(m, m.target);
@@ -114,7 +114,7 @@ void PathMoverSystem::update(World& world, float dt) {
     });
 }
 
-// --- Plataformas que caen ----------------------------------------------------------------
+// --- Falling platforms -------------------------------------------------------------------
 
 void FallingPlatformSystem::onPlay(World& world) {
     world.each<FallingPlatform>([](Entity, FallingPlatform& f) {
@@ -132,14 +132,14 @@ void FallingPlatformSystem::update(World& world, float dt) {
             f.baseAlpha = sprite ? sprite->tint.a : 255;
         }
 
-        // Fundido de aparicion tras volver a su lugar. Ya es solida mientras aparece:
-        // se la ve, asi que se la puede pisar.
+        // Fade-in after returning to its place. It is already solid while appearing:
+        // it can be seen, so it can be stepped on.
         if (f.fade > 0.0f) {
             f.fade = std::max(f.fade - dt, 0.0f);
             float k = f.fadeInTime > 0.0f ? 1.0f - f.fade / f.fadeInTime : 1.0f;
             if (sprite) sprite->tint.a = (std::uint8_t)std::lround(f.baseAlpha * k);
         }
-        // Quieta hasta que alguien se pare encima.
+        // Still until someone stands on it.
         if (!f.triggered) {
             if (hasRider(world, e)) {
                 f.triggered = true;
@@ -150,13 +150,13 @@ void FallingPlatformSystem::update(World& world, float dt) {
 
         f.timer += dt;
         if (!f.falling) {
-            if (f.timer < f.delay) return; // aviso: se le apaga la helice
+            if (f.timer < f.delay) return; // flag: its propeller turns off
             f.falling = true;
             f.timer = 0.0f;
             f.speed = 0.0f;
         }
 
-        // De vuelta a su lugar, si no hay nadie ahi (si lo hay, espera abajo).
+        // Back to its place, if nobody is there (if someone is, it waits below).
         if (f.respawnTime > 0.0f && f.timer >= f.respawnTime) {
             if (bodyAt(world, e, f.origin)) return;
             t.position = f.origin;
@@ -164,7 +164,7 @@ void FallingPlatformSystem::update(World& world, float dt) {
             f.timer = f.speed = 0.0f;
             if (f.fadeInTime > 0.0f) {
                 f.fade = f.fadeInTime;
-                if (sprite) sprite->tint.a = 0; // empieza invisible
+                if (sprite) sprite->tint.a = 0; // starts invisible
             }
             return;
         }
@@ -182,7 +182,7 @@ void BouncerSystem::onPlay(World& world) {
 
 void BouncerSystem::update(World& world, float) {
     world.each<Bouncer, BoxCollider>([&](Entity self, Bouncer& b, BoxCollider&) {
-        b.justBounced = false; // el aviso dura un frame
+        b.justBounced = false; // the flag lasts one frame
         Vec2 sMin, sMax;
         if (!colliderBounds(world, self, sMin, sMax)) return;
 
@@ -192,8 +192,8 @@ void BouncerSystem::update(World& world, float) {
                 const EntityInfo* info = world.get<EntityInfo>(e);
                 if (!info || info->tag != b.targetTag) return;
             }
-            // Solo lo que BAJO en este paso y venia de arriba: entrar de costado o
-            // quedarse parado dentro no lanza.
+            // Only what went DOWN in this step and came from above: entering from the side
+            // or standing still inside does not launch.
             Vec2 bMin, bMax;
             if (t.position.y <= rb.previous.y || !collidersOverlap(world, self, e) ||
                 !colliderBounds(world, e, bMin, bMax))
@@ -201,11 +201,11 @@ void BouncerSystem::update(World& world, float) {
             float previousBottom = bMax.y - (t.position.y - rb.previous.y);
             if (previousBottom > sMin.y + BOUNCE_TOLERANCE) return;
 
-            // Altura en px -> velocidad, como el salto del PlatformerMotor.
+            // Height in px -> velocity, like the PlatformerMotor's jump.
             rb.velocity.y = -std::sqrt(2.0f * rb.gravity * b.bounceHeight);
             rb.grounded = false;
-            // Un salto guardado en el buffer o el coyote time no deben pisar el rebote
-            // (el salto propio es mas bajo), y soltar el boton no lo corta.
+            // A jump stored in the buffer or the coyote time must not override the bounce
+            // (the body's own jump is lower), and releasing the button does not cut it.
             if (PlatformerMotor* m = world.get<PlatformerMotor>(e)) {
                 m->coyote = 0.0f;
                 m->jumping = false;

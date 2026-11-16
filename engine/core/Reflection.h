@@ -10,95 +10,95 @@
 #include "core/Math.h"
 #include "core/World.h"
 
-// Reflexion minima: cada componente DECLARA sus campos una vez, y con esa lista el
-// motor sabe, sin codigo extra por componente:
-//   - guardarlo y cargarlo en JSON (SceneSerializer),
-//   - mostrarlo y editarlo en el Inspector del editor,
-//   - agregarlo o quitarlo desde el editor ("Agregar componente").
+// Minimal reflection: each component DECLARES its fields once, and from that list
+// the engine knows how to, with no extra code per component:
+//   - save and load it as JSON (SceneSerializer),
+//   - show and edit it in the editor's Inspector,
+//   - add or remove it from the editor ("Add component").
 //
-// Registro (una vez, al arrancar; ver CoreComponents.cpp):
+// Registration (once, at startup; see CoreComponents.cpp):
 //     registry.add<Transform>("Transform")
 //         .field("position", &Transform::position)
 //         .field("rotation", &Transform::rotation).range(-360, 360)
 //         .field("scale",    &Transform::scale);
 //
-// Un campo que NO se registra no se guarda ni se ve en el editor: es estado de
-// ejecucion (un temporizador interno, algo que calcula un sistema...).
+// A field that is NOT registered is neither saved nor shown in the editor: it is
+// runtime state (an internal timer, something a system computes...).
 //
-// LISTAS DE STRUCTS: un campo std::vector<E>, con E un struct de datos (los clips de
-// un SpriteAnimator), se declara con list(), y los campos de E se describen igual que
-// los de un componente:
+// LISTS OF STRUCTS: a std::vector<E> field, with E a data struct (the clips of a
+// SpriteAnimator), is declared with list(), and E's fields are described just like
+// a component's:
 //     registry.add<SpriteAnimator>("SpriteAnimator")
 //         .list("clips", &SpriteAnimator::clips, [](FieldsBuilder<AnimationClip>& clip) {
 //             clip.field("name", &AnimationClip::name)
 //                 .field("fps", &AnimationClip::fps);
 //         });
 
-// Tipos de campo que el motor sabe guardar y editar. Para sumar uno: agregarlo aqui,
-// en fieldTypeOf, en el guardado (SceneSerializer.cpp) y en el Inspector.
-//   IntList = std::vector<int> (p. ej. los tiles solidos de un Tilemap).
-//   IntGrid = grilla de enteros (las celdas de un Tilemap; ver Math.h).
-//   Entity  = referencia a OTRA entidad de la escena (un miembro de tipo Entity). Se
-//             guarda como su id (0 = ninguna) y el Inspector ofrece elegirla de una
-//             lista o soltarla arrastrandola desde la Jerarquia. Puede apuntar a una
-//             entidad que ya no existe: se pregunta con world.isAlive.
-//   List    = std::vector<E> de structs (se declara con list(), no con field()).
+// Field types the engine can save and edit. To add one: add it here, in
+// fieldTypeOf, in saving (SceneSerializer.cpp) and in the Inspector.
+//   IntList = std::vector<int> (e.g. the solid tiles of a Tilemap).
+//   IntGrid = grid of integers (the cells of a Tilemap; see Math.h).
+//   Entity  = reference to ANOTHER entity in the scene (a member of type Entity). It
+//             is saved as its id (0 = none) and the Inspector lets you pick it from a
+//             list or drop it by dragging it from the Hierarchy. It may point to an
+//             entity that no longer exists: check with world.isAlive.
+//   List    = std::vector<E> of structs (declared with list(), not with field()).
 enum class FieldType { Bool, Int, Float, String, Vec2, Color, IntRect, IntList, IntGrid, Entity, List };
 
-// Pista para el editor: como mostrar el campo (el tipo sigue siendo el mismo).
+// Hint for the editor: how to show the field (the type stays the same).
 enum class FieldHint {
     None,
-    TexturePath, // String: ruta a una imagen; el Inspector ofrece elegirla de assets/
-    AudioPath,   // String: ruta a un sonido (wav, ogg, opus); se elige de assets/ y se escucha
-    Choice,      // String: el Inspector ofrece una lista de valores (FieldInfo::choices)
+    TexturePath, // String: path to an image; the Inspector lets you pick it from assets/
+    AudioPath,   // String: path to a sound (wav, ogg, opus); picked from assets/ and playable
+    Choice,      // String: the Inspector offers a list of values (FieldInfo::choices)
 };
 
-// Valores que ofrece un campo Choice. Recibe la entidad que se esta editando: asi la
-// lista puede depender de ella (los clips de SU SpriteAnimator). Un "" en la lista se
-// muestra como "(ninguno)".
+// Values a Choice field offers. It receives the entity being edited, so the list
+// can depend on it (the clips of ITS SpriteAnimator). A "" in the list is shown
+// as "(none)".
 using ChoiceProvider = std::function<std::vector<std::string>(const World&, Entity)>;
 
 struct FieldInfo {
-    std::string name;     // clave en el JSON y etiqueta en el Inspector
+    std::string name;     // key in the JSON and label in the Inspector
     FieldType type = FieldType::Float;
     FieldHint hint = FieldHint::None;
-    float min = 0.0f;     // si max > min, el editor limita el valor a [min, max]
+    float min = 0.0f;     // if max > min, the editor clamps the value to [min, max]
     float max = 0.0f;
-    float speed = 1.0f;   // cuanto cambia al arrastrar en el Inspector
-    std::string tooltip;  // ayuda al pasar el raton (opcional)
-    ChoiceProvider choices; // solo con hint Choice
-    // Dado el componente (como void*), devuelve la direccion de este campo.
+    float speed = 1.0f;   // how much it changes when dragging in the Inspector
+    std::string tooltip;  // help shown on hover (optional)
+    ChoiceProvider choices; // only with the Choice hint
+    // Given the component (as void*), returns the address of this field.
     std::function<void*(void*)> access;
 
-    // --- Solo para List: los campos de cada elemento y como operar el vector ---
+    // --- Only for List: the fields of each element and how to operate the vector ---
     std::vector<FieldInfo> elementFields;
     std::function<std::size_t(const void*)> listSize;
-    std::function<void(void*, std::size_t)> listResize; // lo nuevo nace con sus valores por defecto
+    std::function<void(void*, std::size_t)> listResize; // the new one starts with its default values
     std::function<void*(void*, std::size_t)> listElement;
     std::function<void(void*, std::size_t)> listErase;
     std::function<void(void*, std::size_t, std::size_t)> listSwap;
-    std::function<void(void*, std::size_t)> listDuplicate; // la copia queda detras del original
+    std::function<void(void*, std::size_t)> listDuplicate; // the copy goes right after the original
 
     void* in(void* component) const { return access(component); }
     const void* in(const void* component) const { return access(const_cast<void*>(component)); }
 };
 
-// Descripcion de un tipo de componente registrado.
+// Description of a registered component type.
 struct ComponentInfo {
-    std::string name;            // nombre en el JSON y en el editor ("Transform")
+    std::string name;            // name in the JSON and in the editor ("Transform")
     std::size_t typeId = 0;      // componentTypeId<T>()
     std::vector<FieldInfo> fields;
-    bool removable = true;       // false: el editor no ofrece quitarlo
-    std::function<void*(World&, Entity)> addDefault; // agrega T{} y devuelve su direccion
+    bool removable = true;       // false: the editor does not offer to remove it
+    std::function<void*(World&, Entity)> addDefault; // adds T{} and returns its address
 
     bool has(const World& w, Entity e) const;
-    void* get(World& w, Entity e) const;            // nullptr si no lo tiene
+    void* get(World& w, Entity e) const;            // nullptr if it does not have it
     const void* get(const World& w, Entity e) const;
     void* add(World& w, Entity e) const { return addDefault(w, e); }
     void remove(World& w, Entity e) const;
 };
 
-// Traduce el tipo C++ del miembro al FieldType. Un tipo no soportado no compila.
+// Maps the member's C++ type to its FieldType. An unsupported type does not compile.
 template <class M>
 constexpr FieldType fieldTypeOf() {
     if constexpr (std::is_same_v<M, bool>) return FieldType::Bool;
@@ -110,13 +110,13 @@ constexpr FieldType fieldTypeOf() {
     else if constexpr (std::is_same_v<M, IntRect>) return FieldType::IntRect;
     else if constexpr (std::is_same_v<M, std::vector<int>>) return FieldType::IntList;
     else if constexpr (std::is_same_v<M, IntGrid>) return FieldType::IntGrid;
-    // Entity es un std::uint32_t: cualquier miembro de ese tipo es una referencia.
+    // Entity is a std::uint32_t: any member of that type is a reference.
     else if constexpr (std::is_same_v<M, Entity>) return FieldType::Entity;
     else static_assert(sizeof(M) == 0, "Unsupported field type (a list of structs goes with list())");
 }
 
-// Ayudante del registro: declara los campos de un struct T (un componente o el
-// elemento de una lista). Cada metodo modifica el ultimo campo agregado.
+// Registration helper: declares the fields of a struct T (a component or a list
+// element). Each method modifies the last field added.
 template <class T>
 class FieldsBuilder {
 public:
@@ -133,7 +133,7 @@ public:
         return *this;
     }
 
-    // Lista de structs E. 'describe' recibe un FieldsBuilder<E> para declarar sus campos.
+    // List of structs E. 'describe' receives a FieldsBuilder<E> to declare its fields.
     template <class E, class Describe>
     FieldsBuilder& list(const char* name, std::vector<E> T::*member, Describe describe) {
         static_assert(std::is_default_constructible_v<E>, "A list element needs a default constructor");
@@ -170,7 +170,7 @@ public:
     FieldsBuilder& tooltip(const char* text) { last().tooltip = text; return *this; }
     FieldsBuilder& texture() { last().hint = FieldHint::TexturePath; return *this; }
     FieldsBuilder& audio() { last().hint = FieldHint::AudioPath; return *this; }
-    // Un String con valores para elegir (el Inspector muestra una lista desplegable).
+    // A String with values to choose from (the Inspector shows a dropdown).
     FieldsBuilder& choices(ChoiceProvider provider) {
         last().hint = FieldHint::Choice;
         last().choices = std::move(provider);
@@ -185,14 +185,14 @@ private:
     std::vector<FieldInfo>& fields;
 };
 
-// El de un componente: lo mismo, mas las opciones del componente entero.
+// The component version: the same, plus the options of the whole component.
 template <class T>
 class ComponentBuilder : public FieldsBuilder<T> {
 public:
     explicit ComponentBuilder(ComponentInfo& info) : FieldsBuilder<T>(info.fields), info(info) {}
 
-    // El editor no ofrece quitar este componente (p. ej. EntityInfo). Va ANTES de los
-    // campos: field() devuelve un FieldsBuilder, que no lo tiene.
+    // The editor does not offer to remove this component (e.g. EntityInfo). Goes BEFORE
+    // the fields: field() returns a FieldsBuilder, which does not have it.
     ComponentBuilder& notRemovable() { info.removable = false; return *this; }
 
 private:
@@ -201,8 +201,8 @@ private:
 
 class ComponentRegistry {
 public:
-    // Registra el tipo T con ese nombre. El orden de registro es el orden en que el
-    // Inspector muestra los componentes y en que se guardan en el archivo.
+    // Registers type T with that name. The registration order is the order in which the
+    // Inspector shows the components and in which they are saved to the file.
     template <class T>
     ComponentBuilder<T> add(const std::string& name) {
         static_assert(std::is_default_constructible_v<T>,
@@ -221,17 +221,17 @@ public:
     template <class T>
     const ComponentInfo* find() const { return findByTypeId(componentTypeId<T>()); }
 
-    // Todos los registrados, en orden de registro.
+    // Every registered component, in registration order.
     const std::vector<std::unique_ptr<ComponentInfo>>& all() const { return infos; }
 
 private:
-    // unique_ptr: el ComponentBuilder guarda una referencia a la info, que no debe
-    // moverse cuando el vector crece.
+    // unique_ptr: the ComponentBuilder keeps a reference to the info, which must not
+    // move when the vector grows.
     std::vector<std::unique_ptr<ComponentInfo>> infos;
 };
 
-// Llama a fn con cada campo Entity de los componentes registrados de e (tambien los
-// de los elementos de una lista). fn puede cambiar el valor: asi se rehacen las
-// referencias de una copia (duplicar una rama) o se vacian (al guardar un prefab).
+// Calls fn with every Entity field of e's registered components (including those
+// of list elements). fn may change the value: that is how the references of a copy
+// are remapped (duplicating a branch) or cleared (when saving a prefab).
 void forEachEntityField(const ComponentRegistry& registry, World& world, Entity e,
                         const std::function<void(Entity&)>& fn);

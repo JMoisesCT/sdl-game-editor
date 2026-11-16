@@ -11,7 +11,7 @@
 #include "systems/Conditions.h"
 #include "systems/System.h"
 
-struct SDL_Window;   // declaraciones adelantadas: SDL solo aparece en el .cpp
+struct SDL_Window;   // forward declarations: SDL only appears in the .cpp
 struct SDL_Renderer;
 class AssetManager;
 class Audio;
@@ -20,27 +20,27 @@ class Editor;
 
 struct AppConfig {
     std::string title = "SDL Game Editor";
-    int gameWidth = 1280;   // resolucion del juego: lo que ve el jugador (y la vista
-    int gameHeight = 720;   // "Juego" del editor, que la escala para que quepa)
-    bool editor = true;     // false: abre la escena y juega directo, sin paneles
-    // Como se muestra el juego si la ventana (o la pestana Juego) no mide lo mismo que
-    // su resolucion. Ver app/GameScreen.h; el editor lo cambia en la pestana Juego.
+    int gameWidth = 1280;   // game resolution: what the player sees (and the editor's
+    int gameHeight = 720;   // "Game" view, which scales it to fit)
+    bool editor = true;     // false: opens the scene and plays directly, without panels
+    // How the game is shown if the window (or the Game tab) is not the size of its
+    // resolution. See app/GameScreen.h; the editor changes it in the Game tab.
     GameScale scale = GameScale::PixelPerfect;
 };
 
-// Modos de la aplicacion. Editando, la escena esta quieta (no corre ningun sistema);
-// jugando, corren los sistemas en orden; en pausa, se ve el juego congelado.
+// Application modes. While editing, the scene stands still (no system runs); while
+// playing, the systems run in order; when paused, the frozen game is shown.
 enum class PlayMode { Edit, Play, Paused };
 
-// La aplicacion es DUENA DEL BUCLE: crea la ventana, el renderer, el World y el
-// editor, y en cada frame lee la entrada, corre los sistemas (si se juega) y dibuja.
-// El juego no escribe su propio bucle: registra sus componentes y sistemas.
+// The application OWNS THE LOOP: it creates the window, the renderer, the World and
+// the editor, and every frame it reads input, runs the systems (if playing) and draws.
+// The game does not write its own loop: it registers its components and systems.
 //
 //     int main(int, char**) {
 //         Application app;
-//         if (!app.init({ "Mi juego", 1280, 720 })) return 1;
-//         registerMiJuego(app);          // componentes + sistemas del juego
-//         app.openScene("assets/scenes/nivel1.scene.json");
+//         if (!app.init({ "My Game", 1280, 720 })) return 1;
+//         registerMyGame(app);           // the game's components + systems
+//         app.openScene("assets/scenes/level1.scene.json");
 //         return app.run();
 //     }
 class Application {
@@ -50,43 +50,43 @@ public:
     Application(const Application&) = delete;
     Application& operator=(const Application&) = delete;
 
-    // SDL, SDL_ttf, ventana, renderer, audio y (si config.editor) el editor. Tambien registra
-    // los componentes basicos del motor. false si algo falla (el motivo va al log).
+    // SDL, SDL_ttf, window, renderer, audio and (if config.editor) the editor. It also
+    // registers the engine's basic components. false if something fails (the reason goes to the log).
     bool init(const AppConfig& config);
 
-    // El juego agrega aqui sus componentes (antes de abrir la escena, para que se
-    // carguen) y sus sistemas (corren en el orden en que se agregan).
+    // The game adds its components here (before opening the scene, so they get loaded)
+    // and its systems (they run in the order they are added).
     ComponentRegistry& registry() { return components; }
-    // Los prefabs (.prefab.json) que usa la escena; ver core/Prefabs.h.
+    // The prefabs (.prefab.json) the scene uses; see core/Prefabs.h.
     PrefabLibrary& prefabs() { return prefabLibrary; }
-    // Las condiciones con nombre (ver systems/Conditions.h) que usan las reglas de
-    // animacion y de sonido. Trae las del motor; el juego suma las suyas.
+    // The named conditions (see systems/Conditions.h) used by the animation and sound
+    // rules. It comes with the engine's; the game adds its own.
     ConditionRegistry& conditions() { return conditionRegistry; }
     void addSystem(std::unique_ptr<System> system);
 
-    // Carga la escena. Si el archivo no existe, empieza una escena vacia que se
-    // guardara en esa ruta. false si existe pero no se pudo leer.
+    // Loads the scene. If the file does not exist, it starts an empty scene that will
+    // be saved to that path. false if it exists but could not be read.
     bool openScene(const std::string& path);
-    bool saveScene(); // solo editando (jugando, la escena esta "prestada" al juego)
+    bool saveScene(); // only while editing (while playing, the scene is "lent" to the game)
 
-    // La escena en memoria como JSON (igual que el archivo: las instancias de prefab
-    // solo con sus overrides) y de vuelta. Lo usan Play/Stop y el deshacer del editor.
+    // The scene in memory as JSON (same as the file: prefab instances only with their
+    // overrides) and back. Used by Play/Stop and the editor's undo.
     Json snapshot();
     bool restore(const Json& scene, std::string& error);
 
-    // Bucle principal hasta que se cierre la ventana. Devuelve el codigo de salida.
+    // Main loop until the window closes. Returns the exit code.
     int run();
 
     // --- Play / Stop -----------------------------------------------------------------
-    // Play guarda una copia de la escena; Stop la restaura tal cual estaba, asi que lo
-    // que pase jugando (o lo que se toque en el Inspector) no queda en la escena.
+    // Play saves a copy of the scene; Stop restores it exactly as it was, so whatever
+    // happens while playing (or is changed in the Inspector) does not stay in the scene.
     void play();
     void stop();
     void setPaused(bool paused);
     PlayMode mode() const { return playMode; }
     bool isEditing() const { return playMode == PlayMode::Edit; }
 
-    // --- Acceso para el editor y los sistemas ---------------------------------------
+    // --- Access for the editor and the systems --------------------------------------
     World& world() { return sceneWorld; }
     AssetManager& assets() { return *assetManager; }
     Audio& audio() { return *audioDevice; }
@@ -99,7 +99,7 @@ public:
 
 private:
     void shutdown();
-    void renderGameDirect(); // sin editor: la vista del juego ocupa la ventana
+    void renderGameDirect(); // without the editor: the game view fills the window
 
     AppConfig appConfig;
     SDL_Window* sdlWindow = nullptr;
@@ -108,7 +108,7 @@ private:
 
     std::unique_ptr<AssetManager> assetManager;
     std::unique_ptr<Audio> audioDevice;
-    std::unique_ptr<GameCanvas> gameCanvas; // sin editor: el juego a su resolucion, escalado a la ventana
+    std::unique_ptr<GameCanvas> gameCanvas; // without the editor: the game at its resolution, scaled to the window
     ComponentRegistry components;
     PrefabLibrary prefabLibrary{ components };
     ConditionRegistry conditionRegistry;
@@ -118,5 +118,5 @@ private:
 
     std::string currentScenePath;
     PlayMode playMode = PlayMode::Edit;
-    Json playSnapshot; // la escena tal como estaba al pulsar Play
+    Json playSnapshot; // the scene as it was when Play was pressed
 };

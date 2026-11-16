@@ -6,13 +6,13 @@
 #include "core/World.h"
 
 Json PrefabLibrary::complete(const Json& components) const {
-    // Se carga en un World de paso y se vuelve a escribir: lo que falta toma su valor
-    // por defecto y lo que sobra (componentes o campos que ya no existen) se cae.
+    // It is loaded into a scratch World and written again: whatever is missing gets its
+    // default value and whatever is extra (components or fields that no longer exist) is dropped.
     World scratch;
     Entity e = scratch.create();
     deserializeComponents(scratch, registry, e, components);
-    // Una referencia a otra entidad (un campo Entity) es un id de UNA escena: en el
-    // prefab no significa nada. Queda vacia, y cada instancia la pone como override.
+    // A reference to another entity (an Entity field) is an id of ONE scene: in the
+    // prefab it means nothing. It is left empty, and each instance sets it as an override.
     forEachEntityField(registry, scratch, e, [](Entity& ref) { ref = NullEntity; });
     return serializeEntity(scratch, registry, nullptr, e)["components"];
 }
@@ -26,7 +26,7 @@ const Json* PrefabLibrary::find(const std::string& path) {
             components = complete(components);
         } else {
             SDL_Log("Prefab '%s': %s", path.c_str(), error.c_str());
-            components = Json(); // se recuerda el fallo: no se reintenta en cada frame
+            components = Json(); // the failure is remembered: it is not retried every frame
         }
         it = cache.emplace(path, std::move(components)).first;
     }

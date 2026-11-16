@@ -8,7 +8,7 @@
 #include "core/World.h"
 #include "platform/Audio.h"
 
-// --- Efectos -----------------------------------------------------------------------------
+// --- Effects -----------------------------------------------------------------------------
 
 void SoundSystem::onPlay(World& world) {
     world.each<SoundEffects>([](Entity, SoundEffects& fx) {
@@ -18,7 +18,7 @@ void SoundSystem::onPlay(World& world) {
 }
 
 void SoundSystem::update(World& world, float) {
-    static std::set<std::string> warned; // un aviso por nombre desconocido
+    static std::set<std::string> warned; // one warning per unknown name
     world.each<SoundEffects>([&](Entity e, SoundEffects& fx) {
         for (SoundRule& rule : fx.sounds) {
             const Condition* condition = conditions.find(rule.condition);
@@ -28,8 +28,8 @@ void SoundSystem::update(World& world, float) {
                 continue;
             }
             const bool now = (*condition)(world, e);
-            // Solo en el frame en que EMPIEZA a cumplirse. El primer frame se anota sin
-            // sonar: lo que ya era cierto al empezar a jugar (estar apoyado) no es un suceso.
+            // Only on the frame in which it STARTS to hold. The first frame is recorded without
+            // playing: what was already true when play started (being grounded) is not an event.
             if (now && !rule.wasTrue && fx.started) audio.playSound(rule.sound, rule.volume);
             rule.wasTrue = now;
         }
@@ -37,10 +37,10 @@ void SoundSystem::update(World& world, float) {
     });
 }
 
-// --- Musica ------------------------------------------------------------------------------
+// --- Music -------------------------------------------------------------------------------
 
 void MusicSystem::onPlay(World&) {
-    playing.clear(); // el primer update la hace sonar
+    playing.clear(); // the first update starts it
 }
 
 void MusicSystem::update(World& world, float) {
@@ -49,8 +49,8 @@ void MusicSystem::update(World& world, float) {
         if (!music) music = &m;
     });
     if (music && !music->music.empty()) {
-        // Cada frame: si es la misma solo se ajusta el volumen (tocarlo en el Inspector
-        // mientras se juega se oye en el acto).
+        // Every frame: if it is the same one, only the volume is adjusted (changing it in the
+        // Inspector while playing is heard right away).
         audio.playMusic(music->music, music->volume, music->loop);
         playing = music->music;
     } else if (!playing.empty()) {

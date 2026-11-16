@@ -43,10 +43,10 @@ void World::destroyNow(Entity e) {
 
 void World::flushDestroyed() {
     if (pendingDestroy.empty()) return;
-    // Una sola pasada sobre la lista de vivas (y no un erase por entidad): asi
-    // destruir muchas balas en el mismo frame no cuesta n^2.
+    // A single pass over the list of living entities (not one erase per entity): that way
+    // destroying many bullets in the same frame does not cost n^2.
     for (Entity e : pendingDestroy) {
-        if (!aliveSet.erase(e)) continue; // ya destruida (pedida dos veces)
+        if (!aliveSet.erase(e)) continue; // already destroyed (requested twice)
         for (auto& p : pools)
             if (p) p->remove(e);
     }

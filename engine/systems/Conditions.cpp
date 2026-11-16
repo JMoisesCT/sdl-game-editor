@@ -16,13 +16,13 @@ const Condition* ConditionRegistry::find(const std::string& name) const {
 std::vector<std::string> ConditionRegistry::names() const {
     std::vector<std::string> out;
     for (const auto& [name, condition] : conditions) out.push_back(name);
-    return out; // std::map ya los tiene ordenados
+    return out; // std::map already keeps them sorted
 }
 
 namespace {
-    // En el aire: tiene cuerpo con gravedad y no esta apoyado. Un cuerpo sin gravedad
-    // (top-down, una nave) nunca esta "en el aire". El apoyo del PlatformerMotor, si
-    // hay, es el suavizado por el coyote time: no parpadea en los bordes.
+    // In the air: it has a body with gravity and is not grounded. A body without gravity
+    // (top-down, a ship) is never "in the air". The PlatformerMotor's grounding, if
+    // any, is the one smoothed by coyote time: it does not flicker at the edges.
     bool isAirborne(World& w, Entity e) {
         const RigidBody2D* rb = w.get<RigidBody2D>(e);
         if (!rb || rb->gravity == 0.0f) return false;
@@ -37,10 +37,10 @@ namespace {
 }
 
 void registerEngineConditions(ConditionRegistry& c) {
-    // --- Estados ---
+    // --- States ---
     c.add("grounded", [](World& w, Entity e) { return !isAirborne(w, e); });
     c.add("airborne", [](World& w, Entity e) { return isAirborne(w, e); });
-    // y crece hacia abajo: subir es velocidad negativa.
+    // y grows downward: going up is a negative velocity.
     c.add("rising", [](World& w, Entity e) { return isAirborne(w, e) && verticalSpeed(w, e) < 0.0f; });
     c.add("falling", [](World& w, Entity e) { return isAirborne(w, e) && verticalSpeed(w, e) > 0.0f; });
     c.add("moving", [](World& w, Entity e) {
@@ -60,13 +60,13 @@ void registerEngineConditions(ConditionRegistry& c) {
         const Checkpoint* cp = w.get<Checkpoint>(e);
         return cp && cp->activated;
     });
-    // Una FallingPlatform pisada: por caer o cayendo.
+    // A FallingPlatform that was stepped on: about to fall or falling.
     c.add("crumbling", [](World& w, Entity e) {
         const FallingPlatform* f = w.get<FallingPlatform>(e);
         return f && f->triggered;
     });
 
-    // --- Sucesos de un frame ---
+    // --- One-frame events ---
     c.add("jumped", [](World& w, Entity e) {
         const PlatformerMotor* m = w.get<PlatformerMotor>(e);
         return m && m->justJumped;

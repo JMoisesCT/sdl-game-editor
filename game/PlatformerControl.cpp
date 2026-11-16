@@ -14,24 +14,24 @@ void PlatformerControlSystem::update(World& world, float) {
     if (move < -1.0f) move = -1.0f;
     bool jumpPressed = Input::wasPressed(Key::Space) || Input::wasPressed(Key::W) || Input::wasPressed(Key::Up);
     bool jumpHeld = Input::isDown(Key::Space) || Input::isDown(Key::W) || Input::isDown(Key::Up);
-    bool dropHeld = Input::isDown(Key::Down) || Input::isDown(Key::S); // + salto: bajar de una plataforma
+    bool dropHeld = Input::isDown(Key::Down) || Input::isDown(Key::S); // + jump: drop off a platform
 
-    // Se filtra por tag, nunca por nombre: el nombre es para las personas.
+    // Filter by tag, never by name: the name is for people.
     world.each<PlatformerMotor, EntityInfo>([&](Entity e, PlatformerMotor& motor, EntityInfo& info) {
         if (info.tag != TAG_PLAYER) return;
-        // Muerto no se controla: sin intencion, y el Respawn hace el resto.
+        // Dead, no control: no intent, and Respawn does the rest.
         if (isDead(world, e)) {
             motor.moveInput = 0.0f;
             motor.jumpPressed = motor.jumpHeld = motor.dropHeld = false;
             return;
         }
         motor.moveInput = move;
-        motor.jumpPressed = jumpPressed; // flanco: un solo frame
-        motor.jumpHeld = jumpHeld;       // para el salto corto
+        motor.jumpPressed = jumpPressed; // edge: a single frame
+        motor.jumpHeld = jumpHeld;       // for the short jump
         motor.dropHeld = dropHeld;
 
-        // Hacia donde mira el sprite. Es presentacion, no fisica: por eso va aqui y
-        // no en el motor.
+        // Which way the sprite faces. It is presentation, not physics: that is why it goes
+        // here and not in the motor.
         if (Sprite* sprite = world.get<Sprite>(e)) {
             if (move < 0.0f) sprite->flipX = true;
             else if (move > 0.0f) sprite->flipX = false;

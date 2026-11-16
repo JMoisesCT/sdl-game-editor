@@ -3,14 +3,14 @@
 
 class World;
 
-// Sistemas de PRESENTACION que no son animacion (componentes en
-// components/PresentationComponents.h). Van al final del frame (ver main.cpp): la
-// camara sigue la posicion ya resuelta por la fisica y las reglas (una reaparicion
-// incluida).
+// PRESENTATION systems that are not animation (components in
+// components/PresentationComponents.h). They run at the end of the frame (see main.cpp):
+// the camera follows the position already resolved by physics and the rules (a
+// respawn included).
 
-// Mueve las camaras con FollowCamera. Necesita el tamano de la vista del juego (la
-// resolucion de AppConfig) para que, con clampToTilemaps, el RECTANGULO VISIBLE no se
-// salga del mapa.
+// Moves the cameras that have a FollowCamera. Needs the size of the game view (the
+// AppConfig resolution) so that, with clampToTilemaps, the VISIBLE RECTANGLE does not
+// leave the map.
 class FollowCameraSystem : public System {
 public:
     FollowCameraSystem(int viewWidth, int viewHeight) : viewWidth(viewWidth), viewHeight(viewHeight) {}
@@ -23,7 +23,7 @@ private:
     int viewHeight;
 };
 
-// Avanza el desplazamiento propio (scroll) de los ParallaxBackground.
+// Advances the own scrolling (scroll) of the ParallaxBackgrounds.
 class ParallaxSystem : public System {
 public:
     const char* name() const override { return "Parallax"; }

@@ -9,19 +9,19 @@
 
 class PrefabLibrary;
 
-// Guardar y cargar el World en JSON usando la reflexion: ningun componente escribe
-// su propio codigo de guardado. Se usa para tres cosas:
-//   1. el archivo de escena (.scene.json),
-//   2. la copia que se guarda al pulsar Play y se restaura al pulsar Stop,
-//   3. los pasos de deshacer/rehacer del editor.
+// Saves and loads the World as JSON using the reflection: no component writes its
+// own saving code. It is used for three things:
+//   1. the scene file (.scene.json),
+//   2. the copy saved when pressing Play and restored when pressing Stop,
+//   3. the editor's undo/redo steps.
 //
-// Formato del archivo:
+// File format:
 //   {
 //     "format": "sdl_engine_scene",
 //     "version": 1,
 //     "entities": [
 //       { "id": 1, "components": {
-//           "EntityInfo": {"name":"Camara","tag":"MainCamera"},
+//           "EntityInfo": {"name":"Camera","tag":"MainCamera"},
 //           "Transform": {"position":[640,360],"rotation":0,"scale":[1,1]}
 //       }},
 //       { "id": 2, "prefab": "assets/prefabs/fruit.prefab.json", "components": {
@@ -32,19 +32,19 @@ class PrefabLibrary;
 //     ]
 //   }
 //
-// JERARQUIA (ver Hierarchy.h): una entidad hija lleva "parent" con el id de su padre.
-// El orden de la lista es el de la Jerarquia del editor.
+// HIERARCHY (see Hierarchy.h): a child entity has "parent" with its parent's id.
+// The order of the list is the order of the editor's Hierarchy.
 //
-// INSTANCIAS DE PREFAB (ver Prefabs.h): una entidad con "prefab" se arma primero con
-// los componentes del prefab y despues se le aplica lo que dice "components" encima.
-// Por eso de una instancia solo se escriben los campos que DIFIEREN del prefab (sus
-// "overrides"): si el prefab cambia, todas sus instancias cambian con el, salvo en lo
-// que cada una sobrescribio. Si a la instancia se le quito un componente del prefab,
-// va en "removed": ["Hazard"].
+// PREFAB INSTANCES (see Prefabs.h): an entity with "prefab" is first built with the
+// prefab's components, and then what "components" says is applied on top.
+// That is why only the fields that DIFFER from the prefab are written for an instance
+// (its "overrides"): if the prefab changes, all its instances change with it, except
+// for what each one overrode. If a prefab component was removed from the instance,
+// it goes in "removed": ["Hazard"].
 //
-// Cada componente va en una linea. Las excepciones: las grillas (las celdas de un
-// Tilemap) se escriben una fila por linea, con los numeros alineados, y las listas de
-// structs (los clips de un SpriteAnimator) un elemento por linea:
+// Each component goes on one line. The exceptions: grids (the cells of a Tilemap)
+// are written one row per line, with aligned numbers, and lists of structs (the
+// clips of a SpriteAnimator) one element per line:
 //       "Tilemap": {"tileset":"...", ... ,"cells":[
 //           [ -1, -1, 94, 95],
 //           [ -1, -1, -1, -1]
@@ -53,45 +53,45 @@ class PrefabLibrary;
 //           {"name":"idle","texture":"...","fps":20.0, ...},
 //           {"name":"run","texture":"...","fps":20.0, ...}
 //         ]}
-// Por eso esos campos se registran al final del componente.
+// That is why those fields are registered last in the component.
 //
-// Al cargar, un campo que falta conserva su valor por defecto (o el del prefab):
-// agregar un campo nuevo a un componente no rompe las escenas ya guardadas. Un
-// componente que el registro no conoce se avisa en el log y se ignora.
+// On load, a missing field keeps its default value (or the prefab's): adding a new
+// field to a component does not break scenes already saved. A component the
+// registry does not know is logged and ignored.
 //
-// 'prefabs' puede ser nullptr: entonces las instancias se escriben completas (con su
-// "prefab", pero todos sus campos) y al leer no se les agrega nada del prefab.
+// 'prefabs' may be nullptr: then instances are written in full (with their
+// "prefab", but all their fields) and nothing from the prefab is added on read.
 
-using Json = nlohmann::ordered_json; // conserva el orden de las claves al escribir
+using Json = nlohmann::ordered_json; // keeps the order of the keys when writing
 
-// Una entidad: { "id": N, ["parent": P,] ["prefab": ruta,] ["removed": [...],]
+// One entity: { "id": N, ["parent": P,] ["prefab": path,] ["removed": [...],]
 // "components": {...} }.
 Json serializeEntity(const World& world, const ComponentRegistry& registry,
                      PrefabLibrary* prefabs, Entity e);
-// Arma una entidad que YA existe con lo que dice ese JSON: el padre, el prefab (si
-// tiene), los componentes quitados y encima "components". No mira el "id". Sin
-// "parent", el padre que ya tuviera se conserva.
+// Builds an entity that ALREADY exists from that JSON: the parent, the prefab (if
+// any), the removed components and, on top, "components". Ignores the "id". Without
+// "parent", any parent it already had is kept.
 void deserializeEntity(World& world, const ComponentRegistry& registry,
                        PrefabLibrary* prefabs, Entity e, const Json& entity);
-// Aplica una seccion "components" a una entidad que YA existe. Los componentes que ya
-// tiene se conservan: solo cambian los campos que aparecen en el JSON.
+// Applies a "components" section to an entity that ALREADY exists. Components it
+// already has are kept: only the fields present in the JSON change.
 void deserializeComponents(World& world, const ComponentRegistry& registry, Entity e,
                            const Json& components);
 
-// El World completo (formato del archivo, ver arriba).
+// The whole World (file format, see above).
 Json serializeWorld(const World& world, const ComponentRegistry& registry, PrefabLibrary* prefabs);
-// Vacia el World y lo llena desde el JSON. false (con el motivo en error) si el JSON
-// no tiene la forma esperada; en ese caso el World queda vacio.
+// Clears the World and fills it from the JSON. false (with the reason in error) if
+// the JSON does not have the expected shape; in that case the World is left empty.
 bool deserializeWorld(World& world, const ComponentRegistry& registry, PrefabLibrary* prefabs,
                       const Json& scene, std::string& error);
 
-// Archivo <-> JSON. saveSceneFile escribe un componente por linea y las grillas una
-// fila por linea (diffs legibles en git), y usa temporal + renombrar: un corte a
-// mitad no deja la escena rota.
+// File <-> JSON. saveSceneFile writes one component per line and grids one row per
+// line (readable diffs in git), and uses a temp file + rename: an interruption
+// halfway does not leave a broken scene.
 bool saveSceneFile(const std::string& path, const Json& scene);
 bool loadSceneFile(const std::string& path, Json& scene, std::string& error);
 
-// Archivo de prefab <-> su seccion "components" (mismo estilo que la escena):
+// Prefab file <-> its "components" section (same style as the scene):
 //   { "format": "sdl_engine_prefab", "version": 1, "components": { ... } }
 bool savePrefabFile(const std::string& path, const Json& components);
 bool loadPrefabFile(const std::string& path, Json& components, std::string& error);

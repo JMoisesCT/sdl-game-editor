@@ -35,15 +35,15 @@ bool findScaledCameraView(World& world, int width, int height, float scale, bool
         found = true;
         view.zoom = (cam.zoom > 0.0f ? cam.zoom : 1.0f) * (scale > 0.0f ? scale : 1.0f);
         if (pixelPerfect) {
-            // px de pantalla por pixel del dibujo, redondeado al entero mas cercano.
+            // screen px per art pixel, rounded to the nearest integer.
             const float pixel = cam.pixelSize > 0.0f ? cam.pixelSize : 1.0f;
             const float screenPixels = std::fmax(1.0f, std::round(view.zoom * pixel));
             view.zoom = screenPixels / pixel;
         }
-        // El centro, en pixeles ENTEROS de pantalla. Una camara que se mueve en
-        // fracciones de pixel (el suavizado de FollowCamera) haria que cada objeto
-        // redondee su borde en un frame distinto: el jugador y el suelo se correrian un
-        // pixel por separado y todo temblaria. Asi lo quieto se mueve todo junto.
+        // The center, in WHOLE screen pixels. A camera moving in fractions of a pixel
+        // (the FollowCamera smoothing) would make each object round its edge on a
+        // different frame: the player and the ground would shift a pixel separately and
+        // everything would shake. This way everything that is still moves together.
         view.center = { std::round(t.position.x * view.zoom) / view.zoom,
                         std::round(t.position.y * view.zoom) / view.zoom };
         if (background) *background = cam.background;
@@ -51,7 +51,7 @@ bool findScaledCameraView(World& world, int width, int height, float scale, bool
     return found;
 }
 
-// Recorte efectivo: el del Sprite, o la textura completa si no tiene.
+// Effective crop: the Sprite's, or the whole texture if it has none.
 static SDL_FRect sourceRect(const Sprite& s, SDL_Texture* tex) {
     if (s.source.w > 0 && s.source.h > 0)
         return { (float)s.source.x, (float)s.source.y, (float)s.source.w, (float)s.source.h };
@@ -71,16 +71,16 @@ bool spriteWorldSize(World& world, AssetManager& assets, Entity e, Vec2& size) {
     return true;
 }
 
-// Una capa de tiles: solo las celdas que se ven. Cada celda se pasa a pantalla por sus
-// DOS esquinas y se redondea cada borde: el borde derecho de una celda cae en el mismo
-// entero que el izquierdo de la vecina, asi no quedan costuras ni solapes con zoom.
+// A tile layer: only the visible cells. Each cell is mapped to the screen by its TWO
+// corners and each edge is rounded: the right edge of a cell falls on the same integer
+// as the left edge of its neighbor, so there are no seams or overlaps when zoomed.
 static void drawTilemap(const Tilemap& map, const Transform& t, AssetManager& assets,
                         SDL_Renderer* renderer, const View& view) {
     int columns, rows;
     if (!tilesetGrid(assets, map, columns, rows)) return;
     SDL_Texture* tex = assets.loadTexture(map.tileset);
 
-    // Celdas visibles: las esquinas de la vista pasadas a celdas, recortadas al mapa.
+    // Visible cells: the view's corners converted to cells, clipped to the map.
     int c0, r0, c1, r1;
     tilemapWorldToCell(map, t, view.screenToWorld({ 0, 0 }), c0, r0);
     tilemapWorldToCell(map, t, view.screenToWorld({ (float)view.width, (float)view.height }), c1, r1);
@@ -95,7 +95,7 @@ static void drawTilemap(const Tilemap& map, const Transform& t, AssetManager& as
     for (int row = r0; row <= r1; ++row) {
         for (int col = c0; col <= c1; ++col) {
             int tile = map.cells.get(col, row);
-            if (tile < 0 || tile >= tileCount) continue; // vacia (o fuera del tileset)
+            if (tile < 0 || tile >= tileCount) continue; // empty (or outside the tileset)
             SDL_FRect src{ (float)(tile % columns * map.tileWidth), (float)(tile / columns * map.tileHeight),
                            (float)map.tileWidth, (float)map.tileHeight };
             Vec2 a = view.worldToScreen(tilemapCellOrigin(map, t, col, row));
@@ -107,8 +107,8 @@ static void drawTilemap(const Tilemap& map, const Transform& t, AssetManager& as
     }
 }
 
-// Fondo en mosaico que llena la vista. El patron se ancla al mundo multiplicado por
-// el factor: con factor 1 cada copia queda fija en el mundo; con 0, fija en la vista.
+// Tiled background that fills the view. The pattern is anchored to the world times
+// the factor: with factor 1 each copy stays fixed in the world; with 0, fixed in the view.
 static void drawParallax(const ParallaxBackground& p, AssetManager& assets, SDL_Renderer* renderer,
                          const View& view) {
     SDL_Texture* tex = assets.loadTexture(p.texture);
@@ -117,10 +117,10 @@ static void drawParallax(const ParallaxBackground& p, AssetManager& assets, SDL_
     SDL_GetTextureSize(tex, &tw, &th);
     const float tileW = tw * p.scale * view.zoom;
     const float tileH = th * p.scale * view.zoom;
-    if (tileW < 2.0f || tileH < 2.0f) return; // tan chico que serian miles de copias
+    if (tileW < 2.0f || tileH < 2.0f) return; // so small it would take thousands of copies
 
-    // Donde cae una copia del patron en la vista, llevado a [-tile, 0): asi la primera
-    // empieza justo antes del borde y se repite sin huecos.
+    // Where a copy of the pattern falls in the view, brought into [-tile, 0): that way
+    // the first one starts right before the edge and repeats with no gaps.
     float offX = (-view.center.x * p.factor.x + p.offset.x) * view.zoom + view.width * 0.5f;
     float offY = (-view.center.y * p.factor.y + p.offset.y) * view.zoom + view.height * 0.5f;
     offX = std::fmod(offX, tileW);
@@ -130,7 +130,7 @@ static void drawParallax(const ParallaxBackground& p, AssetManager& assets, SDL_
 
     SDL_SetTextureColorMod(tex, p.tint.r, p.tint.g, p.tint.b);
     SDL_SetTextureAlphaMod(tex, p.tint.a);
-    // Bordes enteros, como el tilemap: medio pixel entre dos copias se ve como costura.
+    // Whole-pixel edges, like the tilemap: half a pixel between two copies shows as a seam.
     for (float y = offY; y < view.height; y += tileH) {
         for (float x = offX; x < view.width; x += tileW) {
             float left = std::round(x), top = std::round(y);
@@ -140,11 +140,11 @@ static void drawParallax(const ParallaxBackground& p, AssetManager& assets, SDL_
     }
 }
 
-// Corrimiento del centro del texto respecto a la posicion, segun align.
+// Shift of the text center relative to the position, according to align.
 static float alignShift(const Text& tx, float width) {
     if (tx.align == "left") return width * 0.5f;
     if (tx.align == "right") return -width * 0.5f;
-    return 0.0f; // center (y cualquier valor desconocido)
+    return 0.0f; // center (and any unknown value)
 }
 
 bool textBounds(World& world, AssetManager& assets, Entity e, Vec2& center, Vec2& size) {
@@ -160,7 +160,7 @@ bool textBounds(World& world, AssetManager& assets, Entity e, Vec2& center, Vec2
     return true;
 }
 
-// Un texto: su imagen (en blanco) tenida con el color, en la vista dada.
+// A text: its image (in white) tinted with the color, in the given view.
 static void drawText(const Text& tx, const Transform& t, AssetManager& assets, SDL_Renderer* renderer,
                      const View& view) {
     SDL_Texture* tex = assets.textTexture(tx.font, tx.size, tx.text);
@@ -174,7 +174,7 @@ static void drawText(const Text& tx, const Transform& t, AssetManager& assets, S
 
     float left = std::round(c.x - w * 0.5f), right = std::round(c.x + w * 0.5f);
     float top = std::round(c.y - h * 0.5f), bottom = std::round(c.y + h * 0.5f);
-    if (right < 0 || bottom < 0 || left > view.width || top > view.height) return; // fuera
+    if (right < 0 || bottom < 0 || left > view.width || top > view.height) return; // outside
     SDL_FRect dst{ left, top, right - left, bottom - top };
     SDL_SetTextureColorMod(tex, tx.color.r, tx.color.g, tx.color.b);
     SDL_SetTextureAlphaMod(tex, tx.color.a);
@@ -182,9 +182,9 @@ static void drawText(const Text& tx, const Transform& t, AssetManager& assets, S
 }
 
 void renderWorld(World& world, AssetManager& assets, SDL_Renderer* renderer, const View& view) {
-    // Primero se juntan y ordenan: los pools guardan los componentes en cualquier
-    // orden. Todo lo que se dibuja comparte la misma escala de order.
-    enum class Kind { Parallax, Tilemap, Sprite, Text }; // en una misma entidad, de abajo arriba
+    // First they are gathered and sorted: the pools store components in any
+    // order. Everything that is drawn shares the same order scale.
+    enum class Kind { Parallax, Tilemap, Sprite, Text }; // within the same entity, bottom to top
     struct Item { int order; Entity e; Kind kind; const void* data; const Transform* transform; };
     std::vector<Item> items;
     world.each<ParallaxBackground>([&](Entity e, ParallaxBackground& p) {
@@ -228,18 +228,18 @@ void renderWorld(World& world, AssetManager& assets, SDL_Renderer* renderer, con
         float h = src.h * std::fabs(t.scale.y) * view.zoom;
         Vec2 c = view.worldToScreen(t.position);
 
-        // Bordes redondeados a enteros (pixel art nitido, sin costuras entre vecinos).
+        // Edges rounded to integers (crisp pixel art, no seams between neighbors).
         float left = std::round(c.x - w * 0.5f), right = std::round(c.x + w * 0.5f);
         float top = std::round(c.y - h * 0.5f), bottom = std::round(c.y + h * 0.5f);
-        if (right < 0 || bottom < 0 || left > view.width || top > view.height) continue; // fuera
+        if (right < 0 || bottom < 0 || left > view.width || top > view.height) continue; // outside
         SDL_FRect dst{ left, top, right - left, bottom - top };
 
-        // Escala negativa tambien voltea (como en Unity).
+        // A negative scale also flips (like in Unity).
         bool fx = s.flipX != (t.scale.x < 0.0f);
         bool fy = s.flipY != (t.scale.y < 0.0f);
         SDL_FlipMode flip = (SDL_FlipMode)((fx ? SDL_FLIP_HORIZONTAL : 0) | (fy ? SDL_FLIP_VERTICAL : 0));
 
-        // La textura es compartida: el tinte se pone en cada dibujo.
+        // The texture is shared: the tint is set on each draw.
         SDL_SetTextureColorMod(tex, s.tint.r, s.tint.g, s.tint.b);
         SDL_SetTextureAlphaMod(tex, s.tint.a);
         SDL_RenderTextureRotated(renderer, tex, &src, &dst, t.rotation, nullptr, flip);

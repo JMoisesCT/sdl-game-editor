@@ -1,7 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 
-# Audio: siempre binario (sin conversion de fin de linea)
+# Audio: always binary (no line ending conversion)
 *.wav binary
 *.ogg binary
 *.opus binary

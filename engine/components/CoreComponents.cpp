@@ -22,7 +22,7 @@ void registerCoreComponents(ComponentRegistry& registry) {
         .field("visible", &Sprite::visible)
         .field("order", &Sprite::order).tooltip("Draw layer: lower = further back");
 
-    // cells va al final: en el archivo ocupa una linea por fila.
+    // cells goes last: in the file it takes one line per row.
     registry.add<Tilemap>("Tilemap")
         .field("tileset", &Tilemap::tileset).texture()
         .field("tileWidth", &Tilemap::tileWidth).range(1.0f, 512.0f).tooltip("Width of a tile in the image (px)")

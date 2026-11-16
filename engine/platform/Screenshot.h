@@ -3,15 +3,15 @@
 
 struct SDL_Renderer;
 
-// Captura de pantalla a PNG. No es un componente: es una funcion suelta que el bucle
-// de main llama cuando quiere (p.ej. al pulsar una tecla).
+// Screenshot to PNG. It is not a component: it is a free function the main loop
+// calls whenever it wants (e.g. when a key is pressed).
 //
-// Uso tipico (en el bucle, con TODO ya dibujado y ANTES de SDL_RenderPresent):
+// Typical use (in the loop, with EVERYTHING already drawn and BEFORE SDL_RenderPresent):
 //     if (Input::wasPressed(Key::F9)) Screenshot::save(renderer);
 //
-// Guarda en la carpeta indicada (relativa al directorio de trabajo; se crea si no
-// existe) un archivo "captura_AAAAMMDD_HHMMSS_mmm.png". Devuelve la ruta del archivo,
-// o una cadena vacia si fallo (el motivo queda en el log).
+// Saves into the given folder (relative to the working directory; created if it does
+// not exist) a file "screenshot_YYYYMMDD_HHMMSS_mmm.png". Returns the file's path,
+// or an empty string if it failed (the reason goes to the log).
 
 namespace Screenshot {
     std::string save(SDL_Renderer* renderer, const std::string& folder = "screenshots");

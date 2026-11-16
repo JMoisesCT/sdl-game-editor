@@ -19,9 +19,9 @@
 #include "platform/Screenshot.h"
 #include "systems/RenderSystem.h"
 
-// Techo del paso de tiempo. Si un frame tarda mas que esto (arrastrar la ventana,
-// parar en el depurador), se trata como 50 ms: mejor un instante en camara lenta que
-// un salto de cientos de pixeles que atraviese las paredes.
+// Cap on the time step. If a frame takes longer than this (dragging the window,
+// stopping in the debugger), it is treated as 50 ms: better a moment in slow motion
+// than a jump of hundreds of pixels that goes through walls.
 static const float MAX_DT = 0.05f;
 
 Application::Application() = default;
@@ -37,7 +37,7 @@ bool Application::init(const AppConfig& config) {
         SDL_Log("Could not initialize SDL: %s", SDL_GetError());
         return false;
     }
-    // SDL3_ttf necesita inicializarse una vez (SDL3_image no lo requiere).
+    // SDL3_ttf must be initialized once (SDL3_image does not require it).
     if (!TTF_Init()) {
         SDL_Log("Could not initialize SDL_ttf: %s", SDL_GetError());
         shutdown();
@@ -45,8 +45,8 @@ bool Application::init(const AppConfig& config) {
     }
     ttfReady = true;
 
-    // Con editor, ventana grande y redimensionable (se maximiza); sin editor, del
-    // tamano del juego.
+    // With the editor, a large resizable window (maximized); without the editor, the
+    // size of the game.
     SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
     if (config.editor) flags |= SDL_WINDOW_MAXIMIZED;
     int w = config.editor ? 1600 : config.gameWidth;
@@ -63,14 +63,14 @@ bool Application::init(const AppConfig& config) {
         shutdown();
         return false;
     }
-    // VSync: el editor no necesita 2000 fps quemando la CPU.
+    // VSync: the editor does not need 2000 fps burning the CPU.
     SDL_SetRenderVSync(sdlRenderer, 1);
 
-    // Sin editor, el juego se dibuja a su resolucion en un lienzo que se escala a la
-    // ventana (con bandas negras si la proporcion no coincide; ver GameCanvas).
+    // Without the editor, the game is drawn at its resolution on a canvas that is scaled
+    // to the window (with black bars if the aspect ratio does not match; see GameCanvas).
     gameCanvas = std::make_unique<GameCanvas>(sdlRenderer);
 
-    // Sin dispositivo de audio se sigue igual, mudo (el motivo va al log).
+    // Without an audio device everything goes on, muted (the reason goes to the log).
     audioDevice = std::make_unique<Audio>();
     audioDevice->init();
 
@@ -85,7 +85,7 @@ bool Application::init(const AppConfig& config) {
 
     if (config.editor) {
         editor = std::make_unique<Editor>(*this);
-        if (!editor->init()) editor.reset(); // sin paneles no hay editor: se juega directo
+        if (!editor->init()) editor.reset(); // no panels means no editor: play directly
     }
     return true;
 }
@@ -98,7 +98,7 @@ bool Application::openScene(const std::string& path) {
     if (playMode != PlayMode::Edit) stop();
     currentScenePath = path;
     sceneWorld.clear(true);
-    prefabLibrary.clear(); // los prefabs se vuelven a leer: pueden haber cambiado en disco
+    prefabLibrary.clear(); // the prefabs are read again: they may have changed on disk
 
     bool ok = true;
     if (!SDL_GetPathInfo(path.c_str(), nullptr)) {
@@ -113,7 +113,7 @@ bool Application::openScene(const std::string& path) {
     }
 
     if (editor) editor->onSceneLoaded();
-    else play(); // sin editor se juega directo
+    else play(); // without the editor, play directly
     return ok;
 }
 
@@ -134,7 +134,7 @@ void Application::play() {
     if (playMode != PlayMode::Edit) return;
     playSnapshot = snapshot();
     playMode = PlayMode::Play;
-    // La tecla o el clic que inicio el juego no debe contar como recien pulsado.
+    // The key or click that started the game must not count as just pressed.
     Input::reset();
     for (auto& s : systemList) s->onPlay(sceneWorld);
 }
@@ -146,7 +146,7 @@ void Application::stop() {
         SDL_Log("Stop: could not restore the scene: %s", error.c_str());
     playSnapshot = Json();
     playMode = PlayMode::Edit;
-    // Lo que sonaba era del juego: al detener se corta (y se sale de una pausa).
+    // What was playing belonged to the game: stopping cuts it (and leaves any pause).
     audioDevice->stopAll();
     audioDevice->setPaused(false);
 }
@@ -160,8 +160,8 @@ void Application::setPaused(bool paused) {
 int Application::run() {
     if (!sdlRenderer) return 1;
 
-    // Reloj en NANOsegundos: con SDL_GetTicks() (milisegundos), a framerate alto salen
-    // frames con dt == 0 y la fisica deja de detectar el apoyo.
+    // Clock in NANOseconds: with SDL_GetTicks() (milliseconds), at a high framerate there
+    // are frames with dt == 0 and physics stops detecting grounding.
     Uint64 lastTime = SDL_GetTicksNS();
     bool running = true;
 
@@ -173,17 +173,17 @@ int Application::run() {
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            // Cerrar con cambios sin guardar: primero se pregunta.
+            // Closing with unsaved changes: ask first.
             if (event.type == SDL_EVENT_QUIT && (!editor || editor->confirmDiscard("quitting")))
                 running = false;
-            Input::processEvent(event); // la rueda del raton solo llega como evento
+            Input::processEvent(event); // the mouse wheel only arrives as an event
             if (editor) editor->processEvent(event);
         }
 
-        // Estado de teclado y raton de ESTE frame, igual para todos los sistemas. Va
-        // despues de SDL_PollEvent (que es lo que refresca el estado de SDL). Mientras se
-        // escribe en un campo del editor, el juego no ve el teclado (vale lo que dijo
-        // ImGui en el frame anterior, que es cuando se armaron los paneles).
+        // Keyboard and mouse state for THIS frame, the same for every system. Goes
+        // after SDL_PollEvent (which is what refreshes SDL's state). While typing in an
+        // editor field, the game does not see the keyboard (what ImGui said in the previous
+        // frame applies, which is when the panels were built).
         Input::setKeyboardEnabled(!editor || !editor->isTypingText());
         Input::update();
 
@@ -193,7 +193,7 @@ int Application::run() {
         }
 
         if (editor) {
-            editor->frame(dt); // paneles + vistas de escena y juego (en texturas)
+            editor->frame(dt); // panels + scene and game views (in textures)
             SDL_SetRenderTarget(sdlRenderer, nullptr);
             SDL_SetRenderDrawColor(sdlRenderer, 20, 20, 24, 255);
             SDL_RenderClear(sdlRenderer);
@@ -202,8 +202,8 @@ int Application::run() {
             renderGameDirect();
         }
 
-        // F9: captura con todo ya dibujado y ANTES del Present (despues, el backbuffer
-        // no esta garantizado). No F12: con el depurador de VS, Windows la usa.
+        // F9: capture with everything already drawn and BEFORE Present (afterwards, the
+        // backbuffer is not guaranteed). Not F12: with the VS debugger, Windows uses it.
         if (Input::wasPressed(Key::F9)) Screenshot::save(sdlRenderer);
 
         SDL_RenderPresent(sdlRenderer);
@@ -212,8 +212,8 @@ int Application::run() {
 }
 
 void Application::renderGameDirect() {
-    // El juego en el lienzo, segun la escala elegida, y el lienzo centrado en la ventana
-    // (con bandas negras).
+    // The game on the canvas, according to the chosen scale, and the canvas centered in
+    // the window (with black bars).
     int winW = 0, winH = 0;
     SDL_GetRenderOutputSize(sdlRenderer, &winW, &winH);
     GameScreen screen;
@@ -228,8 +228,8 @@ void Application::renderGameDirect() {
 }
 
 void Application::shutdown() {
-    // Orden: el editor (ImGui y sus texturas) y los assets se liberan con el renderer
-    // y las librerias aun vivas.
+    // Order: the editor (ImGui and its textures) and the assets are released while the
+    // renderer and the libraries are still alive.
     if (editor) {
         editor->shutdown();
         editor.reset();

@@ -25,7 +25,7 @@ bool tilemapWorldToCell(const Tilemap& map, const Transform& t, Vec2 world, int&
         col = row = -1;
         return false;
     }
-    // floor y no truncar: a la izquierda (o arriba) del origen las celdas son negativas.
+    // floor rather than truncating: to the left of (or above) the origin, cells are negative.
     col = (int)std::floor((world.x - t.position.x) / cell.x);
     row = (int)std::floor((world.y - t.position.y) / cell.y);
     return map.cells.inside(col, row);

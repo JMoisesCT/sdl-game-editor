@@ -1,10 +1,10 @@
-// Edicion de tilemaps: la paleta del tileset (en el Inspector) y las herramientas para
-// pintar en la vista de escena. Los mapas se arman SOLO aqui: las celdas se guardan en
-// la escena (no hay archivo de mapa aparte ni editor externo).
+// Tilemap editing: the tileset palette (in the Inspector) and the tools to paint in
+// the scene view. Maps are built ONLY here: the cells are saved in the scene (there
+// is no separate map file or external editor).
 //
-// Se pinta SIEMPRE en la capa elegida (la entidad seleccionada). Todo cambio de celda
-// pasa por setCell, que llama a beginChange antes de escribir: un trazo entero (desde
-// que se pulsa hasta que se suelta) queda como un solo paso de deshacer.
+// Painting ALWAYS goes to the selected layer (the selected entity). Every cell
+// change goes through setCell, which calls beginChange before writing: a whole stroke
+// (from press to release) is a single undo step.
 
 #include "editor/Editor.h"
 
@@ -21,7 +21,7 @@
 #include "platform/AssetManager.h"
 #include "systems/Tilemaps.h"
 
-// --- Seleccion y herramienta -----------------------------------------------------------
+// --- Selection and tool ----------------------------------------------------------------
 
 Tilemap* Editor::selectedTilemap() {
     World& world = app.world();
@@ -38,7 +38,7 @@ void Editor::setTileTool(TileTool tool) {
     painting = false;
 }
 
-// --- Paleta ----------------------------------------------------------------------------
+// --- Palette ---------------------------------------------------------------------------
 
 void Editor::drawTilePalette() {
     Tilemap* map = selectedTilemap();
@@ -47,7 +47,7 @@ void Editor::drawTilePalette() {
     ImGui::Spacing();
     if (!ImGui::CollapsingHeader("Paint tiles", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
-    // Herramientas: el boton de la activa se ve pulsado.
+    // Tools: the active one's button looks pressed.
     auto toolButton = [&](const char* label, TileTool tool, const char* tip) {
         bool active = tileTool == tool;
         if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
@@ -78,7 +78,7 @@ void Editor::drawTilePalette() {
     float texW = 0, texH = 0;
     SDL_GetTextureSize(tex, &texW, &texH);
 
-    // El tileset pudo cambiar: el pincel no puede quedar fuera de la imagen.
+    // The tileset may have changed: the brush cannot be left outside the image.
     brush.x = std::clamp(brush.x, 0, columns - 1);
     brush.y = std::clamp(brush.y, 0, rows - 1);
     brush.w = std::clamp(brush.w, 1, columns - brush.x);
@@ -87,8 +87,8 @@ void Editor::drawTilePalette() {
     ImGui::SetNextItemWidth(120.0f * uiScale);
     ImGui::SliderInt("zoom##palette", &paletteZoom, 1, 6, "%dx");
 
-    // La imagen va en un hijo con barras: un tileset grande se recorre sin agrandar
-    // el panel.
+    // The image goes in a child with scrollbars: a large tileset can be scrolled without
+    // enlarging the panel.
     const float zoom = (float)paletteZoom;
     const float cellW = map->tileWidth * zoom, cellH = map->tileHeight * zoom;
     const ImVec2 imageSize(columns * cellW, rows * cellH);
@@ -103,7 +103,7 @@ void Editor::drawTilePalette() {
 
         ImDrawList* dl = ImGui::GetWindowDrawList();
         dl->AddRectFilled(p0, p1, IM_COL32(30, 30, 36, 255));
-        // Solo la parte de la imagen que forma tiles enteros.
+        // Only the part of the image that forms whole tiles.
         ImVec2 uv1(columns * map->tileWidth / texW, rows * map->tileHeight / texH);
         dl->AddImage((ImTextureID)(intptr_t)tex, p0, p1, ImVec2(0, 0), uv1);
 
@@ -113,7 +113,7 @@ void Editor::drawTilePalette() {
             for (int r = 1; r < rows; ++r)
                 dl->AddLine(ImVec2(p0.x, p0.y + r * cellH), ImVec2(p1.x, p0.y + r * cellH), IM_COL32(255, 255, 255, 30));
         }
-        // Tiles solidos: rojizos con borde.
+        // Solid tiles: reddish with a border.
         for (int tile : map->solidTiles) {
             if (tile < 0 || tile >= columns * rows) continue;
             ImVec2 a(p0.x + tile % columns * cellW, p0.y + tile / columns * cellH);
@@ -121,7 +121,7 @@ void Editor::drawTilePalette() {
             dl->AddRectFilled(a, b, IM_COL32(255, 60, 60, 70));
             dl->AddRect(a, b, IM_COL32(255, 80, 80, 200));
         }
-        // Lo que lleva el pincel.
+        // What the brush carries.
         ImVec2 sa(p0.x + brush.x * cellW, p0.y + brush.y * cellH);
         ImVec2 sb(sa.x + brush.w * cellW, sa.y + brush.h * cellH);
         dl->AddRect(sa, sb, IM_COL32(0, 0, 0, 255), 0.0f, 0, 3.0f * uiScale);
@@ -142,7 +142,7 @@ void Editor::drawTilePalette() {
                     std::sort(map->solidTiles.begin(), map->solidTiles.end());
                 }
             } else {
-                // Pulsar y arrastrar elige un rectangulo de tiles (una "estampa").
+                // Pressing and dragging picks a rectangle of tiles (a "stamp").
                 paletteSelecting = true;
                 paletteStartCol = mc;
                 paletteStartRow = mr;
@@ -171,7 +171,7 @@ void Editor::drawTilePalette() {
     ImGui::TextDisabled("Alt+click in the view picks a cell's tile.");
 }
 
-// --- Pintar en la vista ----------------------------------------------------------------
+// --- Painting in the view --------------------------------------------------------------
 
 bool Editor::handleTilemapInput(bool hovered) {
     hoverCell = false;
@@ -187,7 +187,7 @@ bool Editor::handleTilemapInput(bool hovered) {
     hoverRow = row;
 
     if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        // Cuentagotas: el tile de esa celda pasa a ser el pincel.
+        // Eyedropper: that cell's tile becomes the brush.
         if (ImGui::GetIO().KeyAlt) {
             int columns, rows;
             int tile = map->cells.get(col, row);
@@ -212,8 +212,8 @@ bool Editor::handleTilemapInput(bool hovered) {
         if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
             painting = false;
         } else if (col != lastCol || row != lastRow) {
-            // El raton puede saltar varias celdas en un frame: se pintan todas las de la
-            // linea entre la anterior y la actual (Bresenham), sin huecos en el trazo.
+            // The mouse may jump several cells in one frame: every cell on the line between
+            // the previous and the current one is painted (Bresenham), with no gaps in the stroke.
             int x = lastCol, y = lastRow;
             int dx = std::abs(col - x), sx = x < col ? 1 : -1;
             int dy = -std::abs(row - y), sy = y < row ? 1 : -1;
@@ -244,7 +244,7 @@ void Editor::paintCell(Tilemap& map, int col, int row) {
     }
     int columns, rows;
     if (!tilesetGrid(app.assets(), map, columns, rows)) return;
-    // La estampa entera, con su esquina superior izquierda en la celda del raton.
+    // The whole stamp, with its top left corner on the cell under the mouse.
     for (int dy = 0; dy < brush.h; ++dy)
         for (int dx = 0; dx < brush.w; ++dx)
             setCell(map, col + dx, row + dy, (brush.y + dy) * columns + brush.x + dx);
@@ -254,7 +254,7 @@ void Editor::fillFrom(Tilemap& map, int col, int row) {
     int columns, rows;
     if (!map.cells.inside(col, row) || !tilesetGrid(app.assets(), map, columns, rows)) return;
 
-    // La zona: las celdas vecinas (sin diagonales) con el mismo tile que la pulsada.
+    // The area: the neighboring cells (no diagonals) with the same tile as the pressed one.
     const int target = map.cells.get(col, row);
     std::vector<char> seen(map.cells.cells.size(), 0);
     std::vector<std::pair<int, int>> pending{ { col, row } }, zone;
@@ -270,8 +270,8 @@ void Editor::fillFrom(Tilemap& map, int col, int row) {
             if (!s) { s = 1; pending.push_back({ nx[i], ny[i] }); }
         }
     }
-    // Con una estampa de varios tiles, la zona se cubre repitiendola como un patron
-    // que empieza en la celda pulsada.
+    // With a multi-tile stamp, the area is covered by repeating it as a pattern
+    // that starts at the pressed cell.
     auto wrap = [](int v, int n) { return ((v % n) + n) % n; };
     for (auto [x, y] : zone) {
         int dx = wrap(x - col, brush.w), dy = wrap(y - row, brush.h);
@@ -279,14 +279,14 @@ void Editor::fillFrom(Tilemap& map, int col, int row) {
     }
 }
 
-// --- Ayudas visuales en la vista de escena ---------------------------------------------
+// --- Visual aids in the scene view -----------------------------------------------------
 
 void Editor::drawTilemapGizmos() {
     SDL_Renderer* r = app.renderer();
     World& world = app.world();
     const View& v = sceneView;
 
-    // Celdas solidas de todas las capas con colision, solo las que se ven.
+    // Solid cells of every layer with collision, only the visible ones.
     if (showSolids) {
         SDL_SetRenderDrawColor(r, 255, 50, 50, 90);
         world.each<Tilemap, Transform>([&](Entity, Tilemap& map, Transform& t) {
@@ -311,7 +311,7 @@ void Editor::drawTilemapGizmos() {
     if (!map) return;
     const Transform& t = *world.get<Transform>(selected);
 
-    // Grilla de la capa (si las celdas no quedan demasiado chicas).
+    // The layer's grid (if the cells are not too small).
     Vec2 cell = tilemapCellSize(*map, t);
     Vec2 min, max;
     tilemapBounds(*map, t, min, max);
@@ -328,7 +328,7 @@ void Editor::drawTilemapGizmos() {
         }
     }
 
-    // Vista previa bajo el raton: la estampa semitransparente o el cuadro de la goma.
+    // Preview under the mouse: the semi-transparent stamp or the eraser's square.
     if (!hoverCell) return;
     int w = 1, h = 1;
     int columns, rows;

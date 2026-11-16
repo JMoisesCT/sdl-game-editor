@@ -3,16 +3,16 @@
 
 class World;
 
-// Sistemas de MECANISMOS (componentes en components/MotionComponents.h). Van asi en
-// el frame (ver main.cpp):
-//   PathMoverSystem, FallingPlatformSystem -> ANTES de PhysicsSystem: mueven las
-//       plataformas y a sus pasajeros (moveCarrying), y la fisica resuelve despues
-//       los choques con todo ya en su lugar.
-//   BouncerSystem -> DESPUES de PhysicsSystem: mira quien cayo sobre el trampolin con
-//       las posiciones ya resueltas, y su velocidad nueva se aplica en el frame
-//       siguiente.
+// MECHANISM systems (components in components/MotionComponents.h). They go like this
+// in the frame (see main.cpp):
+//   PathMoverSystem, FallingPlatformSystem -> BEFORE PhysicsSystem: they move the
+//       platforms and their passengers (moveCarrying), and physics then resolves
+//       collisions with everything already in place.
+//   BouncerSystem -> AFTER PhysicsSystem: it checks who fell onto the trampoline with
+//       the positions already resolved, and its new velocity applies on the next
+//       frame.
 
-// Mueve las entidades con PathMover por su recorrido.
+// Moves the entities with a PathMover along their path.
 class PathMoverSystem : public System {
 public:
     const char* name() const override { return "PathMover"; }
@@ -20,7 +20,7 @@ public:
     void update(World& world, float dt) override;
 };
 
-// Hace caer las FallingPlatform pisadas y las devuelve a su lugar.
+// Makes stepped-on FallingPlatforms fall and returns them to their place.
 class FallingPlatformSystem : public System {
 public:
     const char* name() const override { return "FallingPlatform"; }
@@ -28,7 +28,7 @@ public:
     void update(World& world, float dt) override;
 };
 
-// Lanza hacia arriba a los cuerpos que caen sobre un Bouncer.
+// Launches upward the bodies that fall onto a Bouncer.
 class BouncerSystem : public System {
 public:
     const char* name() const override { return "Bouncer"; }

@@ -2,10 +2,10 @@
 
 class World;
 
-// Un sistema es el COMPORTAMIENTO: recorre las entidades que tienen ciertos
-// componentes y las modifica. Los componentes solo guardan datos.
+// A system is the BEHAVIOR: it walks the entities that have certain components and
+// modifies them. Components only store data.
 //
-// Ejemplo (del lado del juego):
+// Example (on the game side):
 //     class SpinSystem : public System {
 //     public:
 //         const char* name() const override { return "Spin"; }
@@ -17,15 +17,15 @@ class World;
 //     };
 //     app.addSystem(std::make_unique<SpinSystem>());
 //
-// Los sistemas corren en el orden en que se agregan, y SOLO mientras se juega (Play):
-// editando, la escena esta quieta y lo unico que corre es el dibujo.
+// Systems run in the order they are added, and ONLY while playing (Play): while
+// editing, the scene stands still and the only thing that runs is the drawing.
 class System {
 public:
     virtual ~System() = default;
     virtual const char* name() const = 0;
 
-    // Se llama al pulsar Play (y al arrancar el juego sin editor), con la escena ya
-    // cargada. Lugar para preparar estado que el sistema no guarda en componentes.
+    // Called when pressing Play (and when the game starts without the editor), with the
+    // scene already loaded. The place to prepare state the system does not keep in components.
     virtual void onPlay(World&) {}
 
     virtual void update(World& world, float dt) = 0;

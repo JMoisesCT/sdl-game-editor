@@ -87,8 +87,14 @@ su posición en el mundo, así que la física, el dibujo y las reglas no cambian
 - **Arrastra** una entidad sobre otra para hacerla su **hija**; sobre el borde de arriba o de
   abajo de otra, para ponerla **antes** o **después** (como hermana). Soltarla en el hueco
   libre de abajo la saca de su grupo. El menú del clic derecho ofrece **Create child**
-  (crear hija) y **Remove from group** (sacar del grupo).
-- Un grupo puede ser una entidad vacía (**+ New**, sin sprite) que solo sirve de carpeta.
+  (crear hija), **Group** (agrupar) y **Remove from group** (sacar del grupo).
+- **Elegir varias** con `Ctrl+clic` (suma o quita una) o `Mayús+clic` (un rango). Arrastrar
+  una de ellas se lleva a todas, en su orden; **Duplicate**, **Delete** y **Remove from
+  group** actúan sobre todas. El Inspector muestra la última elegida.
+- **Group** (`Ctrl+G`) crea una entidad vacía en el lugar de la primera elegida y mete
+  adentro toda la selección: una carpeta de un solo paso. Queda elegida, lista para
+  ponerle nombre.
+- Un grupo también puede ser una entidad vacía hecha a mano (**+ New**, sin sprite).
 - **Mover al padre** (en la vista o en el Inspector) mueve también a toda su rama, y
   **Duplicate** o **Delete** se llevan la rama entera.
 - **Jugando**, los hijos **no** siguen al padre (si un sistema destruye al padre, los hijos
@@ -283,7 +289,9 @@ app.conditions().add("attacking", [](World& w, Entity e) { /* ... */ });
 | Mover la vista | Clic derecho o medio arrastrando |
 | Zoom hacia el cursor | Rueda del ratón |
 | Centrar en la seleccionada | `F` (o doble clic en la Hierarchy) |
+| Elegir varias | `Ctrl+clic` (sumar / quitar) o `Mayús+clic` (rango, en la Hierarchy) |
 | Anidar / reordenar entidades | Arrastrar en la Hierarchy (al medio: hija; al borde: antes o después) |
+| Agrupar la selección | `Ctrl+G` |
 | Jugar / detener | `Ctrl+P` |
 | Guardar | `Ctrl+S` |
 | Deshacer / rehacer | `Ctrl+Z` / `Ctrl+Y` o `Ctrl+Shift+Z` |

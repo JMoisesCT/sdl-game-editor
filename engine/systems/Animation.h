@@ -8,15 +8,15 @@
 class World;
 class AssetManager;
 
-// Sistemas de ANIMACION (componentes en components/PresentationComponents.h):
-//   AnimatorStateMachineSystem -> elige el clip segun las reglas de cada entidad
-//   SpriteAnimatorSystem       -> avanza los cuadros y escribe el Sprite
-// Van en ese orden y DESPUES de la fisica y las reglas (ver main.cpp): las
-// condiciones (systems/Conditions.h) miran el estado ya resuelto de este frame.
+// ANIMATION systems (components in components/PresentationComponents.h):
+//   AnimatorStateMachineSystem -> picks the clip from each entity's rules
+//   SpriteAnimatorSystem       -> advances the frames and writes the Sprite
+// They run in that order and AFTER physics and rules (see main.cpp): the
+// conditions (systems/Conditions.h) look at this frame's already resolved state.
 
-// Hace sonar ese clip del SpriteAnimator de la entidad. Si ya esta sonando no hace nada
-// (se puede llamar cada frame sin cortarlo), salvo con restart = true (repetir un
-// golpe). false si la entidad no tiene SpriteAnimator o no tiene ese clip.
+// Plays that clip of the entity's SpriteAnimator. If it is already playing it does
+// nothing (it can be called every frame without cutting it), except with restart = true
+// (to repeat a hit). false if the entity has no SpriteAnimator or no such clip.
 bool playAnimation(World& world, Entity e, const std::string& clip, bool restart = false);
 
 class AnimatorStateMachineSystem : public System {
@@ -32,7 +32,7 @@ private:
 
 class SpriteAnimatorSystem : public System {
 public:
-    // Necesita las imagenes para saber cuantos cuadros tiene un clip sin 'frames'.
+    // Needs the images to know how many frames a clip without 'frames' has.
     explicit SpriteAnimatorSystem(AssetManager& assets) : assets(assets) {}
     const char* name() const override { return "SpriteAnimator"; }
     void onPlay(World& world) override;

@@ -8,57 +8,57 @@
 class ComponentRegistry;
 class World;
 
-// PREFABS: una entidad "molde" guardada en su propio archivo (.prefab.json), con sus
-// componentes. Ocupan el lugar de las funciones setupX y del catalogo de objetos del
-// v1: en vez de una funcion de C++ que arma la fruta, hay un archivo con los
-// componentes de la fruta, que se edita en el editor.
+// PREFABS: a "template" entity saved in its own file (.prefab.json), with its
+// components. They replace the setupX functions and the object catalog of v1:
+// instead of a C++ function that builds the fruit, there is a file with the
+// fruit's components, edited in the editor.
 //
-// Una INSTANCIA es una entidad de la escena hecha a partir de un prefab. Queda
-// ENLAZADA a el: en la escena solo se guardan los campos en que difiere (sus
-// "overrides", como la posicion o la textura de OTRA fruta), y todo lo demas sale del
-// prefab al cargar. Asi, cambiar el prefab (la caja de los pinchos, la vida del
-// jugador...) cambia todas sus instancias de una vez. Ver SceneSerializer.h.
+// An INSTANCE is a scene entity made from a prefab. It stays LINKED to it: the
+// scene only stores the fields where it differs (its "overrides", such as the
+// position or the texture of a DIFFERENT fruit), and everything else comes from the
+// prefab on load. That way, changing the prefab (the spikes' box, the player's
+// health...) changes all its instances at once. See SceneSerializer.h.
 //
-// En el editor: el panel Prefabs coloca instancias (clic o arrastrar a la vista), y
-// el Inspector de una instancia ofrece Aplicar (sus cambios pasan al prefab), Revertir
-// (vuelve a ser igual al prefab, salvo la posicion y el nombre) y Desvincular.
+// In the editor: the Prefabs panel places instances (click or drag into the view),
+// and the Inspector of an instance offers Apply (its changes go into the prefab),
+// Revert (it matches the prefab again, except position and name) and Unlink.
 //
-// Desde codigo (p. ej. un sistema que dispara balas):
-//     Entity bala = prefabs.instantiate(world, "assets/prefabs/bullet.prefab.json");
-//     world.get<Transform>(bala)->position = canon;
+// From code (e.g. a system that fires bullets):
+//     Entity bullet = prefabs.instantiate(world, "assets/prefabs/bullet.prefab.json");
+//     world.get<Transform>(bullet)->position = muzzle;
 
-// Marca que una entidad es instancia de un prefab. No se registra en la reflexion: el
-// serializador la escribe aparte ("prefab": ruta) y el Inspector la muestra arriba.
+// Marks an entity as an instance of a prefab. Not registered in the reflection: the
+// serializer writes it separately ("prefab": path) and the Inspector shows it on top.
 struct PrefabInstance {
-    std::string path; // ruta del .prefab.json, relativa a la carpeta del ejecutable
+    std::string path; // path of the .prefab.json, relative to the executable's folder
 };
 
-// Los prefabs leidos, por ruta. Los lee una sola vez (hasta clear()) y los guarda en
-// forma COMPLETA: todos los campos de cada componente, con los valores por defecto ya
-// puestos. Asi comparar una instancia contra su prefab es comparar JSON campo a campo.
+// The loaded prefabs, by path. Each one is read once (until clear()) and stored in
+// COMPLETE form: every field of every component, with the defaults already filled in.
+// That way, comparing an instance with its prefab is comparing JSON field by field.
 class PrefabLibrary {
 public:
     explicit PrefabLibrary(const ComponentRegistry& registry) : registry(registry) {}
 
-    // Los componentes del prefab (un objeto JSON "Nombre": {campos}), o nullptr si el
-    // archivo no existe o no es un prefab (se avisa en el log una vez).
+    // The prefab's components (a JSON object "Name": {fields}), or nullptr if the file
+    // does not exist or is not a prefab (logged once).
     const Json* find(const std::string& path);
 
-    // Guarda esos componentes como el prefab de esa ruta (crea la carpeta si hace
-    // falta) y actualiza lo leido. false si no se pudo escribir.
+    // Saves those components as the prefab at that path (creating the folder if
+    // needed) and updates what was loaded. false if it could not be written.
     bool save(const std::string& path, const Json& components);
 
-    // Olvida lo leido: el proximo find vuelve a leer el disco.
+    // Forgets what was loaded: the next find reads the disk again.
     void clear() { cache.clear(); }
 
-    // Crea una entidad nueva enlazada al prefab, con todos sus componentes. NullEntity
-    // si el prefab no se puede leer. Como cualquier alta, no se llama dentro de un
-    // each que recorra componentes que el prefab tenga.
+    // Creates a new entity linked to the prefab, with all its components. NullEntity
+    // if the prefab cannot be read. Like any creation, do not call it inside an each
+    // that iterates components the prefab has.
     Entity instantiate(World& world, const std::string& path);
 
 private:
-    Json complete(const Json& components) const; // con todos los campos
+    Json complete(const Json& components) const; // with every field
 
     const ComponentRegistry& registry;
-    std::map<std::string, Json> cache; // ruta -> componentes; null = no se pudo leer
+    std::map<std::string, Json> cache; // path -> components; null = could not be read
 };

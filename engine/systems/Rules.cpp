@@ -12,8 +12,8 @@
 #include "systems/Physics.h"
 
 namespace {
-    // Las entidades con BoxCollider y cierta etiqueta, buscadas una vez por etiqueta y
-    // por frame (y no una vez por cada pincho o cada fruta).
+    // The entities with a BoxCollider and a certain tag, looked up once per tag and
+    // per frame (and not once per spike or per fruit).
     class TaggedBoxes {
     public:
         explicit TaggedBoxes(World& world) : world(world) {}
@@ -34,8 +34,8 @@ namespace {
         std::unordered_map<std::string, std::vector<Entity>> byTag;
     };
 
-    // Llena la vida la primera vez que se la mira (tambien vale para una entidad
-    // creada jugando, que no paso por onPlay).
+    // Fills the health the first time it is looked at (this also works for an entity
+    // created while playing, which did not go through onPlay).
     void startHealth(Health& h) {
         if (h.started) return;
         h.hp = h.maxHP;
@@ -50,18 +50,18 @@ namespace {
         h.hp = 0;
         h.invulnerable = 0.0f;
         h.justDied = true;
-        setSpriteVisible(world, e, true); // que no quede apagado a mitad de un parpadeo
+        setSpriteVisible(world, e, true); // so it is not left hidden in the middle of a blink
         if (h.destroyOnDeath && !world.has<Respawn>(e)) world.destroy(e);
     }
 }
 
-// --- Vida --------------------------------------------------------------------------------
+// --- Health ------------------------------------------------------------------------------
 
 bool damageEntity(World& world, Entity target, int amount) {
     Health* h = world.get<Health>(target);
     if (!h || amount <= 0) return false;
     startHealth(*h);
-    if (h->hp <= 0 || h->invulnerable > 0.0f) return false; // muerto o en periodo de gracia
+    if (h->hp <= 0 || h->invulnerable > 0.0f) return false; // dead or in the grace period
 
     h->hp = amount >= h->hp ? 0 : h->hp - amount;
     h->justDamaged = true;
@@ -106,16 +106,16 @@ void HealthSystem::onPlay(World& world) {
 void HealthSystem::update(World& world, float dt) {
     world.each<Health>([&](Entity e, Health& h) {
         startHealth(h);
-        h.justDamaged = h.justDied = false; // los avisos duran un frame
+        h.justDamaged = h.justDied = false; // the flags last one frame
         if (h.invulnerable <= 0.0f) return;
 
         h.invulnerable -= dt;
         if (h.invulnerable <= 0.0f) {
             h.invulnerable = 0.0f;
-            setSpriteVisible(world, e, true); // al acabar la gracia, siempre visible
+            setSpriteVisible(world, e, true); // when the grace ends, always visible
             return;
         }
-        // Parpadeo: apagar y encender el sprite a intervalos fijos mientras dure.
+        // Blinking: turning the sprite off and on at fixed intervals while it lasts.
         h.blinkTimer += dt;
         if (h.blinkTimer >= h.blinkInterval) {
             h.blinkTimer -= h.blinkInterval;
@@ -124,7 +124,7 @@ void HealthSystem::update(World& world, float dt) {
     });
 }
 
-// --- Peligros ----------------------------------------------------------------------------
+// --- Hazards -----------------------------------------------------------------------------
 
 void HazardSystem::onPlay(World& world) {
     world.each<Hazard>([](Entity, Hazard& hz) { hz.used = false; });
@@ -136,19 +136,19 @@ void HazardSystem::update(World& world, float) {
         if (hz.used && !hz.repeat) return;
         for (Entity t : targets.get(hz.targetTag)) {
             if (!collidersOverlap(world, self, t, RULE_CONTACT_MARGIN)) continue;
-            // damageEntity ya descarta a los invulnerables: el empujon solo va con un
-            // golpe que cuenta (si no, el jugador saldria rebotado cada frame).
+            // damageEntity already discards the invulnerable: the knockback only comes with a
+            // hit that counts (otherwise, the player would bounce off every frame).
             if (!damageEntity(world, t, hz.damage)) continue;
             hz.used = true;
 
-            // Empujon hacia el lado contrario al peligro. Justo encima (misma x), hacia
-            // la derecha, para no dejarlo caer en vertical sobre el mismo peligro.
+            // Knockback away from the hazard. Right on top (same x), to the right, so it
+            // does not fall vertically onto the same hazard.
             RigidBody2D* rb = world.get<RigidBody2D>(t);
             const Transform* tt = world.get<Transform>(t);
             const Transform* st = world.get<Transform>(self);
             if (rb && tt && st) {
                 float dir = tt->position.x >= st->position.x ? 1.0f : -1.0f;
-                rb->velocity = { dir * hz.knockback.x, -hz.knockback.y }; // -y = hacia arriba
+                rb->velocity = { dir * hz.knockback.x, -hz.knockback.y }; // -y = upward
             }
             if (!hz.repeat) break;
         }
@@ -163,7 +163,7 @@ void KillZoneSystem::update(World& world, float) {
     });
 }
 
-// --- Objetos que se recogen --------------------------------------------------------------
+// --- Collectibles ------------------------------------------------------------------------
 
 void CollectibleSystem::onPlay(World& world) {
     world.each<Collectible>([](Entity, Collectible& c) {
@@ -181,15 +181,15 @@ void CollectibleSystem::update(World& world, float) {
             if (isDead(world, t) || !collidersOverlap(world, self, t, RULE_CONTACT_MARGIN)) continue;
             c.collected = c.justCollected = true;
             c.collector = t;
-            // Destruir es diferido: el resto de los sistemas de este frame aun ven la
-            // entidad (y su justCollected).
+            // Destroying is deferred: the rest of this frame's systems still see the
+            // entity (and its justCollected).
             if (c.destroyOnCollect) world.destroy(self);
             break;
         }
     });
 }
 
-// --- Checkpoints y reaparicion -----------------------------------------------------------
+// --- Checkpoints and respawn -------------------------------------------------------------
 
 void CheckpointSystem::onPlay(World& world) {
     world.each<Checkpoint>([](Entity, Checkpoint& cp) { cp.activated = cp.justActivated = false; });
@@ -205,10 +205,10 @@ void CheckpointSystem::update(World& world, float) {
             Respawn* r = world.get<Respawn>(t);
             if (!r || isDead(world, t) || !collidersOverlap(world, self, t, RULE_CONTACT_MARGIN)) continue;
             cp.activated = cp.justActivated = true;
-            // El offset, como el del BoxCollider, va en px de la imagen x escala.
+            // The offset, like the BoxCollider's, is in image px x scale.
             r->point = { st->position.x + cp.offset.x * std::fabs(st->scale.x),
                          st->position.y + cp.offset.y * std::fabs(st->scale.y) };
-            r->started = true; // que RespawnSystem no lo pise con la posicion inicial
+            r->started = true; // so RespawnSystem does not overwrite it with the starting position
             if (!cp.activeTexture.empty())
                 if (Sprite* s = world.get<Sprite>(self)) s->texture = cp.activeTexture;
             break;
@@ -218,7 +218,7 @@ void CheckpointSystem::update(World& world, float) {
 
 void RespawnSystem::onPlay(World& world) {
     world.each<Respawn, Transform>([](Entity, Respawn& r, Transform& t) {
-        r.point = t.position; // sin checkpoints, reaparece donde empezo
+        r.point = t.position; // without checkpoints, it respawns where it started
         r.started = true;
         r.dying = r.justRespawned = false;
         r.timer = 0.0f;
@@ -238,8 +238,8 @@ void RespawnSystem::update(World& world, float dt) {
         }
         if (!r.dying) return;
 
-        // MUERTE EN DOS TIEMPOS: congelado mientras corre la cuenta (se ve la caida o
-        // el golpe), y despues de vuelta al punto.
+        // DEATH IN TWO STEPS: frozen while the countdown runs (the fall or the hit can be
+        // seen), and then back to the point.
         RigidBody2D* rb = world.get<RigidBody2D>(e);
         if (rb) rb->velocity = { 0.0f, 0.0f };
         r.timer -= dt;
@@ -247,8 +247,8 @@ void RespawnSystem::update(World& world, float dt) {
 
         t.position = r.point;
         if (rb) {
-            // La posicion anterior tambien: si no, la fisica creeria que el cuerpo hizo
-            // un viaje enorme en un frame y lo separaria mal de las paredes.
+            // The previous position too: otherwise, physics would think the body made a huge
+            // trip in one frame and would separate it badly from the walls.
             rb->previous = r.point;
             rb->grounded = false;
         }

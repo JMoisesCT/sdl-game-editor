@@ -1,6 +1,6 @@
-// Prefabs en el editor: el panel que los lista (para colocar instancias) y la
-// cabecera del Inspector de una instancia (Aplicar, Revertir, Desvincular) o de una
-// entidad suelta (Crear prefab). Ver core/Prefabs.h.
+// Prefabs in the editor: the panel that lists them (to place instances) and the
+// Inspector header of an instance (Apply, Revert, Unlink) or of a standalone
+// entity (Create prefab). See core/Prefabs.h.
 
 #include "editor/Editor.h"
 
@@ -21,8 +21,8 @@
 
 static const char* PREFAB_DIR = "assets/prefabs/";
 static const char* PREFAB_EXT = ".prefab.json";
-static const char* PREFAB_PAYLOAD = "PREFAB"; // tipo del arrastre del panel a la vista
-static const ImVec4 PREFAB_COLOR(0.45f, 0.75f, 1.0f, 1.0f); // el mismo que en la Jerarquia
+static const char* PREFAB_PAYLOAD = "PREFAB"; // type of the drag from the panel to the view
+static const ImVec4 PREFAB_COLOR(0.45f, 0.75f, 1.0f, 1.0f); // the same one as in the Hierarchy
 
 // "assets/prefabs/fruit.prefab.json" -> "fruit"
 static std::string prefabName(const std::string& path) {
@@ -31,7 +31,7 @@ static std::string prefabName(const std::string& path) {
     return ext == std::string::npos ? name : name.substr(0, ext);
 }
 
-// Un nombre de archivo seguro: letras, numeros, '_' y '-'; los espacios pasan a '_'.
+// A safe file name: letters, digits, '_' and '-'; spaces become '_'.
 static std::string cleanFileName(const std::string& text) {
     std::string out;
     for (char c : text) {
@@ -43,7 +43,7 @@ static std::string cleanFileName(const std::string& text) {
     return out;
 }
 
-// --- Panel Prefabs ---------------------------------------------------------------------
+// --- Prefabs panel ---------------------------------------------------------------------
 
 void Editor::scanPrefabFiles() {
     prefabFiles = listAssetFiles(PREFAB_EXT);
@@ -51,14 +51,14 @@ void Editor::scanPrefabFiles() {
 }
 
 void Editor::reloadPrefabs() {
-    // La escena se guarda como overrides de los prefabs viejos y se vuelve a armar
-    // sobre los que hay ahora en disco. No es un paso de deshacer: el archivo de la
-    // escena no cambia.
+    // The scene is saved as overrides of the old prefabs and rebuilt on top of the
+    // ones now on disk. It is not an undo step: the scene file does not change.
+    //
     commitChange();
     Json scene = app.snapshot();
     app.prefabs().clear();
     restore(scene);
-    app.assets().forgetFailures(); // una imagen nueva puede ser la que faltaba
+    app.assets().forgetFailures(); // a new image may be the one that was missing
     scanPrefabFiles();
     setStatus("Prefabs reloaded from disk");
 }
@@ -77,7 +77,7 @@ void Editor::drawPrefabList() {
                           "To create one: select an entity and use \"Create prefab\" in the Inspector.");
     ImGui::Separator();
 
-    std::string place; // se coloca despues del bucle
+    std::string place; // placed after the loop
     if (ImGui::BeginChild("##prefabs")) {
         if (prefabFiles.empty()) ImGui::TextDisabled("No prefabs in assets/");
         for (const std::string& path : prefabFiles) {
@@ -86,16 +86,16 @@ void Editor::drawPrefabList() {
             ImGui::Selectable(label.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick);
             ImGui::PopStyleColor();
             if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) place = path;
-            bool showHelp = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal); // antes del arrastre
+            bool showHelp = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal); // before the drag
 
-            // Arrastrar a la vista de escena (la recibe drawSceneView).
+            // Dragging into the scene view (received by drawSceneView).
             if (ImGui::BeginDragDropSource()) {
                 ImGui::SetDragDropPayload(PREFAB_PAYLOAD, path.c_str(), path.size() + 1);
                 ImGui::Text("%s", prefabName(path).c_str());
                 ImGui::EndDragDropSource();
             }
 
-            // Ayuda: la ruta y, si tiene Sprite, como se ve.
+            // Help: the path and, if it has a Sprite, how it looks.
             if (showHelp && !ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
                 ImGui::BeginTooltip();
                 ImGui::TextUnformatted(path.c_str());
@@ -147,7 +147,7 @@ Entity Editor::placePrefab(const std::string& path, Vec2 position) {
     return e;
 }
 
-// --- Cabecera del Inspector ------------------------------------------------------------
+// --- Inspector header ------------------------------------------------------------------
 
 void Editor::drawPrefabHeader() {
     World& world = app.world();
@@ -191,7 +191,7 @@ void Editor::drawPrefabHeader() {
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "(could not read it)");
     }
 
-    // Jugando no: se guardaria en el prefab el estado de la partida.
+    // Not while playing: the state of the playthrough would be saved into the prefab.
     ImGui::BeginDisabled(!editing || !app.prefabs().find(link->path));
     if (ImGui::SmallButton("Apply")) applyToPrefab();
     ImGui::SetItemTooltip("Saves this instance's changes into the prefab: they reach all its\n"
@@ -210,7 +210,7 @@ void Editor::drawPrefabHeader() {
     ImGui::EndDisabled();
 }
 
-// --- Acciones --------------------------------------------------------------------------
+// --- Actions ---------------------------------------------------------------------------
 
 void Editor::rebuildEntity(Entity e, const Json& entity) {
     World& world = app.world();
@@ -228,18 +228,18 @@ void Editor::createPrefabFromSelected(const std::string& name) {
         return;
     }
 
-    // El prefab es la entidad completa, pero en el origen: la posicion es de cada
-    // instancia.
+    // The prefab is the complete entity, but at the origin: the position belongs to each
+    // instance.
     Json comps = serializeEntity(world, app.registry(), nullptr, selected)["components"];
     if (comps.contains("Transform")) comps["Transform"]["position"] = Json::array({ 0.0, 0.0 });
     if (!app.prefabs().save(path, comps)) {
         setStatus("Could not save " + path + " (see the log)");
         return;
     }
-    beginChange(); // enlazarla cambia como se guarda en la escena
+    beginChange(); // linking it changes how it is saved in the scene
     world.add<PrefabInstance>(selected).path = path;
     scanPrefabFiles();
-    // No hay prefabs anidados: el prefab es solo esta entidad, sin su rama.
+    // No nested prefabs: the prefab is only this entity, without its branch.
     if (descendantsOf(world, selected).empty()) setStatus("Prefab created: " + path);
     else setStatus("Prefab created: " + path + " (its children are not part of the prefab)");
 }
@@ -249,11 +249,11 @@ void Editor::applyToPrefab() {
     const PrefabInstance* link = world.get<PrefabInstance>(selected);
     const Json* current = link ? app.prefabs().find(link->path) : nullptr;
     if (!app.isEditing() || !current) return;
-    const std::string path = link->path; // copia: el pool puede moverse al rearmar
-    const Json old = *current;           // copia: save() lo reemplaza
+    const std::string path = link->path; // copy: the pool may move when rebuilding
+    const Json old = *current;           // copy: save() replaces it
 
-    // Cada instancia de este prefab, como overrides del prefab VIEJO: despues se
-    // rearman sobre el nuevo y conservan solo lo que cada una cambio.
+    // Each instance of this prefab, as overrides of the OLD prefab: afterwards they are
+    // rebuilt on top of the new one and keep only what each one changed.
     commitChange();
     beginChange();
     std::vector<std::pair<Entity, Json>> instances;
@@ -262,8 +262,8 @@ void Editor::applyToPrefab() {
         if (l && l->path == path) instances.push_back({ e, serializeEntity(world, app.registry(), &app.prefabs(), e) });
     }
 
-    // El prefab nuevo es la seleccion completa, salvo la posicion y el nombre, que son
-    // de cada instancia: esos quedan como estaban en el prefab.
+    // The new prefab is the complete selection, except position and name, which belong
+    // to each instance: those stay as they were in the prefab.
     Json comps = serializeEntity(world, app.registry(), nullptr, selected)["components"];
     if (comps.contains("Transform"))
         comps["Transform"]["position"] = old.contains("Transform") ? old["Transform"]["position"]
@@ -271,7 +271,7 @@ void Editor::applyToPrefab() {
     if (comps.contains("EntityInfo") && old.contains("EntityInfo"))
         comps["EntityInfo"]["name"] = old["EntityInfo"]["name"];
     if (!app.prefabs().save(path, comps)) {
-        cancelChange(); // no se toco nada
+        cancelChange(); // nothing was touched
         setStatus("Could not save " + path + " (see the log)");
         return;
     }
@@ -285,7 +285,7 @@ void Editor::revertToPrefab() {
     const PrefabInstance* link = world.get<PrefabInstance>(selected);
     if (!app.isEditing() || !link || !app.prefabs().find(link->path)) return;
 
-    // Solo sobreviven la posicion y el nombre.
+    // Only the position and the name survive.
     Json entity = serializeEntity(world, app.registry(), &app.prefabs(), selected);
     const Json& comps = entity["components"];
     Json keep = Json::object();

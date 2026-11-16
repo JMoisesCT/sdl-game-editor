@@ -12,7 +12,7 @@
 #include "app/Application.h"
 #include "platform/GameCanvas.h"
 
-// Pasos de deshacer que se guardan como maximo (cada uno es una copia de la escena).
+// Maximum number of undo steps kept (each one is a copy of the scene).
 static const std::size_t MAX_UNDO = 200;
 
 Editor::Editor(Application& app) : app(app) {}
@@ -21,7 +21,7 @@ Editor::~Editor() {
     shutdown();
 }
 
-// --- Inicio y fin ----------------------------------------------------------------------
+// --- Startup and shutdown --------------------------------------------------------------
 
 bool Editor::init() {
     if (guiReady) return true;
@@ -29,12 +29,12 @@ bool Editor::init() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    // Sin imgui.ini: los paneles siempre arrancan en su sitio y no se ensucia el repo.
+    // No imgui.ini: the panels always start in place and the repo stays clean.
     io.IniFilename = nullptr;
     ImGui::StyleColorsDark();
 
-    // La ventana no se escala con la pantalla: con Windows al 150%, 13 px de texto se
-    // ven diminutos. Los paneles se agrandan segun la escala de la pantalla.
+    // The window does not scale with the display: with Windows at 150%, 13 px text
+    // looks tiny. The panels grow according to the display scale.
     uiScale = SDL_GetWindowDisplayScale(app.window());
     if (uiScale < 1.0f) uiScale = 1.0f;
     ImGuiStyle& style = ImGui::GetStyle();
@@ -72,7 +72,8 @@ void Editor::processEvent(const SDL_Event& e) {
 }
 
 void Editor::onSceneLoaded() {
-    selected = NullEntity;
+    selected = selectionAnchor = NullEntity;
+    selection.clear();
     undoStack.clear();
     redoStack.clear();
     pendingBefore = Json();
@@ -94,9 +95,10 @@ void Editor::frame(float dt) {
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
+    syncSelection();
 
-    // Las herramientas de tiles pintan en la capa elegida: si se eligio otra cosa
-    // (o se borro), se vuelve a Mover.
+    // The tile tools paint on the selected layer: if something else was selected
+    // (or it was deleted), go back to Move.
     if (tileTool != TileTool::Move && !selectedTilemap()) {
         tileTool = TileTool::Move;
         painting = false;
@@ -115,9 +117,9 @@ void Editor::present() {
     ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), app.renderer());
 }
 
-// Disposicion fija, como un editor con paneles acoplados: barra arriba, Jerarquia a
-// la izquierda, Inspector a la derecha y la vista en el centro. Se recalcula en cada
-// frame, asi sigue a la ventana cuando cambia de tamano.
+// Fixed layout, like an editor with docked panels: bar on top, Hierarchy on the
+// left, Inspector on the right and the view in the center. Recomputed every
+// frame, so it follows the window when it is resized.
 void Editor::layoutAndDraw() {
     const ImGuiViewport* vp = ImGui::GetMainViewport();
     const ImVec2 origin = vp->WorkPos;
@@ -142,7 +144,7 @@ void Editor::layoutAndDraw() {
         drawToolbar();
     ImGui::End();
 
-    // Columna izquierda: Jerarquia arriba y Prefabs abajo.
+    // Left column: Hierarchy on top and Prefabs below.
     float hierarchyH = std::round(bodyH * 0.62f);
     ImGui::SetNextWindowPos(ImVec2(origin.x, origin.y + toolbarH));
     ImGui::SetNextWindowSize(ImVec2(leftW, hierarchyH));
@@ -174,7 +176,7 @@ void Editor::drawToolbar() {
     const bool editing = app.isEditing();
     const bool paused = app.mode() == PlayMode::Paused;
 
-    // El texto del boton cambia: el id va fijo con ### (si no, ImGui lo trata como otro).
+    // The button text changes: the id is fixed with ### (otherwise ImGui treats it as another one).
     if (!editing) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.55f, 0.25f, 1.0f));
     if (ImGui::Button(editing ? "Play###play" : "Stop###play")) togglePlay();
     if (!editing) ImGui::PopStyleColor();
@@ -208,7 +210,7 @@ void Editor::drawToolbar() {
     ImGui::SetItemTooltip("Ctrl+Y / Ctrl+Shift+Z");
     ImGui::EndDisabled();
     ImGui::EndDisabled();
-    drawOpenPopup(); // fuera del bloque deshabilitado: si no, su lista saldria gris
+    drawOpenPopup(); // outside the disabled block: otherwise its list would be grayed out
 
     ImGui::SameLine();
     ImGui::TextDisabled("|");
@@ -254,7 +256,7 @@ bool Editor::isTypingText() const {
 
 void Editor::handleShortcuts() {
     ImGuiIO& io = ImGui::GetIO();
-    if (io.WantTextInput) return; // escribiendo en un campo: las teclas son del campo
+    if (io.WantTextInput) return; // typing in a field: the keys belong to the field
 
     const bool ctrl = io.KeyCtrl;
     const bool shift = io.KeyShift;
@@ -268,11 +270,12 @@ void Editor::handleShortcuts() {
             redo();
     }
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_D, false)) duplicateSelected();
+    if (ctrl && ImGui::IsKeyPressed(ImGuiKey_G, false)) groupSelected();
     if (ImGui::IsKeyPressed(ImGuiKey_Delete, false)) deleteSelected();
     if (!ctrl && ImGui::IsKeyPressed(ImGuiKey_F, false)) frameEntity(selected);
 
-    // Herramientas de tiles (pintar necesita una entidad con Tilemap elegida). Solo
-    // editando: jugando, esas letras son del juego.
+    // Tile tools (painting needs a selected entity with a Tilemap). Only while
+    // editing: while playing, those letters belong to the game.
     if (app.isEditing() && !ctrl) {
         if (ImGui::IsKeyPressed(ImGuiKey_V, false)) setTileTool(TileTool::Move);
         if (ImGui::IsKeyPressed(ImGuiKey_B, false)) setTileTool(TileTool::Brush);
@@ -318,7 +321,7 @@ std::vector<std::string> Editor::listAssetFiles(const std::string& suffix) {
     std::error_code ec;
     for (fs::recursive_directory_iterator it("assets", ec), end; !ec && it != end; it.increment(ec)) {
         if (!it->is_regular_file(ec)) continue;
-        std::string file = it->path().generic_string(); // con "/" tambien en Windows
+        std::string file = it->path().generic_string(); // with "/" on Windows too
         if (file.size() > suffix.size() &&
             file.compare(file.size() - suffix.size(), suffix.size(), suffix) == 0)
             files.push_back(file);
@@ -340,7 +343,7 @@ void Editor::drawOpenPopup() {
     if (!chosen.empty()) ImGui::CloseCurrentPopup();
     ImGui::EndPopup();
 
-    // Ya fuera del popup: confirmDiscard puede abrir un cuadro nativo que bloquea.
+    // Already outside the popup: confirmDiscard may open a blocking native dialog.
     if (!chosen.empty() && confirmDiscard("opening another scene")) {
         if (app.openScene(chosen)) setStatus("Opened: " + chosen);
         else setStatus("Could not open " + chosen + " (see the log)");
@@ -350,7 +353,7 @@ void Editor::drawOpenPopup() {
 void Editor::togglePlay() {
     dragging = pressOnEntity = panning = painting = false;
     if (app.isEditing()) {
-        commitChange(); // la copia de Play debe incluir lo ultimo editado
+        commitChange(); // the Play copy must include the latest edit
         app.play();
         wantGameTab = true;
     } else {
@@ -360,7 +363,7 @@ void Editor::togglePlay() {
     }
 }
 
-// --- Deshacer / rehacer ----------------------------------------------------------------
+// --- Undo / redo -----------------------------------------------------------------------
 
 void Editor::beginChange() {
     if (!app.isEditing() || changePending) return;
@@ -384,9 +387,9 @@ void Editor::cancelChange() {
 }
 
 void Editor::commitIfIdle() {
-    // El gesto termina al soltar el raton o al salir del campo que se editaba: asi
-    // arrastrar un valor, escribir un nombre o un trazo del pincel es UN paso, no uno
-    // por frame.
+    // The gesture ends when the mouse is released or the edited field is left: that way
+    // dragging a value, typing a name or a brush stroke is ONE step, not one
+    // per frame.
     if (changePending && !dragging && !painting && !ImGui::IsAnyItemActive()) commitChange();
 }
 
@@ -421,12 +424,12 @@ void Editor::restore(const Json& scene) {
     dragging = pressOnEntity = painting = false;
 }
 
-// --- Cambios sin guardar ---------------------------------------------------------------
+// --- Unsaved changes -------------------------------------------------------------------
 
 bool Editor::confirmDiscard(const char* action) {
     if (!isDirty()) return true;
 
-    // Cuadro de dialogo nativo: bloquea hasta que se responde y no depende de ImGui.
+    // Native dialog: it blocks until answered and does not depend on ImGui.
     const SDL_MessageBoxButtonData buttons[] = {
         { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Save" },
         { 0,                                       2, "Discard" },
@@ -448,9 +451,9 @@ bool Editor::confirmDiscard(const char* action) {
         return true;
     }
     if (choice == 1) {
-        if (!app.isEditing()) togglePlay(); // se guarda la escena, no el juego en curso
+        if (!app.isEditing()) togglePlay(); // the scene is saved, not the game in progress
         save();
-        return !isDirty(); // si guardar falla, se cancela
+        return !isDirty(); // if saving fails, it is canceled
     }
     return choice == 2;
 }

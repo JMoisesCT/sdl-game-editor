@@ -4,18 +4,18 @@
 struct PlatformerMotor;
 struct RigidBody2D;
 
-// Traduce la INTENCION de cada PlatformerMotor (moveInput, jumpPressed, jumpHeld,
-// dropHeld) en la velocidad de su RigidBody2D: acelera y frena hacia la velocidad
-// deseada, salta (con coyote time y jump buffer), corta el salto al soltar, limita la
-// caida y, con abajo + salto sobre una plataforma de un sentido, se deja caer de ella
+// Turns the INTENT of each PlatformerMotor (moveInput, jumpPressed, jumpHeld,
+// dropHeld) into the velocity of its RigidBody2D: accelerates and brakes toward the
+// desired speed, jumps (with coyote time and jump buffer), cuts the jump on release,
+// limits the fall and, with down + jump on a one-way platform, drops off it
 // (RigidBody2D::ignoreOneWay).
 //
-// ORDEN de los sistemas en cada frame:
-//     control del juego (teclas -> intencion)
-//       -> PlatformerMotorSystem (intencion -> velocidad)
-//         -> PhysicsSystem (velocidad -> posicion, choques y 'grounded')
-// El motor lee el 'grounded' que dejo la fisica en el frame anterior. Si el control
-// fuera despues del motor, la tecla llegaria un frame tarde.
+// ORDER of the systems in each frame:
+//     game control (keys -> intent)
+//       -> PlatformerMotorSystem (intent -> velocity)
+//         -> PhysicsSystem (velocity -> position, collisions and 'grounded')
+// The motor reads the 'grounded' physics left in the previous frame. If the control
+// ran after the motor, the key would arrive one frame late.
 class PlatformerMotorSystem : public System {
 public:
     const char* name() const override { return "PlatformerMotor"; }
@@ -23,7 +23,7 @@ public:
     void update(World& world, float dt) override;
 };
 
-// Velocidad inicial del salto completo, deducida de jumpHeight y de la gravedad del
-// cuerpo: para subir h px con gravedad g hay que salir a raiz(2 * g * h). Por eso el
-// ajuste es una ALTURA: si cambia la gravedad, el salto sigue llegando igual de alto.
+// Initial velocity of a full jump, derived from jumpHeight and the body's gravity:
+// to rise h px with gravity g you must start at sqrt(2 * g * h). That is why the
+// setting is a HEIGHT: if gravity changes, the jump still reaches the same height.
 float platformerJumpSpeed(const PlatformerMotor& motor, const RigidBody2D& rb);

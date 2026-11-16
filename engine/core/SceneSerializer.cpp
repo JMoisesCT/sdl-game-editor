@@ -16,10 +16,10 @@ static const int SCENE_VERSION = 1;
 static const char* PREFAB_FORMAT = "sdl_engine_prefab";
 static const int PREFAB_VERSION = 1;
 
-// --- Un campo <-> JSON -------------------------------------------------------------
+// --- One field <-> JSON ------------------------------------------------------------
 
-// Un float pasado a double se escribe con todos sus decimales binarios (0.1f sale
-// 0.10000000149011612). Redondear a 5 decimales deja el archivo legible.
+// A float converted to double is written with all its binary decimals (0.1f becomes
+// 0.10000000149011612). Rounding to 5 decimals keeps the file readable.
 static double cleanFloat(float f) {
     return std::round(static_cast<double>(f) * 100000.0) / 100000.0;
 }
@@ -43,9 +43,9 @@ static Json writeField(const FieldInfo& f, const void* p) {
         return Json::array({ r.x, r.y, r.w, r.h });
     }
     case FieldType::IntList: return *static_cast<const std::vector<int>*>(p);
-    case FieldType::Entity:  return *static_cast<const Entity*>(p); // el id; 0 = ninguna
+    case FieldType::Entity:  return *static_cast<const Entity*>(p); // the id; 0 = none
     case FieldType::IntGrid: {
-        // Lista de filas: [[fila 0], [fila 1], ...]. El ancho es el largo de una fila.
+        // List of rows: [[row 0], [row 1], ...]. The width is the length of a row.
         const IntGrid& g = *static_cast<const IntGrid*>(p);
         Json rows = Json::array();
         for (int y = 0; y < g.height; ++y) {
@@ -55,7 +55,7 @@ static Json writeField(const FieldInfo& f, const void* p) {
         return rows;
     }
     case FieldType::List: {
-        // Lista de objetos, cada uno con TODOS los campos del elemento.
+        // List of objects, each one with ALL the element's fields.
         Json items = Json::array();
         const std::size_t n = f.listSize(p);
         for (std::size_t i = 0; i < n; ++i) {
@@ -74,8 +74,8 @@ static std::uint8_t toByte(const Json& j) {
     return static_cast<std::uint8_t>(std::clamp(j.get<int>(), 0, 255));
 }
 
-// Lanza una excepcion de nlohmann si el valor no tiene el tipo esperado; quien llama
-// la atrapa y deja el valor por defecto.
+// Throws a nlohmann exception if the value does not have the expected type; the
+// caller catches it and keeps the default value.
 static void readField(const FieldInfo& f, void* p, const Json& j) {
     switch (f.type) {
     case FieldType::Bool:   *static_cast<bool*>(p) = j.get<bool>(); break;
@@ -100,8 +100,8 @@ static void readField(const FieldInfo& f, void* p, const Json& j) {
     case FieldType::IntList: *static_cast<std::vector<int>*>(p) = j.get<std::vector<int>>(); break;
     case FieldType::Entity:  *static_cast<Entity*>(p) = j.get<Entity>(); break;
     case FieldType::IntGrid: {
-        // El ancho lo da la fila mas larga; si alguna fila quedo corta (editada a
-        // mano), lo que le falta queda en -1 (vacio).
+        // The width comes from the longest row; if a row was short (edited by
+        // hand), what it lacks is left as -1 (empty).
         auto rows = j.get<std::vector<std::vector<int>>>();
         int w = 0;
         for (const auto& row : rows) w = std::max(w, (int)row.size());
@@ -112,9 +112,9 @@ static void readField(const FieldInfo& f, void* p, const Json& j) {
         break;
     }
     case FieldType::List: {
-        // La lista se arma de cero: cada elemento nace con sus valores por defecto y
-        // se le escribe lo que traiga el archivo (como a un componente).
-        const auto& items = j.get_ref<const Json::array_t&>(); // si no es lista, lanza
+        // The list is built from scratch: each element starts with its default values
+        // and gets whatever the file has written onto it (like a component).
+        const auto& items = j.get_ref<const Json::array_t&>(); // throws if it is not a list
         f.listResize(p, 0);
         f.listResize(p, items.size());
         for (std::size_t i = 0; i < items.size(); ++i) {
@@ -136,9 +136,9 @@ static void readField(const FieldInfo& f, void* p, const Json& j) {
     }
 }
 
-// --- Entidades ---------------------------------------------------------------------
+// --- Entities ----------------------------------------------------------------------
 
-// Todos los campos de un componente.
+// Every field of a component.
 static Json componentFields(const ComponentInfo& info, const void* c) {
     Json fields = Json::object();
     for (const FieldInfo& f : info.fields) fields[f.name] = writeField(f, f.in(c));
@@ -147,7 +147,7 @@ static Json componentFields(const ComponentInfo& info, const void* c) {
 
 Json serializeEntity(const World& world, const ComponentRegistry& registry,
                      PrefabLibrary* prefabs, Entity e) {
-    // Si es instancia, se compara contra los componentes (completos) de su prefab.
+    // If it is an instance, it is compared against its prefab's (complete) components.
     const PrefabInstance* link = world.get<PrefabInstance>(e);
     const Json* base = link && prefabs ? prefabs->find(link->path) : nullptr;
 
@@ -158,7 +158,7 @@ Json serializeEntity(const World& world, const ComponentRegistry& registry,
         Json fields = componentFields(*info, c);
         auto inBase = base ? base->find(info->name) : Json::const_iterator();
         if (base && inBase != base->end()) {
-            // Solo lo que difiere del prefab. Si no difiere nada, ni se nombra.
+            // Only what differs from the prefab. If nothing differs, it is not even named.
             Json diff = Json::object();
             for (auto it = fields.begin(); it != fields.end(); ++it) {
                 auto bf = inBase->find(it.key());
@@ -172,11 +172,11 @@ Json serializeEntity(const World& world, const ComponentRegistry& registry,
 
     Json out = Json::object();
     out["id"] = e;
-    // La jerarquia (ver Hierarchy.h): un padre que ya no existe no se escribe.
+    // The hierarchy (see Hierarchy.h): a parent that no longer exists is not written.
     if (Entity parent = parentOf(world, e)) out["parent"] = parent;
     if (link) {
         out["prefab"] = link->path;
-        // Componentes del prefab que esta instancia ya no tiene.
+        // Prefab components this instance no longer has.
         Json removed = Json::array();
         if (base)
             for (auto it = base->begin(); it != base->end(); ++it) {
@@ -192,8 +192,8 @@ Json serializeEntity(const World& world, const ComponentRegistry& registry,
 void deserializeEntity(World& world, const ComponentRegistry& registry,
                        PrefabLibrary* prefabs, Entity e, const Json& entity) {
     if (!entity.is_object()) return;
-    // El padre puede no existir todavia (viene mas abajo en el archivo): se anota tal
-    // cual y fixHierarchy lo revisa al terminar de cargar la escena.
+    // The parent may not exist yet (it comes further down in the file): it is stored
+    // as is, and fixHierarchy checks it once the scene has finished loading.
     auto parent = entity.find("parent");
     if (parent != entity.end() && parent->is_number_unsigned() && parent->get<Entity>() != e)
         world.add<Parent>(e).entity = parent->get<Entity>();
@@ -201,8 +201,8 @@ void deserializeEntity(World& world, const ComponentRegistry& registry,
     if (prefab != entity.end() && prefab->is_string()) {
         std::string path = prefab->get<std::string>();
         world.add<PrefabInstance>(e).path = path;
-        // Primero el prefab completo; si no se puede leer, la entidad queda solo con
-        // sus overrides (y conserva el enlace, para cuando el prefab vuelva).
+        // First the complete prefab; if it cannot be read, the entity keeps only its
+        // overrides (and keeps the link, for when the prefab comes back).
         if (const Json* base = prefabs ? prefabs->find(path) : nullptr)
             deserializeComponents(world, registry, e, *base);
         auto removed = entity.find("removed");
@@ -218,7 +218,7 @@ void deserializeEntity(World& world, const ComponentRegistry& registry,
 void deserializeComponents(World& world, const ComponentRegistry& registry, Entity e,
                            const Json& components) {
     if (!components.is_object()) return;
-    // Un aviso por nombre desconocido, no uno por entidad.
+    // One warning per unknown name, not one per entity.
     static std::set<std::string> warned;
     for (auto it = components.begin(); it != components.end(); ++it) {
         const ComponentInfo* info = registry.find(it.key());
@@ -227,14 +227,14 @@ void deserializeComponents(World& world, const ComponentRegistry& registry, Enti
                 SDL_Log("Scene: unknown component '%s' (ignored)", it.key().c_str());
             continue;
         }
-        // Si ya lo tiene (viene del prefab), se escribe encima; si no, nace con sus
-        // valores por defecto.
+        // If it already has it (it comes from the prefab), it is written on top; if not,
+        // it starts with its default values.
         void* c = info->get(world, e);
         if (!c) c = info->add(world, e);
         if (!it.value().is_object()) continue;
         for (const FieldInfo& f : info->fields) {
             auto fj = it.value().find(f.name);
-            if (fj == it.value().end()) continue; // falta: queda el valor que tenia
+            if (fj == it.value().end()) continue; // missing: the value it had is kept
             try {
                 readField(f, f.in(c), *fj);
             } catch (const Json::exception&) {
@@ -276,7 +276,7 @@ bool deserializeWorld(World& world, const ComponentRegistry& registry, PrefabLib
     for (const Json& ej : *list) {
         Entity id = NullEntity;
         try { id = ej.at("id").get<Entity>(); } catch (const Json::exception&) {}
-        // Sin id valido (o repetido) se le da uno nuevo: mejor cargarla que perderla.
+        // Without a valid (or with a repeated) id, it gets a new one: better to load it than lose it.
         if (!world.createWithId(id)) {
             Entity fresh = world.create();
             SDL_Log("Scene: entity with an invalid or repeated id %u; it becomes %u", id, fresh);
@@ -284,13 +284,13 @@ bool deserializeWorld(World& world, const ComponentRegistry& registry, PrefabLib
         }
         deserializeEntity(world, registry, prefabs, id, ej);
     }
-    fixHierarchy(world); // padres que no existen o ciclos (archivo editado a mano)
+    fixHierarchy(world); // parents that do not exist, or cycles (file edited by hand)
     return true;
 }
 
-// --- Archivo -----------------------------------------------------------------------
+// --- File --------------------------------------------------------------------------
 
-// Una matriz es una lista no vacia de listas de numeros (las celdas de un Tilemap).
+// A matrix is a non-empty list of lists of numbers (the cells of a Tilemap).
 static bool isMatrix(const Json& j) {
     if (!j.is_array() || j.empty()) return false;
     for (const Json& row : j) {
@@ -301,9 +301,9 @@ static bool isMatrix(const Json& j) {
     return true;
 }
 
-// Una fila por linea y los numeros alineados a la derecha: asi el mapa se "ve" en el
-// archivo y pintar una celda cambia una sola linea del diff. 'indent' es la sangria
-// de la linea del componente: las filas van 2 espacios mas adentro.
+// One row per line and the numbers right-aligned: that way the map is "visible" in
+// the file and painting a cell changes a single line of the diff. 'indent' is the
+// indentation of the component's line: the rows go 2 spaces further in.
 static void writeMatrix(std::ostream& out, const Json& m, int indent) {
     std::size_t width = 1;
     for (const Json& row : m)
@@ -323,7 +323,7 @@ static void writeMatrix(std::ostream& out, const Json& m, int indent) {
     out << "\n" << std::string(indent, ' ') << "]";
 }
 
-// Una lista no vacia de objetos (los clips de un SpriteAnimator).
+// A non-empty list of objects (the clips of a SpriteAnimator).
 static bool isObjectList(const Json& j) {
     if (!j.is_array() || j.empty()) return false;
     for (const Json& item : j)
@@ -331,8 +331,8 @@ static bool isObjectList(const Json& j) {
     return true;
 }
 
-// Un elemento por linea, como las filas de una matriz: agregar o cambiar un clip
-// cambia una sola linea del diff.
+// One element per line, like the rows of a matrix: adding or changing a clip
+// changes a single line of the diff.
 static void writeObjectList(std::ostream& out, const Json& list, int indent) {
     const std::string itemIndent(indent + 2, ' ');
     out << "[";
@@ -341,9 +341,9 @@ static void writeObjectList(std::ostream& out, const Json& list, int indent) {
     out << "\n" << std::string(indent, ' ') << "]";
 }
 
-// Un componente en su linea, igual que dump(): {"campo":valor,...}. Las excepciones
-// son los campos matriz, que van una fila por linea (ver writeMatrix), y las listas
-// de structs, un elemento por linea.
+// A component on its own line, just like dump(): {"field":value,...}. The exceptions
+// are matrix fields, one row per line (see writeMatrix), and lists of structs, one
+// element per line.
 static void writeComponent(std::ostream& out, const Json& c, int indent) {
     if (!c.is_object()) {
         out << c.dump();
@@ -362,8 +362,8 @@ static void writeComponent(std::ostream& out, const Json& c, int indent) {
     out << "}";
 }
 
-// Los componentes de una entidad o de un prefab, uno por linea, con esa sangria. Deja
-// el cursor despues de la ultima linea (sin salto); false si no habia ninguno.
+// The components of an entity or a prefab, one per line, with that indentation. Leaves
+// the cursor after the last line (no newline); false if there were none.
 static bool writeComponentLines(std::ostream& out, const Json& comps, int indent) {
     bool first = true;
     for (auto it = comps.begin(); it != comps.end(); ++it) {
@@ -375,7 +375,7 @@ static bool writeComponentLines(std::ostream& out, const Json& comps, int indent
     return !first;
 }
 
-// Escribe con temporal + renombrar: un corte a mitad no deja el archivo roto.
+// Writes with a temp file + rename: an interruption halfway does not leave a broken file.
 static bool writeTextFile(const std::string& path, const std::string& text) {
     std::string tmpPath = path + ".tmp";
     {
@@ -414,9 +414,9 @@ static bool readJsonFile(const std::string& path, Json& out, std::string& error)
 }
 
 bool saveSceneFile(const std::string& path, const Json& scene) {
-    // A mano y no con dump(2): dump(2) pone cada numero de un [x, y] en su propia
-    // linea. Asi queda una entidad por bloque y un componente por linea (salvo las
-    // matrices, una fila por linea).
+    // By hand rather than with dump(2): dump(2) puts each number of an [x, y] on its own
+    // line. This way there is one entity per block and one component per line (except
+    // matrices, one row per line).
     std::ostringstream out;
     out << "{\n";
     out << "  \"format\": " << Json(scene.value("format", SCENE_FORMAT)).dump() << ",\n";

@@ -8,7 +8,7 @@
 #include "systems/Tilemaps.h"
 
 namespace {
-    // La primera entidad viva con esa etiqueta y Transform (NullEntity si no hay).
+    // The first living entity with that tag and a Transform (NullEntity if there is none).
     Entity findTagged(World& world, const std::string& tag) {
         Entity found = NullEntity;
         if (tag.empty()) return found;
@@ -18,7 +18,7 @@ namespace {
         return found;
     }
 
-    // Rectangulo que cubren todos los Tilemap visibles. false si no hay ninguno.
+    // Rectangle covered by all the visible Tilemaps. false if there are none.
     bool tilemapsBounds(World& world, Vec2& min, Vec2& max) {
         bool any = false;
         world.each<Tilemap, Transform>([&](Entity, Tilemap& map, Transform& t) {
@@ -32,16 +32,16 @@ namespace {
         return any;
     }
 
-    // Deja el centro de la camara donde el rectangulo visible (media vista a cada lado)
-    // quepa en [min, max]. Si el mapa es mas chico que la vista en un eje, en ese eje
-    // la camara se centra en el mapa (si no, los dos topes se pelearian).
+    // Puts the camera center where the visible rectangle (half a view on each side)
+    // fits within [min, max]. If the map is smaller than the view on an axis, on that axis
+    // the camera centers on the map (otherwise the two limits would fight).
     float clampAxis(float center, float half, float min, float max) {
         if (max - min <= half * 2.0f) return (min + max) * 0.5f;
         return std::clamp(center, min + half, max - half);
     }
 
-    // Acerca 'current' a 'target' una fraccion que depende de la rapidez y del dt
-    // (0 = de golpe).
+    // Moves 'current' toward 'target' by a fraction that depends on the speed and dt
+    // (0 = instantly).
     float approach(float current, float target, float rate, float dt) {
         if (rate <= 0.0f) return target;
         float k = std::min(1.0f, rate * dt);
@@ -49,7 +49,7 @@ namespace {
     }
 }
 
-// --- Camara que sigue --------------------------------------------------------------------
+// --- Follow camera -----------------------------------------------------------------------
 
 void FollowCameraSystem::onPlay(World& world) {
     world.each<FollowCamera>([](Entity, FollowCamera& f) {
@@ -64,14 +64,14 @@ void FollowCameraSystem::update(World& world, float dt) {
     const bool hasMap = tilemapsBounds(world, mapMin, mapMax);
 
     world.each<FollowCamera, Transform>([&](Entity self, FollowCamera& f, Transform& cam) {
-        // El objetivo se guarda como Entity y se vuelve a buscar si desaparece.
+        // The target is stored as an Entity and looked up again if it disappears.
         if (!world.isAlive(f.target)) f.target = findTagged(world, f.targetTag);
         const Transform* target = world.get<Transform>(f.target);
         if (!target) return;
         const Vec2 tp = target->position;
 
-        // Adelanto de la vista: hacia donde se MOVIO el objetivo en x. Quieto, se
-        // mantiene; al dar la vuelta cambia de a poco, para que la vista no salte.
+        // View lead: toward where the target MOVED in x. Standing still, it is
+        // kept; when turning around it changes gradually, so the view does not jump.
         if (f.lookAhead != 0.0f && f.started) {
             float moved = tp.x - f.lastTargetX;
             float wanted = f.lookOffset;
@@ -86,12 +86,12 @@ void FollowCameraSystem::update(World& world, float dt) {
 
         Vec2 next = cam.position;
         if (!f.started) {
-            // Primer frame: directo sobre el objetivo, sin recorrer el nivel.
+            // First frame: straight onto the target, without sweeping across the level.
             next = focus;
             f.started = true;
         } else {
-            // Zona muerta: la camara solo se mueve si el foco sale del rectangulo, y lo
-            // justo para dejarlo otra vez sobre su borde.
+            // Dead zone: the camera only moves if the focus leaves the rectangle, and just
+            // enough to put it back on its edge.
             Vec2 wanted = cam.position;
             const float hx = f.deadZone.x * 0.5f, hy = f.deadZone.y * 0.5f;
             if (focus.x > cam.position.x + hx) wanted.x = focus.x - hx;
@@ -102,8 +102,8 @@ void FollowCameraSystem::update(World& world, float dt) {
             next.y = approach(cam.position.y, wanted.y, f.smoothing, dt);
         }
 
-        // El recorte va al final: se calcule como se calcule el destino, la vista no
-        // se sale del mapa.
+        // The clamp goes last: however the destination is computed, the view does not
+        // leave the map.
         if (f.clampToTilemaps && hasMap) {
             const Camera* c = world.get<Camera>(self);
             const float zoom = c && c->zoom > 0.0f ? c->zoom : 1.0f;

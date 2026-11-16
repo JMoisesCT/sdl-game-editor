@@ -8,161 +8,161 @@
 class ComponentRegistry;
 class ConditionRegistry;
 
-// Componentes de PRESENTACION: animacion, camara que sigue, fondos con parallax y
-// texto. Como todos, son SOLO datos; los mueven los sistemas de systems/Animation.h y
-// systems/Presentation.h, y los dibuja RenderSystem.
+// PRESENTATION components: animation, follow camera, parallax backgrounds and text.
+// Like all of them, they are ONLY data; the systems in systems/Animation.h and
+// systems/Presentation.h drive them, and RenderSystem draws them.
 
-// --- Animacion ---------------------------------------------------------------------------
+// --- Animation ---------------------------------------------------------------------------
 
-// Un clip: una secuencia de cuadros recortados de una imagen en grilla. Los cuadros
-// se numeran por filas desde arriba a la izquierda, como los tiles de un Tilemap (con
-// 4 columnas, el 4 es el primero de la segunda fila).
+// A clip: a sequence of frames cropped from a grid image. Frames are numbered by
+// rows from the top left, like the tiles of a Tilemap (with 4 columns, 4 is the
+// first one of the second row).
 //
-// Sirve para las tres formas tipicas de organizar una animacion:
-//   - una tira por archivo (Pixel Adventure: "Run (32x32).png"): texture + frames vacio;
-//   - una fila o columna de una hoja (Ninja Adventure: la columna 0 mira hacia abajo):
-//     frames = las celdas de esa linea ("0, 4, 8, 12");
-//   - celdas sueltas de la imagen del Sprite: texture vacio + frames.
+// It covers the three usual ways of organizing an animation:
+//   - one strip per file (Pixel Adventure: "Run (32x32).png"): texture + empty frames;
+//   - a row or column of a sheet (Ninja Adventure: column 0 faces down):
+//     frames = the cells of that line ("0, 4, 8, 12");
+//   - individual cells of the Sprite's image: empty texture + frames.
 struct AnimationClip {
     std::string name = "clip";
-    std::string texture;      // vacio = la textura que tenia el Sprite al empezar a jugar
-    int frameWidth = 32;      // tamano de un cuadro en la imagen (px)
+    std::string texture;      // empty = the texture the Sprite had when play started
+    int frameWidth = 32;      // size of a frame in the image (px)
     int frameHeight = 32;
-    std::vector<int> frames;  // celdas en orden; vacio = todas las de la imagen
+    std::vector<int> frames;  // cells in order; empty = all of the image's
     float fps = 20.0f;
     bool loop = true;
-    std::string next;         // sin loop: al terminar, pasa a este clip (vacio = se queda en el ultimo cuadro)
-    bool destroyOnEnd = false; // sin loop: al terminar, destruye la entidad (efectos, frutas recogidas)
+    std::string next;         // without loop: when it ends, switches to this clip (empty = stays on the last frame)
+    bool destroyOnEnd = false; // without loop: when it ends, destroys the entity (effects, collected fruits)
 };
 
-// Reproduce clips cuadro a cuadro. NO dibuja: escribe la textura y el recorte del
-// Sprite de la misma entidad, y RenderSystem dibuja el Sprite como siempre.
+// Plays clips frame by frame. It does NOT draw: it writes the texture and crop of the
+// Sprite of the same entity, and RenderSystem draws the Sprite as usual.
 //
-// Quien elige el clip: el AnimatorStateMachine de la entidad (si tiene), o cualquier
-// sistema con playAnimation (Animation.h). Sin nadie que elija, suena startClip.
+// Who picks the clip: the entity's AnimatorStateMachine (if it has one), or any
+// system with playAnimation (Animation.h). With nobody picking, startClip plays.
 //
-// Avisos de un frame (como justLanded): justFinished, cuando termina un clip sin loop.
+// One-frame flags (like justLanded): justFinished, when a clip without loop ends.
 struct SpriteAnimator {
-    std::string startClip;    // clip al empezar a jugar (vacio = el primero)
-    float speed = 1.0f;       // 2 = el doble de rapido; 0 = congelado
+    std::string startClip;    // clip when play starts (empty = the first one)
+    float speed = 1.0f;       // 2 = twice as fast; 0 = frozen
     std::vector<AnimationClip> clips;
 
-    // --- Estado de ejecucion (lo escribe SpriteAnimatorSystem) ---
-    std::string current;      // clip que suena
-    int frame = 0;            // posicion dentro de los cuadros del clip
-    float timer = 0.0f;       // tiempo acumulado del cuadro actual
-    bool finished = false;    // clip sin loop que ya llego al ultimo cuadro
-    bool justFinished = false; // ...y llego en este frame
-    std::string baseTexture;  // la textura del Sprite al empezar (para los clips sin textura)
+    // --- Runtime state (written by SpriteAnimatorSystem) ---
+    std::string current;      // clip playing
+    int frame = 0;            // position within the clip's frames
+    float timer = 0.0f;       // time accumulated on the current frame
+    bool finished = false;    // clip without loop that already reached its last frame
+    bool justFinished = false; // ...and reached it this frame
+    std::string baseTexture;  // the Sprite's texture at the start (for clips without a texture)
     bool started = false;
 };
 
-// Una regla del AnimatorStateMachine: si la condicion se cumple, suena ese clip.
+// An AnimatorStateMachine rule: if the condition holds, that clip plays.
 struct AnimationRule {
     std::string clip;
-    std::string condition;    // nombre de una condicion registrada (ConditionRegistry)
+    std::string condition;    // name of a registered condition (ConditionRegistry)
 };
 
-// Elige que clip suena a partir de REGLAS en vez de una cascada de if. Cada frame se
-// recorren EN ORDEN y gana la PRIMERA cuya condicion se cumpla; si no se cumple
-// ninguna, suena defaultClip. El orden ES la prioridad:
-//     hit  si dead
-//     jump si rising
-//     fall si airborne
-//     run  si moving
-//     (si no, idle)
-// Las condiciones son funciones de C++ con nombre (la logica sigue en C++): el motor
-// trae las basicas (grounded, rising, dead...) y el juego suma las suyas. Ver
+// Picks which clip plays from RULES instead of a cascade of ifs. Every frame they
+// are walked IN ORDER and the FIRST one whose condition holds wins; if none holds,
+// defaultClip plays. The order IS the priority:
+//     hit  if dead
+//     jump if rising
+//     fall if airborne
+//     run  if moving
+//     (otherwise, idle)
+// Conditions are named C++ functions (the logic stays in C++): the engine provides
+// the basic ones (grounded, rising, dead...) and the game adds its own. See
 // systems/Conditions.h.
 //
-// Solo cambia de clip cuando cambia la regla ganadora: asi un clip puede encadenar con
-// su 'next' (bandera que sale -> bandera ondeando) sin que la maquina lo reinicie.
+// It only switches clips when the winning rule changes: that way a clip can chain
+// into its 'next' (flag coming out -> flag waving) without the machine restarting it.
 //
-// Sin defaultClip ("ninguno"), cuando no gana ninguna regla el clip que este sonando
-// sigue hasta el final: es la forma de animar un SUCESO de un frame (el trampolin
-// que rebota: jump si bounced, y el clip vuelve solo a idle con su 'next'). La
-// proxima vez que gane la regla, su clip arranca de nuevo.
+// Without a defaultClip ("none"), when no rule wins, the clip that is playing keeps
+// going until the end: that is how to animate a one-frame EVENT (the trampoline
+// bouncing: jump if bounced, and the clip returns to idle by itself with its 'next').
+// The next time the rule wins, its clip starts again.
 struct AnimatorStateMachine {
     std::string defaultClip = "idle";
     std::vector<AnimationRule> rules;
 
-    // --- Estado de ejecucion ---
-    std::string state;        // clip elegido en el ultimo frame
+    // --- Runtime state ---
+    std::string state;        // clip picked in the last frame
 };
 
-// --- Camara ------------------------------------------------------------------------------
+// --- Camera ------------------------------------------------------------------------------
 
-// Va en la entidad de la Camera: la mueve para seguir a la primera entidad con la
-// etiqueta targetTag, pero SOLO cuando sale de la zona muerta (un rectangulo centrado
-// en la camara). Mientras el objetivo se mueve dentro, la camara no se mueve: asi no
-// tiembla con cada paso ni con cada salto pequeno.
+// Goes on the Camera entity: it moves it to follow the first entity with the tag
+// targetTag, but ONLY when the target leaves the dead zone (a rectangle centered on
+// the camera). While the target moves inside it, the camera stays still: that way
+// it does not shake with every step or every small jump.
 struct FollowCamera {
     std::string targetTag = "Player";
-    Vec2 deadZone{ 160.0f, 120.0f }; // ancho y alto de la zona muerta (px del mundo)
-    float smoothing = 6.0f;          // rapidez con que alcanza su destino (0 = de golpe)
-    float lookAhead = 0.0f;          // px que adelanta la vista hacia donde va el objetivo
-    float lookAheadSpeed = 3.0f;     // rapidez con que cambia ese adelanto
-    bool clampToTilemaps = true;     // la vista no se sale de los Tilemap de la escena
+    Vec2 deadZone{ 160.0f, 120.0f }; // width and height of the dead zone (world px)
+    float smoothing = 6.0f;          // how fast it reaches its destination (0 = instantly)
+    float lookAhead = 0.0f;          // px the view leads toward where the target is heading
+    float lookAheadSpeed = 3.0f;     // how fast that lead changes
+    bool clampToTilemaps = true;     // the view stays inside the scene's Tilemaps
 
-    // --- Estado de ejecucion ---
+    // --- Runtime state ---
     Entity target = NullEntity;
-    float lookOffset = 0.0f;   // adelanto actual
+    float lookOffset = 0.0f;   // current lead
     float lastTargetX = 0.0f;
-    bool started = false;      // ya se coloco sobre el objetivo
+    bool started = false;      // already placed on the target
 };
 
-// --- Fondo -------------------------------------------------------------------------------
+// --- Background --------------------------------------------------------------------------
 
-// Imagen que se repite para llenar la vista y que acompana a la camara solo en parte:
-// da sensacion de profundidad. La imagen debe ser TILEABLE (las de Pixel Adventure
-// encajan consigo mismas). No usa el Transform: siempre llena toda la vista.
+// An image that repeats to fill the view and only partly follows the camera: it
+// gives a sense of depth. The image must be TILEABLE (the Pixel Adventure ones
+// tile with themselves). It does not use the Transform: it always fills the whole view.
 //
-// factor: 0 = no se mueve nunca (infinitamente lejos), 0.3 = montanas del fondo,
-// 1 = se mueve igual que el mundo. Varias capas con factores distintos dan el efecto
-// completo.
+// factor: 0 = never moves (infinitely far), 0.3 = background mountains,
+// 1 = moves just like the world. Several layers with different factors give the
+// full effect.
 struct ParallaxBackground {
     std::string texture;
     Vec2 factor{ 0.3f, 0.3f };
-    float scale = 1.0f;      // tamano del mosaico (4 con una imagen de 64 px = 256 px)
-    Vec2 scroll;             // desplazamiento propio en px/seg (nubes, agua); solo jugando
+    float scale = 1.0f;      // tile size (4 with a 64 px image = 256 px)
+    Vec2 scroll;             // its own scrolling in px/s (clouds, water); only while playing
     Color tint;
     bool visible = true;
-    int order = -100;        // capa de dibujo, la misma escala que Sprite::order
+    int order = -100;        // draw layer, on the same scale as Sprite::order
 
-    // --- Estado de ejecucion ---
-    Vec2 offset;             // lo que lleva movido por 'scroll'
+    // --- Runtime state ---
+    Vec2 offset;             // how far it has moved because of 'scroll'
 };
 
-// --- Texto -------------------------------------------------------------------------------
+// --- Text --------------------------------------------------------------------------------
 
-// Una linea de texto con una fuente TTF. El Transform da la posicion (y su escala
-// agranda el texto); la rotacion no se aplica.
+// A line of text with a TTF font. The Transform gives the position (and its scale
+// enlarges the text); rotation does not apply.
 //
 // screenSpace:
-//   false -> el texto esta en el MUNDO: pasa por la camara (un cartel en el nivel).
-//   true  -> el texto esta en la PANTALLA del juego (HUD): la posicion son pixeles de
-//            la resolucion del juego, desde la esquina superior izquierda, y no se
-//            mueve con la camara. Se dibuja encima de todo el mundo.
+//   false -> the text is in the WORLD: it goes through the camera (a sign in the level).
+//   true  -> the text is on the game SCREEN (HUD): the position is in pixels of the
+//            game's resolution, from the top left corner, and it does not move
+//            with the camera. It is drawn on top of the whole world.
 //
-// align dice donde cae la posicion respecto al texto, en horizontal. Un contador que
-// cambia de largo ("FRUTAS: 9/10") quiere "left": con "center" se recentraria y
-// pareceria saltar. En vertical la posicion siempre es el centro del renglon.
+// align says where the position falls relative to the text, horizontally. A counter
+// whose length changes ("FRUITS: 9/10") wants "left": with "center" it would
+// re-center and seem to jump. Vertically, the position is always the line's center.
 //
-// Pixel art nitido: el texto se rasteriza sin suavizado (fuentes pixel) y se dibuja
-// en coordenadas enteras. El texto lo cambia el juego desde un sistema (ver
-// game/PlatformerRules); el dibujo cachea la imagen de cada texto.
+// Crisp pixel art: the text is rasterized without antialiasing (pixel fonts) and
+// drawn at whole coordinates. The game changes the text from a system (see
+// game/PlatformerRules); drawing caches the image of each text.
 struct Text {
     std::string text = "Texto";
     std::string font = "assets/ninja_adventure/Ui/Font/NormalFont.ttf";
-    int size = 16;             // puntos
+    int size = 16;             // points
     Color color;
-    std::string align = "center"; // left, center o right
+    std::string align = "center"; // left, center or right
     bool screenSpace = false;
     bool visible = true;
-    int order = 100;           // capa de dibujo (entre los textos del HUD, o con los sprites)
+    int order = 100;           // draw layer (among the HUD texts, or with the sprites)
 };
 
-// Declara los componentes de arriba a la reflexion. La llama Application al arrancar,
-// despues de registerRuleComponents. 'conditions' da la lista de condiciones que
-// ofrece el Inspector en las reglas del AnimatorStateMachine.
+// Declares the components above to the reflection. Application calls it at startup,
+// after registerRuleComponents. 'conditions' provides the list of conditions the
+// Inspector offers in the AnimatorStateMachine rules.
 void registerPresentationComponents(ComponentRegistry& registry, const ConditionRegistry& conditions);

@@ -83,9 +83,14 @@ position in the world, so physics, drawing and rules do not change.
 
 - **Drag** an entity onto another to make it its **child**; onto the top or bottom edge of
   another, to place it **before** or **after** it (as a sibling). Dropping it in the empty
-  space below takes it out of its group. The right-click menu offers **Create child** and
-  **Remove from group**.
-- A group can be an empty entity (**+ New**, no sprite) that just works as a folder.
+  space below takes it out of its group. The right-click menu offers **Create child**,
+  **Group** and **Remove from group**.
+- **Select several** with `Ctrl+click` (add or remove one) or `Shift+click` (a range).
+  Dragging one of them takes them all, in order; **Duplicate**, **Delete** and **Remove from
+  group** act on all of them. The Inspector shows the last one picked.
+- **Group** (`Ctrl+G`) creates an empty entity in place of the first selected one and puts
+  the whole selection inside it: a folder in one step. It is selected, ready to be renamed.
+- A group can also be an empty entity made by hand (**+ New**, no sprite).
 - **Moving a parent** (in the view or in the Inspector) also moves its whole branch, and
   **Duplicate** or **Delete** take the whole branch along.
 - **While playing**, children do **not** follow their parent (if a system destroys the
@@ -281,7 +286,9 @@ app.conditions().add("attacking", [](World& w, Entity e) { /* ... */ });
 | Pan the view | Right or middle click and drag |
 | Zoom toward the cursor | Mouse wheel |
 | Focus on the selection | `F` (or double-click in the Hierarchy) |
+| Select several | `Ctrl+click` (add / remove) or `Shift+click` (range, in the Hierarchy) |
 | Nest / reorder entities | Drag in the Hierarchy (middle: child; edge: before or after) |
+| Group the selection | `Ctrl+G` |
 | Play / stop | `Ctrl+P` |
 | Save | `Ctrl+S` |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Y` or `Ctrl+Shift+Z` |

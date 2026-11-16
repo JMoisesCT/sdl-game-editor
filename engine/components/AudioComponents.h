@@ -5,39 +5,39 @@
 class ComponentRegistry;
 class ConditionRegistry;
 
-// Componentes de AUDIO. Como todos, son SOLO datos: los hacen sonar SoundSystem y
-// MusicSystem (systems/AudioSystems.h) a traves de platform/Audio.
+// AUDIO components. Like all of them, they are ONLY data: SoundSystem and MusicSystem
+// (systems/AudioSystems.h) play them through platform/Audio.
 
-// Un sonido y CUANDO suena: al EMPEZAR a cumplirse la condicion (el frame en que pasa
-// de falsa a verdadera). Asi vale igual para un suceso de un frame (jumped, damaged)
-// que para un estado (dead, collected): suena una vez al morir, no cada frame muerto.
+// A sound and WHEN it plays: when the condition STARTS to hold (the frame in which it
+// goes from false to true). That way it works the same for a one-frame event (jumped,
+// damaged) as for a state (dead, collected): it plays once on death, not every dead frame.
 struct SoundRule {
-    std::string condition;   // nombre de una condicion registrada (systems/Conditions.h)
-    std::string sound;       // archivo de audio
-    float volume = 1.0f;     // 0 = mudo, 1 = como esta grabado
+    std::string condition;   // name of a registered condition (systems/Conditions.h)
+    std::string sound;       // audio file
+    float volume = 1.0f;     // 0 = muted, 1 = as recorded
 
-    // --- Estado de ejecucion ---
-    bool wasTrue = false;    // la condicion en el frame anterior
+    // --- Runtime state ---
+    bool wasTrue = false;    // the condition in the previous frame
 };
 
-// Los efectos de sonido de una entidad: una lista de reglas "suena X cuando Y", como
-// las del AnimatorStateMachine pero sin prioridad (suenan todas las que empiecen).
+// An entity's sound effects: a list of rules "play X when Y", like the
+// AnimatorStateMachine's but without priority (every one that starts plays).
 struct SoundEffects {
     std::vector<SoundRule> sounds;
 
-    // --- Estado de ejecucion ---
-    bool started = false;    // ya se miraron las condiciones una vez (el primer frame
-                             // solo se anotan: lo que ya era cierto al empezar no suena)
+    // --- Runtime state ---
+    bool started = false;    // the conditions were already checked once (the first frame
+                             // only records them: what was already true at the start does not play)
 };
 
-// La musica de fondo. Suena mientras haya una entidad con Music (la primera que se
-// encuentre); si el juego cambia el archivo, cambia la musica.
+// The background music. It plays while there is an entity with Music (the first one
+// found); if the game changes the file, the music changes.
 struct Music {
-    std::string music;       // archivo de audio
+    std::string music;       // audio file
     float volume = 0.5f;
     bool loop = true;
 };
 
-// Declara los componentes de arriba a la reflexion. La llama Application al arrancar,
-// despues de registerPresentationComponents.
+// Declares the components above to the reflection. Application calls it at startup,
+// after registerPresentationComponents.
 void registerAudioComponents(ComponentRegistry& registry, const ConditionRegistry& conditions);
